@@ -33,7 +33,8 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 header.top{position:fixed;top:0;left:0;right:0;z-index:30;background:var(--capo);padding:calc(8px + var(--sat)) 14px 8px;box-shadow:0 1px 8px rgba(0,0,0,.12);display:flex;align-items:center;gap:10px}
 .marchio{display:flex;align-items:center;gap:8px;min-width:0}
 .marchio img{width:30px;height:30px;border-radius:8px}
-.marchio b{font-size:17px;letter-spacing:.03em;white-space:nowrap}.marchio b .wa{color:var(--accent)}.marchio b .wd{color:var(--cremisi)}
+.marchio b{font-size:12.5px;letter-spacing:.02em;white-space:nowrap;line-height:1.05}.marchio b .wd{display:block}
+@media (max-width:430px){.marchio small{display:none}}.marchio b .wa{color:var(--accent)}.marchio b .wd{color:var(--cremisi)}
 .marchio small{display:block;font-size:10px;color:var(--tenue);letter-spacing:.08em;margin-top:-2px}
 .sp{flex:1}
 #sy-spia{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--grigioL)}
@@ -41,6 +42,14 @@ header.top{position:fixed;top:0;left:0;right:0;z-index:30;background:var(--capo)
 #sy-spia.sy-ok{color:var(--verde)}#sy-spia.sy-sync{color:var(--accent);animation:pulsa 1s ease-in-out infinite}#sy-spia.sy-errore{color:var(--rosso)}#sy-spia.sy-auth{color:var(--ambra);animation:pulsa 1s ease-in-out infinite}#sy-spia.sy-offline{color:var(--grigioL)}
 @keyframes pulsa{0%,100%{opacity:1}50%{opacity:.3}}
 #tema{width:34px;height:34px;border-radius:9px;border:1px solid var(--bordo);background:var(--carta);color:var(--testo);font-size:16px}
+.hbt{width:36px;height:36px;border-radius:9px;border:1px solid var(--bordo);background:var(--carta);color:var(--testo2);display:flex;align-items:center;justify-content:center}
+.hbt svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hbt.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.gruppi{display:flex;gap:4px}
+.gruppi button{border:1.5px solid var(--bordo);background:var(--carta);color:var(--tenue);border-radius:20px;padding:5px 9px;font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap;line-height:1.1}
+.gruppi button[data-g="st"].on{background:var(--cremisi);border-color:var(--cremisi);color:#fff}
+.gruppi button[data-g="cl"].on{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (max-width:360px){.marchio small{display:none}.gruppi button{padding:5px 7px;font-size:10px}}
 main{padding:calc(60px + var(--sat)) 12px calc(74px + var(--sab));min-height:100%}
 .vista{display:none}.vista.on{display:block}
 nav.tab{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--capo);border-top:1px solid var(--bordo);display:flex;padding:4px 4px calc(4px + var(--sab))}
@@ -122,7 +131,7 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 .tag-tipo{display:inline-block;color:#fff;font-weight:800;font-size:11px;letter-spacing:.06em;padding:2px 9px;border-radius:999px;text-transform:uppercase}
 .testo{font-size:14.5px;color:var(--testo2);white-space:pre-wrap;margin:0}
 .nota{background:var(--carta2);border-radius:10px;padding:9px 12px;font-size:13.5px;color:var(--testo2)}
-body.sc-aperta{overflow:hidden}
+body.sc-aperta,body.mappa-on{overflow:hidden}
 summary::-webkit-details-marker{display:none}
 #mappa.chiusa{display:none}
 .foglio{position:fixed;inset:0;z-index:3500;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
@@ -130,6 +139,30 @@ summary::-webkit-details-marker{display:none}
 .foglio h4{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tenue)}
 .foglio button.v{display:block;width:100%;text-align:left;padding:13px 14px;border:1px solid var(--bordo);border-radius:12px;background:var(--carta);color:var(--testo);font-size:16px;font-weight:600;margin-bottom:8px}
 .foglio label{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--testo2);margin:4px 2px 12px;min-height:36px}.foglio input[type=checkbox]{width:22px;height:22px}
+/* vista Mappa a tutto schermo */
+#v-mappa.on{position:fixed;left:0;right:0;top:calc(52px + var(--sat));bottom:calc(62px + var(--sab));padding:0;z-index:5}
+#mappa2{position:absolute;inset:0;background:var(--carta2)}
+.mp-top{position:absolute;top:8px;left:8px;right:8px;z-index:1200;display:flex;gap:6px}
+.mp-top input{flex:1;padding:9px 12px;border:1px solid var(--bordo);border-radius:12px;background:var(--carta);color:var(--testo);font-size:16px;box-shadow:var(--ombra)}
+.mp-top .hbt{width:40px;height:40px;flex:none;box-shadow:var(--ombra)}
+.mp-pannello{position:absolute;top:56px;left:8px;right:8px;z-index:1200;background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.18);max-height:60%;overflow:auto}
+.mp-pannello .form{gap:6px}.mp-pannello .due{grid-template-columns:1fr 1fr}
+.mp-ctrl{position:absolute;right:8px;bottom:14px;z-index:1200;display:flex;flex-direction:column;gap:6px}
+.mp-ctrl .hbt{width:42px;height:42px;box-shadow:var(--ombra);font-size:17px;font-weight:700}
+.mp-conta{position:absolute;left:8px;bottom:14px;z-index:1200;background:var(--carta);border:1px solid var(--bordo);border-radius:20px;padding:5px 11px;font-size:12px;color:var(--testo2);box-shadow:var(--ombra);max-width:65%}
+.mp-legenda{position:absolute;left:8px;bottom:48px;z-index:1200;background:var(--carta);border:1px solid var(--bordo);border-radius:12px;padding:8px 10px;font-size:12px;box-shadow:var(--ombra);max-width:70%}
+.mp-legenda div{display:flex;align-items:center;gap:7px;margin:3px 0}.mp-legenda i{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px solid #0F1620;flex:none}
+.mp-legenda b.bd{display:inline-flex;width:16px;height:16px;border-radius:50%;color:#fff;font-size:9px;align-items:center;justify-content:center;border:2px solid #E8912D;flex:none}
+.lp-wrap{background:none;border:0}
+.lpin{position:absolute;left:0;top:0;width:calc(var(--b,1) * 17px);height:calc(var(--b,1) * 22px);transform:translate(calc(-50% + var(--ox,0) * 1px),calc(-94.44% + var(--oy,0) * 1px))}
+.lpin svg{width:100%;height:100%;display:block;overflow:visible}
+.lpin .ombra{fill:rgba(0,0,0,.28)}.lpin .corpo{stroke:#0F1620;stroke-width:1.2;stroke-linejoin:round}.lpin .occhio{fill:#0F1620}
+.lpin.prov .corpo{stroke-dasharray:2.2 1.4;fill-opacity:.8}.lpin.prov .occhio{fill:none;stroke:#0F1620;stroke-width:1.2}
+.rq-lampo-pin{animation:rq-lampeggia .9s steps(1,end) infinite}@keyframes rq-lampeggia{0%,49%{opacity:1}50%,100%{opacity:.25}}
+.lpin .rq-badge{transform-origin:5.2px -15.2px}
+.qui-punto{width:16px;height:16px;border-radius:50%;background:#1A73E8;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 0 0 8px rgba(26,115,232,.18);transform:translate(-50%,-50%);position:absolute;left:0;top:0}
+.pop{min-width:200px}.pop b{display:block;font-size:15px;margin-bottom:2px}.pop .ds{font-size:12px;color:var(--tenue)}.pop .az{margin-top:8px}.pop .az a,.pop .az button{--c:var(--accent);min-width:28%;padding:8px 6px;font-size:13px}
+.leaflet-popup-content{margin:10px 12px;font:inherit}.leaflet-popup-content-wrapper{border-radius:12px;background:var(--carta);color:var(--testo)}.leaflet-popup-tip{background:var(--carta)}
 #mappa{height:42vh;border-radius:14px;border:1px solid var(--bordo);margin-bottom:10px;background:var(--carta2)}
 .leaflet-container{font:inherit}
 .pin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
@@ -146,10 +179,12 @@ summary::-webkit-details-marker{display:none}
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.2.0</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.3.0</small></div></div>
   <div class="sp"></div>
+  <div class="gruppi" id="gruppi" title="Gruppi di contatti: attivi uno alla volta o insieme"><button data-g="st" class="on">Security TOWER</button><button data-g="cl" class="on">Clienti</button></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
-  <button id="tema" title="Chiaro / scuro">&#9790;</button>
+  <button id="tema" title="Chiaro / scuro" style="display:none">&#9790;</button>
+  <button id="bt-altro" class="hbt" title="Impostazioni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 <main>
   <section class="vista on" id="v-cerca">
@@ -167,14 +202,23 @@ summary::-webkit-details-marker{display:none}
     <div class="lista" id="vi-lista"></div>
   </section>
   <section class="vista" id="v-pratiche"></section>
+  <section class="vista" id="v-mappa">
+    <div class="mp-top"><input id="mp-q" type="search" placeholder="Cerca sulla mappa…" autocomplete="off"><button class="hbt" id="mp-filtri" title="Filtri"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button><button class="hbt" id="mp-colore" title="Colore: livello / esito"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></div>
+    <div id="mp-pannello" class="mp-pannello" style="display:none"></div>
+    <div id="mappa2"></div>
+    <div class="mp-ctrl"><button class="hbt" id="mp-qui" title="Dove sono"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></button><button class="hbt" id="mp-tutto" title="Vista intera">&#8635;</button><button class="hbt" id="mp-leg" title="Legenda">?</button></div>
+    <div class="mp-conta" id="mp-conta"></div>
+    <div class="mp-legenda" id="mp-legenda" style="display:none"></div>
+  </section>
   <section class="vista" id="v-altro"></section>
 </main>
 <nav class="tab" id="tab">
   <button data-v="cerca" class="on"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Cerca</button>
   <button data-v="oggi"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Oggi<span class="tn" id="tn-oggi" style="display:none"></span></button>
+  <button data-v="mappa" id="tab-mappa"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>
   <button data-v="vicino"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Vicino a me</button>
   <button data-v="pratiche"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM8 7V5h8v2"/><path d="M4 12h16"/></svg>Pratiche<span class="tn" id="tn-prat" style="display:none"></span></button>
-  <button data-v="altro"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Altro</button>
+  <button data-v="altro" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Altro</button>
 </nav>
 <div id="scheda"></div>
 <div class="toast" id="toast"></div>
@@ -453,7 +497,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.2.0';
+var APP_VER = '1.3.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -491,7 +535,8 @@ function sit(id) { return DB.situazioni[id] || {}; }
 function gruppi(c) { var g = (c.gruppi || 'st').split(','); return g; }
 function barre(c) { var g = gruppi(c); return '<span class="gbar"><i class="st' + (g.indexOf('st') >= 0 ? ' on' : '') + '"></i><i class="cl' + (g.indexOf('cl') >= 0 ? ' on' : '') + '"></i></span>'; }
 function eventiDi(id) { return Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; }).filter(function (v) { return v.cid === id; }).sort(function (a, b) { return ((b.d || '') + (b.o || '')).localeCompare((a.d || '') + (a.o || '')); }); }
-function lista() { var l = Object.keys(DB.contatti).map(function (k) { return DB.contatti[k]; }); l.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }); return l; }
+function listaTutti() { return Object.keys(DB.contatti).map(function (k) { return DB.contatti[k]; }); }
+function lista() { var l = listaTutti().filter(function (c) { if (GR.st && GR.cl) return true; var g = gruppi(c); return (GR.st && g.indexOf('st') >= 0) || (GR.cl && g.indexOf('cl') >= 0); }); l.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }); return l; }
 function conta() { return Object.keys(DB.contatti).length; }
 function pillEsito(e) { return e && e !== 'Da contattare' ? '<span class="pill ' + classeEsito(e) + '">' + esc(e) + '</span>' : ''; }
 function tagPratica(c) { var q = DB.pratiche[c.id]; if (!q) return ''; var t = tipoP(q), s = q.stato || 'sospesa'; return '<span class="rq ' + s + '" title="' + esc(t.nome) + '"><i style="background:' + esc(t.colore) + '">' + esc(t.sigla || t.nome.charAt(0)) + '</i>' + s + '</span>'; }
@@ -509,22 +554,30 @@ var vista = 'cerca';
 var scrollV = {};
 function mostraVista(v, ritorno) {
   if (!ritorno) scrollV[vista] = window.scrollY;
-  vista = v; $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  if (vista !== 'altro') vistaPrima = vista;
+  vista = v; $('#bt-altro').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
   if (ritorno) { var y = scrollV[v] || 0; setTimeout(function () { window.scrollTo(0, y); }, 0); } else window.scrollTo(0, 0);
-  if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro();
+  if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
   if (v === 'vicino' && mappa) setTimeout(function () { mappa.invalidateSize(); }, 250);
   try { localStorage.setItem('cm.vista', v); } catch (e) {}
 }
 $$('nav.tab button').forEach(function (b) { b.addEventListener('click', function () { mostraVista(b.dataset.v); }); });
+$('#bt-altro').addEventListener('click', function () { mostraVista(vista === 'altro' ? (vistaPrima || 'cerca') : 'altro'); });
+var vistaPrima = 'cerca';
 
 /* CERCA */
+/* GRUPPI: come sul Mac, i due pulsanti in alto filtrano tutte le viste; attivi uno alla volta o insieme */
+var GR = { st: true, cl: true };
+try { var g0 = JSON.parse(localStorage.getItem('cm.gruppi') || 'null'); if (g0 && (g0.st || g0.cl)) GR = { st: !!g0.st, cl: !!g0.cl }; } catch (e) {}
+function disegnaGruppi() { $$('#gruppi button').forEach(function (b) { b.classList.toggle('on', !!GR[b.dataset.g]); }); }
+$$('#gruppi button').forEach(function (b) { b.addEventListener('click', function () { var g = b.dataset.g, n = { st: GR.st, cl: GR.cl }; n[g] = !n[g]; if (!n.st && !n.cl) n[g === 'st' ? 'cl' : 'st'] = true; GR = n; try { localStorage.setItem('cm.gruppi', JSON.stringify(GR)); } catch (e) {} disegnaGruppi(); mostraN = 150; if (schedaId) return; mostraVista(vista, true); }); });
+disegnaGruppi();
 var F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '' }, mostraN = 150;
 try { Object.assign(F, JSON.parse(localStorage.getItem('cm.filtri') || '{}')); } catch (e) {}
 function filtra() {
   var q = normNome(F.q).trim(), parole = q ? q.split(/\s+/) : [];
   return lista().filter(function (c) {
-    if (F.gr && gruppi(c).indexOf(F.gr) < 0) return false;
     if (F.prov && c.prov !== F.prov) return false;
     if (F.liv && c.liv !== F.liv) return false;
     var k = sit(c.id);
@@ -538,14 +591,12 @@ function filtra() {
 function disegnaChips() {
   var province = {}; lista().forEach(function (c) { if (c.prov) province[c.prov] = (province[c.prov] || 0) + 1; });
   var h = [];
-  h.push('<button class="chip st' + (F.gr === 'st' ? ' on' : '') + '" data-f="gr" data-val="st">Security TOWER</button>');
-  h.push('<button class="chip' + (F.gr === 'cl' ? ' on' : '') + '" data-f="gr" data-val="cl">Clienti</button>');
   h.push('<select class="chip' + (F.prov ? ' on' : '') + '" data-f="prov"><option value="">Provincia</option>' + Object.keys(province).sort().map(function (p) { return '<option value="' + p + '"' + (F.prov === p ? ' selected' : '') + '>' + p + ' (' + num(province[p]) + ')</option>'; }).join('') + '</select>');
   h.push('<select class="chip' + (F.esito ? ' on' : '') + '" data-f="esito"><option value="">Esito</option><option value="(nessuno)"' + (F.esito === '(nessuno)' ? ' selected' : '') + '>Mai contattati</option>' + ESITI().map(function (e) { return '<option' + (F.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>');
   h.push('<select class="chip' + (F.liv ? ' on' : '') + '" data-f="liv"><option value="">Livello</option>' + ['A', 'B', 'C', 'D'].map(function (l) { return '<option' + (F.liv === l ? ' selected' : '') + '>' + l + '</option>'; }).join('') + '</select>');
   h.push('<button class="chip' + (F.pr === 'rich' ? ' on' : '') + '" data-f="pr" data-val="rich">Con richiamo</button>');
   h.push('<button class="chip' + (F.pr === 'prat' ? ' on' : '') + '" data-f="pr" data-val="prat">Con pratica</button>');
-  if (F.gr || F.prov || F.esito || F.liv || F.pr || F.q) h.push('<button class="chip" data-f="azzera" style="color:var(--rosso)">&#10005; Annulla</button>');
+  if (F.prov || F.esito || F.liv || F.pr || F.q) h.push('<button class="chip" data-f="azzera" style="color:var(--rosso)">&#10005; Annulla</button>');
   var box = $('#chips'); box.innerHTML = h.join('');
   $$('button.chip', box).forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.f === 'azzera') { F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '' }; $('#q').value = ''; } else F[b.dataset.f] = F[b.dataset.f] === b.dataset.val ? '' : b.dataset.val; mostraN = 150; disegnaCerca(); }); });
   $$('select.chip', box).forEach(function (s) { s.addEventListener('change', function () { F[s.dataset.f] = s.value; mostraN = 150; disegnaCerca(); }); });
@@ -555,7 +606,7 @@ function disegnaCerca() {
   disegnaChips();
   var L = filtra(), box = $('#lista'); box.innerHTML = '';
   if (!conta()) { box.innerHTML = '<div class="benvenuto"><b>Nessun contatto ancora</b>Collega Google Drive da <b>Altro → Sincronizzazione</b>: i contatti arrivano da GESTIONE CONTATTI sul Mac.</div>'; $('#conta').textContent = ''; return; }
-  $('#conta').textContent = num(L.length) + ' contatti' + (L.length !== conta() ? ' su ' + num(conta()) : '');
+  var tot = lista().length; $('#conta').textContent = num(L.length) + ' contatti' + (L.length !== tot ? ' su ' + num(tot) : '') + (!(GR.st && GR.cl) ? ' · ' + (GR.st ? 'Security TOWER' : 'Clienti') : '');
   if (!L.length) { box.innerHTML = '<div class="vuoto">Nessun contatto con questi filtri.</div>'; return; }
   var frag = document.createDocumentFragment();
   L.slice(0, mostraN).forEach(function (c) { frag.appendChild(rigaContatto(c)); });
@@ -653,6 +704,96 @@ $('#vi-mappa').addEventListener('click', function () { var m = $('#mappa'), ch =
 try { if (localStorage.getItem('cm.mappa') === '0') { $('#mappa').classList.add('chiusa'); $('#vi-mappa').textContent = 'Mostra mappa'; } } catch (e) {}
 $('#vi-raggio').addEventListener('change', disegnaVicino);
 $('#vi-geo').addEventListener('click', function () { posMe = null; disegnaVicino(); });
+
+/* MAPPA — stessa resa di GESTIONE CONTATTI: segnaposto a goccia, colore per livello (o per esito), bordo tratteggiato
+   per chi è solo sul capoluogo di provincia, bollino con la sigla della pratica. I segnaposto vengono disegnati solo
+   nell'area visibile (con un margine), così il telefono resta fluido anche con migliaia di contatti. */
+var PIN = 'M0 0C-2.2-4.4-5.5-6.6-5.5-10.5A5.5 5.5 0 1 1 5.5-10.5C5.5-6.6 2.2-4.4 0 0Z';
+var COL_LIV = { A: '#1C6B4A', B: '#2B5A9E', C: '#B08A2E', D: '#9A9A9A' }, COL_VIG = '#F2711C', COL_NUOVO = '#4FA8E8';
+var MP = { mappa: null, pins: null, qui: null, colore: 'liv', f: { q: '', prov: '', esito: '', liv: '', cat: '', orig: '', prat: '' }, leg: false, posMe: null, tot: 0, vis: 0 };
+try { Object.assign(MP.f, JSON.parse(localStorage.getItem('cm.mappa.f') || '{}')); MP.colore = localStorage.getItem('cm.mappa.col') || 'liv'; } catch (e) {}
+function colLiv(c) { return COL_LIV[c.liv] || '#555'; }
+function coloreMappa(c) { var es = sit(c.id).esito; if (MP.colore === 'esito') return colEsito(es); if (c.cat === 'Istituto di Vigilanza') return COL_VIG; return c.fonte === 'assodimi' ? colLiv(c) : COL_NUOVO; }
+function badgePin(c) { var q = DB.pratiche[c.id]; if (!q) return ''; var t = tipoP(q), k = q.stato || 'sospesa', sc = k === 'sospesa' ? '#E8912D' : k === 'accettata' ? '#1C6B4A' : '#D51544'; return '<g class="rq-badge' + (k === 'sospesa' ? ' rq-lampo-pin' : '') + '"><circle cx="5.2" cy="-15.2" r="4.1" fill="' + esc(t.colore) + '" stroke="' + sc + '" stroke-width="1.3"/><text x="5.2" y="-13.3" font-size="5.2" font-weight="800" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif">' + esc(t.sigla || '') + '</text></g>'; }
+function iconaPin(c, ox, oy) { return window.L.divIcon({ className: 'lp-wrap', iconSize: [0, 0], html: '<div class="lpin' + (c.geo === 'provincia' ? ' prov' : '') + '" style="--ox:' + (ox || 0).toFixed(1) + ';--oy:' + (oy || 0).toFixed(1) + ';--b:' + (c.fonte === 'assodimi' ? 1 : 1.3) + '"><svg viewBox="-7 -17 14 18"><path class="ombra" d="' + PIN + '" transform="translate(0.6 0.8)"/><path class="corpo" d="' + PIN + '" fill="' + coloreMappa(c) + '"/><circle class="occhio" cx="0" cy="-10.5" r="2.3"/>' + badgePin(c) + '</svg></div>' }); }
+function filtratiMappa() {
+  var f = MP.f, q = normNome(f.q).trim(), parole = q ? q.split(/\s+/) : [];
+  return lista().filter(function (c) {
+    if (!c.lat || !c.lng) return false;
+    if (f.prov && c.prov !== f.prov) return false;
+    if (f.liv && c.liv !== f.liv) return false;
+    if (f.cat && c.cat !== f.cat) return false;
+    if (f.orig === 'asso' && c.fonte !== 'assodimi') return false;
+    if (f.orig === 'nuovo' && c.fonte === 'assodimi') return false;
+    var k = sit(c.id);
+    if (f.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; } else if (f.esito && k.esito !== f.esito) return false;
+    var q2 = DB.pratiche[c.id]; if (f.prat === 'si' && !q2) return false; if (f.prat && f.prat !== 'si' && !(q2 && (q2.stato || 'sospesa') === f.prat)) return false;
+    if (parole.length) { var tx = normNome([c.nome, c.sede, c.prov, c.cat, c.sett].join(' ')); for (var i = 0; i < parole.length; i++) if (tx.indexOf(parole[i]) < 0) return false; }
+    return true;
+  });
+}
+function popupPin(c) {
+  var k = sit(c.id), tel = (c.tel || '').split('·')[0].replace(/[^\d+]/g, '');
+  return '<div class="pop"><b>' + esc(c.nome) + '</b><div class="ds">' + [c.prov, c.cat, c.sede].filter(Boolean).map(esc).join(' · ') + '</div><div style="margin-top:4px">' + (c.liv ? '<span class="liv ' + esc(c.liv) + '">' + esc(c.liv) + '</span> ' : '') + pillEsito(k.esito) + (k.richiamo ? ' <span class="pill">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + ' ' + tagPratica(c) + '</div><div class="az"><button data-apri="' + esc(c.id) + '">Scheda</button>' + (tel ? '<a href="tel:' + esc(tel) + '">Chiama</a>' : '') + '<button data-nav="' + esc(c.id) + '">Naviga</button></div></div>';
+}
+function disegnaPin() {
+  if (!MP.mappa) return;
+  /* con un fumetto aperto non ridisegno (lo spostamento automatico della mappa lo chiuderebbe): rimando alla chiusura */
+  if (MP.mappa._popup && MP.mappa._popup.isOpen && MP.mappa._popup.isOpen()) { MP.ridisegna = true; return; }
+  MP.ridisegna = false;
+  var L_ = window.L, b = MP.mappa.getBounds().pad(0.3), tutti = filtratiMappa(), dentro = tutti.filter(function (c) { return b.contains([+c.lat, +c.lng]); });
+  MP.tot = tutti.length; MP.vis = dentro.length;
+  var MAX = 1200, taglio = dentro.length > MAX;
+  if (taglio) { /* troppi per l'area: tengo quelli con esito, pratica o livello alto, poi i primi */ dentro.sort(function (x, y) { return peso(y) - peso(x); }); dentro = dentro.slice(0, MAX); }
+  function peso(c) { var k = sit(c.id); return (DB.pratiche[c.id] ? 8 : 0) + (k.esito && k.esito !== 'Da contattare' ? 4 : 0) + (c.liv === 'A' ? 3 : c.liv === 'B' ? 2 : c.liv === 'C' ? 1 : 0) + (c.fonte !== 'assodimi' ? 2 : 0); }
+  MP.pins.clearLayers();
+  /* contatti sullo stesso punto: li apro a spirale come sul Mac */
+  var perPunto = {}; dentro.forEach(function (c) { var key = (+c.lat).toFixed(4) + ',' + (+c.lng).toFixed(4); (perPunto[key] = perPunto[key] || []).push(c); });
+  Object.keys(perPunto).forEach(function (key) { perPunto[key].forEach(function (c, i) { var ox = 0, oy = 0; if (i > 0) { var rr = 7 * Math.sqrt(i), ang = i * 2.39996; ox = Math.cos(ang) * rr; oy = Math.sin(ang) * rr; } var m = L_.marker([+c.lat, +c.lng], { icon: iconaPin(c, ox, oy), riseOnHover: true }); m.bindPopup(function () { return popupPin(c); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] }); /* niente apri/chiudi a tocchi alterni: un tocco apre sempre (su alcuni telefoni il tocco arriva doppio) */ m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); }); MP.pins.addLayer(m); }); });
+  $('#mp-conta').textContent = num(MP.vis) + (taglio ? ' (mostrati ' + num(MAX) + ': ingrandisci)' : '') + ' in vista · ' + num(MP.tot) + ' sulla mappa' + (!(GR.st && GR.cl) ? ' · ' + (GR.st ? 'Security TOWER' : 'Clienti') : '');
+  disegnaLegenda();
+}
+function disegnaLegenda() {
+  var box = $('#mp-legenda'); box.style.display = MP.leg ? '' : 'none'; if (!MP.leg) return;
+  var h = [];
+  if (MP.colore === 'esito') { h.push('<div><i style="background:#9A9A9A"></i>Da contattare</div><div><i style="background:#B08A2E"></i>In corso</div><div><i style="background:#1C6B4A"></i>Positivo</div><div><i style="background:#C00000"></i>Non interessato</div>'); }
+  else { ['A', 'B', 'C', 'D'].forEach(function (l) { h.push('<div><i style="background:' + COL_LIV[l] + '"></i>Livello ' + l + ' (soci Assodimi)</div>'); }); h.push('<div><i style="background:' + COL_VIG + '"></i>Istituti di vigilanza</div><div><i style="background:' + COL_NUOVO + '"></i>Aggiunti a mano / Clienti</div>'); }
+  h.push('<div><i style="border-style:dashed"></i>Posizione solo sul capoluogo</div>');
+  TIPI().forEach(function (t) { h.push('<div><b class="bd" style="background:' + esc(t.colore) + '">' + esc(t.sigla) + '</b>' + esc(t.nome) + ' (bollino lampeggiante = in sospeso)</div>'); });
+  box.innerHTML = h.join('');
+}
+function disegnaMappa() {
+  var L_ = window.L; if (!L_) { $('#mp-conta').textContent = 'Libreria della mappa non disponibile.'; return; }
+  if (!MP.mappa) {
+    MP.mappa = L_.map('mappa2', { zoomControl: false, preferCanvas: false });
+    L_.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: 'Esri' }).addTo(MP.mappa);
+    MP.pins = L_.layerGroup().addTo(MP.mappa);
+    var vista0 = null; try { vista0 = JSON.parse(localStorage.getItem('cm.mappa.v') || 'null'); } catch (e) {}
+    if (vista0) MP.mappa.setView([vista0.lat, vista0.lng], vista0.z); else MP.mappa.setView([44.2, 11.5], 6);
+    var tm = null; MP.mappa.on('moveend zoomend', function () { clearTimeout(tm); tm = setTimeout(function () { disegnaPin(); try { var c = MP.mappa.getCenter(); localStorage.setItem('cm.mappa.v', JSON.stringify({ lat: c.lat, lng: c.lng, z: MP.mappa.getZoom() })); } catch (e) {} }, 120); });
+    MP.mappa.on('popupclose', function () { if (MP.ridisegna) setTimeout(disegnaPin, 50); });
+    MP.mappa.on('popupopen', function (e) { var el_ = e.popup.getElement(); var a = el_.querySelector('[data-apri]'); if (a) a.addEventListener('click', function () { MP.mappa.closePopup(); apriScheda(a.dataset.apri); }); var nv = el_.querySelector('[data-nav]'); if (nv) nv.addEventListener('click', function () { naviga(DB.contatti[nv.dataset.nav]); }); });
+    $('#mp-q').value = MP.f.q || '';
+    var qt = null; $('#mp-q').addEventListener('input', function () { clearTimeout(qt); var v = this.value; qt = setTimeout(function () { MP.f.q = v; salvaFiltriMappa(); disegnaPin(); if (v.trim()) { var l = filtratiMappa(); if (l.length && l.length <= 50) { MP.mappa.fitBounds(l.map(function (c) { return [+c.lat, +c.lng]; }), { padding: [40, 40], maxZoom: 13 }); } } }, 250); });
+    $('#mp-filtri').addEventListener('click', function () { var p = $('#mp-pannello'); if (p.style.display === 'none') { pannelloMappa(); p.style.display = ''; } else p.style.display = 'none'; });
+    $('#mp-colore').addEventListener('click', function () { MP.colore = MP.colore === 'liv' ? 'esito' : 'liv'; try { localStorage.setItem('cm.mappa.col', MP.colore); } catch (e) {} toast(MP.colore === 'liv' ? 'Colore per livello' : 'Colore per esito'); disegnaPin(); });
+    $('#mp-leg').addEventListener('click', function () { MP.leg = !MP.leg; disegnaLegenda(); });
+    $('#mp-tutto').addEventListener('click', function () { var l = filtratiMappa(); if (l.length) MP.mappa.fitBounds(l.map(function (c) { return [+c.lat, +c.lng]; }), { padding: [30, 30] }); else MP.mappa.setView([42.5, 12.5], 5); });
+    $('#mp-qui').addEventListener('click', function () { if (!navigator.geolocation) { toast('Posizione non disponibile'); return; } toast('Cerco la tua posizione…'); navigator.geolocation.getCurrentPosition(function (p) { MP.posMe = { lat: p.coords.latitude, lng: p.coords.longitude }; if (MP.qui) MP.qui.remove(); MP.qui = L_.marker([MP.posMe.lat, MP.posMe.lng], { interactive: false, icon: L_.divIcon({ className: 'lp-wrap', iconSize: [0, 0], html: '<div class="qui-punto"></div>' }) }).addTo(MP.mappa); MP.mappa.setView([MP.posMe.lat, MP.posMe.lng], Math.max(MP.mappa.getZoom(), 11)); }, function (e) { toast('Posizione non concessa: ' + e.message, 3500); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }); });
+  }
+  setTimeout(function () { MP.mappa.invalidateSize(); disegnaPin(); }, 80);
+  $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat));
+}
+function salvaFiltriMappa() { try { localStorage.setItem('cm.mappa.f', JSON.stringify(MP.f)); } catch (e) {} $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat)); }
+function pannelloMappa() {
+  var p = $('#mp-pannello'), f = MP.f, province = {}, cats = {};
+  lista().forEach(function (c) { if (c.prov) province[c.prov] = 1; if (c.cat) cats[c.cat] = 1; });
+  function sel(id, et, opts, val) { return '<label>' + et + ' <select data-mf="' + id + '"><option value="">Tutt' + (/esito|livello/i.test(et) ? 'i' : 'e') + '</option>' + opts.map(function (o) { var v = Array.isArray(o) ? o[0] : o, n = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(v) + '"' + (val === v ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></label>'; }
+  p.innerHTML = '<div class="form"><div class="due">' + sel('prov', 'Provincia', Object.keys(province).sort(), f.prov) + sel('liv', 'Livello', ['A', 'B', 'C', 'D'], f.liv) + '</div><div class="due">' + sel('esito', 'Esito', [['(nessuno)', 'Mai contattati']].concat(ESITI().filter(function (e) { return e !== 'Da contattare'; })), f.esito) + sel('cat', 'Categoria', Object.keys(cats).sort(), f.cat) + '</div><div class="due">' + sel('orig', 'Origine', [['asso', 'Soci Assodimi'], ['nuovo', 'Aggiunti a mano e Clienti']], f.orig) + sel('prat', 'Pratiche', [['si', 'Con pratica'], ['sospesa', 'In sospeso'], ['accettata', 'Accettate'], ['rifiutata', 'Rifiutate']], f.prat) + '</div><div class="az"><button class="btn" id="mp-azzera">Annulla filtri</button><button class="btn pri" id="mp-chiudi">Applica</button></div></div>';
+  $$('select[data-mf]', p).forEach(function (s) { s.addEventListener('change', function () { MP.f[s.dataset.mf] = s.value; salvaFiltriMappa(); disegnaPin(); }); });
+  $('#mp-azzera').addEventListener('click', function () { MP.f = { q: '', prov: '', esito: '', liv: '', cat: '', orig: '', prat: '' }; $('#mp-q').value = ''; salvaFiltriMappa(); pannelloMappa(); disegnaPin(); });
+  $('#mp-chiudi').addEventListener('click', function () { p.style.display = 'none'; });
+}
 
 /* PRATICHE */
 function disegnaPratiche() {
@@ -827,7 +968,7 @@ function avviaSync() {
     collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'nuoviContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
-    dopo: function (info) { if (info.applicati) { toast('Aggiornati ' + num(info.applicati) + ' record dal Mac'); if (schedaId) apriScheda(schedaId); else mostraVista(vista); } else if (vista === 'altro') disegnaAltro(); },
+    dopo: function (info) { if (info.applicati) { toast('Aggiornati ' + num(info.applicati) + ' record dal Mac'); if (schedaId) apriScheda(schedaId); else mostraVista(vista, true); } else if (vista === 'altro') disegnaAltro(); },
     stato: spia
   });
   SY.carica().then(function () { SY.avvia(); if (vista === 'altro') disegnaAltro(); });
@@ -838,11 +979,11 @@ applicaTema(); applicaFs(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
   if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, config: {} }, j); } catch (e) {} }
   var v = 'cerca'; try { v = localStorage.getItem('cm.vista') || 'cerca'; } catch (e) {}
-  if (v === 'vicino') v = 'cerca';
+  if (v === 'vicino' || v === 'mappa') v = 'cerca';
   mostraVista(v); avviaSync();
   if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
 });
-window.CM = { get DB() { return DB; }, get SY() { return SY; }, apriScheda: apriScheda, mostraVista: mostraVista };
+window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { return MP; }, apriScheda: apriScheda, mostraVista: mostraVista };
 })();
 </script>
 </body>
