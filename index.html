@@ -137,7 +137,7 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.0.0</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.0.1</small></div></div>
   <div class="sp"></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
   <button id="tema" title="Chiaro / scuro">&#9790;</button>
@@ -433,7 +433,7 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.0.0';
+var APP_VER = '1.0.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -711,7 +711,7 @@ function disegnaAltro() {
   h.push('<div class="opz"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div></div>');
   box.innerHTML = h.join('');
   $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); disegnaAltro(); }); });
-  $('#sy-url').addEventListener('change', function () { if (SY) SY.imposta({ serverUrl: this.value.trim(), tipo: 'server' }).then(function () { SY.avvia(); disegnaAltro(); }); });
+  $('#sy-url').addEventListener('change', function () { if (SY && this.value.trim()) SY.imposta({ serverUrl: this.value.trim(), tipo: 'server' }).then(function () { SY.avvia(); disegnaAltro(); }); });
   $('#sy-connetti').addEventListener('click', function () { if (!SY) return; SY.connettiDrive(GC_CLIENT_ID).then(function () { toast('Google connesso'); return SY.avvia(); }).then(disegnaAltro, function (e) { toast('Google: ' + (e.message || e), 4000); disegnaAltro(); }); });
   $('#sy-ora').addEventListener('click', function () { if (!SY) return; SY.sincronizza({ interattivo: true }).then(disegnaAltro); });
   $('#sy-scollega').addEventListener('click', function () { if (!SY || !confirm('Scollegare la sincronizzazione? I dati sul telefono restano.')) return; SY.scollega().then(disegnaAltro); });
