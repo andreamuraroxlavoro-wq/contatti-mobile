@@ -172,6 +172,8 @@ summary::-webkit-details-marker{display:none}
 .opz{background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--ombra)}
 .opz h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tenue);margin:0 0 8px}
 .opz .riga-o{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bordo);font-size:14.5px}.opz .riga-o:last-child{border-bottom:0}.opz .riga-o .sp{flex:1}
+.firma{margin-top:10px;padding-top:10px;border-top:1px solid var(--bordo);font-size:12.5px;color:var(--tenue);text-align:center;line-height:1.5}
+.firma b{color:var(--testo2)}
 .log{font-size:11.5px;background:var(--carta2);border-radius:8px;padding:8px;white-space:pre-wrap;max-height:150px;overflow:auto;color:var(--testo2)}
 .seg{display:inline-flex;border:1px solid var(--bordo);border-radius:9px;overflow:hidden}.seg button{border:0;background:var(--carta);padding:10px 12px;font-size:14px;color:var(--testo2);min-height:38px}.seg button.on{background:var(--accent);color:#fff}
 .benvenuto{text-align:center;padding:40px 16px;color:var(--tenue)}.benvenuto b{display:block;color:var(--testo);font-size:18px;margin-bottom:8px}
@@ -179,7 +181,7 @@ summary::-webkit-details-marker{display:none}
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.5.0</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.5.1</small></div></div>
   <div class="sp"></div>
   <div class="gruppi" id="gruppi" title="Gruppi di contatti: attivi uno alla volta o insieme"><button data-g="st" class="on">Security TOWER</button><button data-g="cl" class="on">Clienti</button></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
@@ -497,7 +499,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.5.0';
+var APP_VER = '1.5.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1001,7 +1003,7 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>App per navigare</span><span class="sp"></span><select id="op-nav" class="chip"><option value=""' + (navigatore() === '' ? ' selected' : '') + '>Chiedi al primo uso</option>' + NAVIGATORI.map(function (n) { return '<option value="' + n.id + '"' + (navigatore() === n.id ? ' selected' : '') + '>' + n.nome + '</option>'; }).join('') + '</select></div>');
   h.push('<div class="riga-o"><span>Dimensione testo</span><span class="sp"></span><div class="seg">' + [14, 16, 18].map(function (f) { return '<button data-fs="' + f + '"' + (fs === f ? ' class="on"' : '') + '>' + (f === 14 ? 'Piccolo' : f === 16 ? 'Normale' : 'Grande') + '</button>'; }).join('') + '</div></div></div>');
   h.push('<div class="opz"><h2>Dati</h2><div class="riga-o"><span>I contatti si modificano su GESTIONE CONTATTI (Mac). Dal telefono registri eventi, esiti, richiami, prossimi passi e stati delle pratiche: tornano al Mac alla prima sincronizzazione.</span></div><div class="az"><button class="btn peri" id="dt-azzera">Cancella i dati su questo telefono</button></div></div>');
-  h.push('<div class="opz"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div></div>');
+  h.push('<div class="opz"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
   box.innerHTML = h.join('');
   $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); disegnaAltro(); }); });
   $('#sy-url').addEventListener('change', function () { if (SY && this.value.trim()) SY.imposta({ serverUrl: this.value.trim(), tipo: 'server' }).then(function () { SY.avvia(); disegnaAltro(); }); });
