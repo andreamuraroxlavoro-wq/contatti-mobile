@@ -137,7 +137,7 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.0.1</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.0.2</small></div></div>
   <div class="sp"></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
   <button id="tema" title="Chiaro / scuro">&#9790;</button>
@@ -211,7 +211,9 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
     function log(m) { S.log.unshift(new Date().toLocaleTimeString('it-IT') + ' ' + m); S.log = S.log.slice(0, 40); }
     function stato(s, msg) { S.stato = s; S.messaggio = msg || ''; if (cfg.stato) try { cfg.stato(s, S.messaggio); } catch (e) {} }
 
-    function caricaMeta() { return idbGet('meta').then(function (m) { S.meta = Object.assign(metaDefault(), m || {}); if (!S.meta.clientId && cfg.clientId) S.meta.clientId = cfg.clientId; S.meta.mm = S.meta.mm || {}; S.meta.tomb = S.meta.tomb || {}; S.meta.hash = S.meta.hash || {}; return idbGet('dir'); }).then(function (h) { S.dirHandle = h || null; }); }
+    /* la libreria Google viene caricata subito (se siamo su https/localhost): così il primo clic su «Connetti» apre la finestra di autorizzazione senza che il browser la blocchi */
+    function precaricaGoogle() { try { if (root.google && root.google.accounts) return; if (!/^https:$/.test(location.protocol) && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return; if (document.querySelector('script[src*="accounts.google.com/gsi/client"]')) return; var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; document.head.appendChild(sc); } catch (e) {} }
+    function caricaMeta() { return idbGet('meta').then(function (m) { S.meta = Object.assign(metaDefault(), m || {}); if (!S.meta.clientId && cfg.clientId) S.meta.clientId = cfg.clientId; S.meta.mm = S.meta.mm || {}; S.meta.tomb = S.meta.tomb || {}; S.meta.hash = S.meta.hash || {}; if (S.meta.clientId) precaricaGoogle(); return idbGet('dir'); }).then(function (h) { S.dirHandle = h || null; }); }
     function salvaMeta() { return idbSet('meta', JSON.parse(JSON.stringify(S.meta))); }
 
     /* ---- record locali ---- */
@@ -433,7 +435,7 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.0.1';
+var APP_VER = '1.0.2';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
