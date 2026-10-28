@@ -138,7 +138,7 @@ summary::-webkit-details-marker{display:none}
 .foglio .fg{background:var(--carta);border-radius:18px 18px 0 0;width:100%;max-width:560px;padding:14px 14px calc(16px + var(--sab))}
 .foglio h4{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tenue)}
 .foglio button.v{display:block;width:100%;text-align:left;padding:13px 14px;border:1px solid var(--bordo);border-radius:12px;background:var(--carta);color:var(--testo);font-size:16px;font-weight:600;margin-bottom:8px}
-.foglio label{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--testo2);margin:4px 2px 12px;min-height:36px}.foglio input[type=checkbox]{width:22px;height:22px}
+.foglio label.ric{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--testo2);margin:4px 2px 12px;min-height:36px}.foglio input[type=checkbox]{width:22px;height:22px}
 /* vista Mappa a tutto schermo */
 #v-mappa.on{position:fixed;left:0;right:0;top:calc(52px + var(--sat));bottom:calc(62px + var(--sab));padding:0;z-index:5}
 #mappa2{position:absolute;inset:0;background:var(--carta2)}
@@ -179,7 +179,7 @@ summary::-webkit-details-marker{display:none}
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.3.0</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.4.0</small></div></div>
   <div class="sp"></div>
   <div class="gruppi" id="gruppi" title="Gruppi di contatti: attivi uno alla volta o insieme"><button data-g="st" class="on">Security TOWER</button><button data-g="cl" class="on">Clienti</button></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
@@ -497,7 +497,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.3.0';
+var APP_VER = '1.4.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -513,7 +513,7 @@ function normNome(t) { return String(t || '').toLowerCase().normalize('NFD').rep
 var toastT = null; function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, ms || 2200); }
 
 /* ---------- archivio locale (IndexedDB, un unico documento) ---------- */
-var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, config: {} };
+var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} };
 var IDB = (function () {
   function db() { return new Promise(function (ris, rej) { var r = indexedDB.open('contatti_mobile', 1); r.onupgradeneeded = function (e) { e.target.result.createObjectStore('kv'); }; r.onsuccess = function (e) { ris(e.target.result); }; r.onerror = function () { rej(r.error); }; }); }
   return {
@@ -813,7 +813,8 @@ function apriScheda(id) {
   var c = DB.contatti[id]; if (!c) return; if (!schedaId) scrollV[vista] = window.scrollY; schedaId = id;
   var k = sit(id), q = DB.pratiche[id], ev = eventiDi(id), S = $('#scheda'), h = [];
   var og = oggi();
-  h.push('<div class="sc-top"><button class="ind" id="sc-chiudi" title="Indietro">&#8249;</button><div class="tt"><b>' + esc(c.nome) + '</b><span>' + [c.prov, c.cat, c.fonte === 'assodimi' ? 'Socio Assodimi' : ''].filter(Boolean).map(esc).join(' · ') + '</span></div>' + barre(c) + '</div>');
+  h.push('<div class="sc-top"><button class="ind" id="sc-chiudi" title="Indietro">&#8249;</button><div class="tt"><b>' + esc(c.nome) + '</b><span>' + [c.prov, c.cat, c.fonte === 'assodimi' ? 'Socio Assodimi' : ''].filter(Boolean).map(esc).join(' · ') + '</span></div><button class="ind" id="sc-mod" title="Modifica anagrafica"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' + barre(c) + '</div>');
+  if (DB.modificheContatti[id]) h.push('<div class="nota" style="margin-bottom:10px;border-left:4px solid var(--ambra)">Modifiche fatte dal telefono in attesa di arrivare al Mac.</div>');
   /* situazione (modificabile) */
   h.push('<div class="sz sz-sit"><h3>Situazione' + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + '</h3><div class="c form">');
   h.push('<div class="due"><label>Esito <select id="sc-esito"><option value="">Da contattare</option>' + ESITI().filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option' + (k.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
@@ -867,6 +868,7 @@ function apriScheda(id) {
   if (c.profilo || c.note || k.note) h.push('<div class="sz sz-prof"><h3>Profilo e note</h3><div class="c">' + (c.profilo ? '<p class="testo">' + esc(c.profilo) + '</p>' : '') + (c.note ? '<p class="testo" style="margin-top:8px"><b>Recapiti:</b> ' + esc(c.note) + '</p>' : '') + (k.note ? '<p class="testo" style="margin-top:8px"><b>Note:</b> ' + esc(k.note) + '</p>' : '') + '</div></div>');
   if (c.allegati) h.push('<div class="sz sz-file"><h3>Allegati<span class="pill">' + num(c.allegati) + '</span></h3><div class="c"><div class="nota">' + num(c.allegati) + ' allegat' + (c.allegati === 1 ? 'o' : 'i') + ' archiviat' + (c.allegati === 1 ? 'o' : 'i') + ' su GESTIONE CONTATTI (Mac): non viaggiano sul telefono.</div></div></div>');
   S.innerHTML = h.join(''); S.classList.add('on'); S.scrollTop = 0;
+  $('#sc-mod').addEventListener('click', function () { formModifica(id); });
   $('#sc-chiudi').addEventListener('click', function () { if (history.state && history.state.scheda) history.back(); else chiudiScheda(); });
   var nv = $('#sc-naviga'); if (nv) nv.addEventListener('click', function (ev) { ev.preventDefault(); naviga(c); });
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
@@ -874,6 +876,44 @@ function apriScheda(id) {
   $('#sc-salva-sit').addEventListener('click', function () { salvaSituazione(id, { esito: $('#sc-esito').value, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim() }); });
   $$('.stati button', S).forEach(function (b) { b.addEventListener('click', function () { var q2 = Object.assign({}, DB.pratiche[id], { stato: b.dataset.st, _m: Date.now() }); DB.pratiche[id] = q2; salva(); toast('Pratica: ' + b.dataset.st); apriScheda(id); }); });
   $('#ev-salva').addEventListener('click', function () { registraEvento(id); });
+}
+/* MODIFICA ANAGRAFICA dal telefono: le modifiche viaggiano nella raccolta «modificheContatti»; il Mac le applica alla sua
+   scheda (per i soci Assodimi come modifiche sopra la base) e rimanda la versione definitiva. Intanto le vedo già qui. */
+var CAMPI_MOD = ['nome', 'cat', 'gruppi', 'prov', 'piva', 'sede', 'tel', 'email', 'sito', 'motivo', 'profilo', 'note'];
+function formModifica(id) {
+  var c = DB.contatti[id]; if (!c) return;
+  var S = $('#scheda'), R = (Array.isArray(c.referenti) ? c.referenti : []).map(function (r) { return Object.assign({}, r); });
+  var f = el('div', 'foglio'); f.style.alignItems = 'stretch';
+  function campo(k, et, tipo, extra) { return '<label>' + et + (tipo === 'textarea' ? ' <textarea data-k="' + k + '">' + esc(c[k] || '') + '</textarea>' : ' <input data-k="' + k + '" type="' + (tipo || 'text') + '" value="' + esc(c[k] || '') + '" ' + (extra || '') + '>') + '</label>'; }
+  function righeRef() { return R.map(function (r, i) { return '<div class="ref" data-i="' + i + '"><div class="due"><label>Nome e cognome <input data-r="nome" value="' + esc(r.nome || '') + '"></label><label>Ruolo <input data-r="ruolo" value="' + esc(r.ruolo || '') + '"></label></div><div class="due"><label>Cell. <input data-r="cell" type="tel" value="' + esc(r.cell || '') + '"></label><label>Telefono diretto <input data-r="tel" type="tel" value="' + esc(r.tel || '') + '"></label></div><label>E-mail <input data-r="email" type="email" autocapitalize="off" value="' + esc(r.email || '') + '"></label><label>Nota <input data-r="note" value="' + esc(r.note || '') + '"></label><div class="az"><button class="btn mini peri" data-rimuovi="' + i + '">Rimuovi persona</button></div></div>'; }).join(''); }
+  f.innerHTML = '<div class="fg" style="max-height:100%;overflow:auto;border-radius:0;max-width:none;padding-top:calc(10px + var(--sat))"><h4>Modifica — ' + esc(c.nome) + '</h4><div class="form">' +
+    campo('nome', 'Ragione sociale *', 'text', 'autocapitalize="characters"') +
+    '<div class="due"><label>Categoria <select data-k="cat">' + CATEGORIE().map(function (x) { return '<option' + (x === c.cat ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + (CATEGORIE().indexOf(c.cat) < 0 && c.cat ? '<option selected>' + esc(c.cat) + '</option>' : '') + '</select></label><label>Gruppo <select data-k="gruppi">' + [['st', 'Security TOWER'], ['cl', 'Clienti'], ['st,cl', 'Entrambi']].map(function (o) { return '<option value="' + o[0] + '"' + (gruppi(c).sort().join(',') === o[0].split(',').sort().join(',') ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label></div>' +
+    '<div class="due">' + campo('prov', 'Provincia (sigla)', 'text', 'maxlength="2" autocapitalize="characters"') + campo('piva', 'Partita IVA', 'text', 'inputmode="numeric"') + '</div>' +
+    campo('sede', 'Sede') + '<div class="due">' + campo('tel', 'Telefono aziendale', 'tel') + campo('email', 'Email aziendale', 'email', 'autocapitalize="off"') + '</div>' + campo('sito', 'Sito', 'text', 'autocapitalize="off"') +
+    campo('motivo', 'Perché è interessante', 'textarea') + campo('profilo', 'Profilo aziendale', 'textarea') + campo('note', 'Note sui recapiti', 'textarea') +
+    '<div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--sz-ref);font-weight:800;margin-top:6px">Persone di riferimento</div><div id="md-ref">' + righeRef() + '</div><div class="az"><button class="btn" id="md-addref">+ Aggiungi persona</button></div>' +
+    '<div class="az" style="margin-top:12px"><button class="btn pri" id="md-salva">Salva modifiche</button><button class="btn" id="md-annulla">Annulla</button></div></div></div>';
+  document.body.appendChild(f);
+  function leggiRef() { $$('#md-ref .ref', f).forEach(function (d) { var i = +d.dataset.i; $$('[data-r]', d).forEach(function (inp) { R[i][inp.dataset.r] = inp.value.trim(); }); }); }
+  function ridisegnaRef() { leggiRef(); $('#md-ref', f).innerHTML = righeRef(); aggancia(); }
+  function aggancia() { $$('[data-rimuovi]', f).forEach(function (b) { b.addEventListener('click', function () { leggiRef(); R.splice(+b.dataset.rimuovi, 1); $('#md-ref', f).innerHTML = righeRef(); aggancia(); }); }); }
+  aggancia();
+  $('#md-addref', f).addEventListener('click', function () { leggiRef(); R.push({ id: 'r_' + Date.now().toString(36), nome: '', ruolo: '', tel: '', cell: '', email: '', note: '' }); $('#md-ref', f).innerHTML = righeRef(); aggancia(); var ul = $$('#md-ref .ref', f).pop(); if (ul) { ul.scrollIntoView({ block: 'center' }); $('input', ul).focus(); } });
+  $('#md-annulla', f).addEventListener('click', function () { f.remove(); });
+  $('#md-salva', f).addEventListener('click', function () {
+    var campi = {}, cambiati = 0;
+    CAMPI_MOD.forEach(function (k) { var inp = $('[data-k="' + k + '"]', f); if (!inp) return; var v = inp.value.trim(); if (k === 'prov') v = v.toUpperCase(); if (k === 'sito') v = v.replace(/^https?:\/\//, ''); var prima = k === 'gruppi' ? gruppi(c).sort().join(',') : String(c[k] || ''); var dopo = k === 'gruppi' ? v.split(',').sort().join(',') : v; if (prima !== dopo) { campi[k] = v; cambiati++; } });
+    if (!campi.nome && !String(c.nome || '').trim()) { toast('La ragione sociale è obbligatoria'); return; }
+    if (campi.nome === '') { toast('La ragione sociale è obbligatoria'); return; }
+    leggiRef(); var Rp = R.filter(function (r) { return r.nome || r.cell || r.tel || r.email; });
+    if (JSON.stringify(Rp) !== JSON.stringify(Array.isArray(c.referenti) ? c.referenti : [])) { campi.referenti = Rp; cambiati++; }
+    if (!cambiati) { f.remove(); toast('Nessuna modifica'); return; }
+    var prec = DB.modificheContatti[id] || { id: id, campi: {} };
+    Object.keys(campi).forEach(function (k) { prec.campi[k] = campi[k]; }); prec._m = Date.now(); DB.modificheContatti[id] = prec;
+    Object.keys(campi).forEach(function (k) { c[k] = campi[k]; }); /* la vedo subito così */
+    salva(true); f.remove(); toast('Modifiche salvate: arrivano al Mac alla prossima sincronizzazione'); apriScheda(id);
+  });
 }
 function pulisciHtml(h) { return String(h || '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*\/?>/gi, '').replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '').replace(/href\s*=\s*"javascript:[^"]*"/gi, ''); }
 function chiudiScheda() { $('#scheda').classList.remove('on'); schedaId = null; document.body.classList.remove('sc-aperta'); mostraVista(vista, true); }
@@ -889,7 +929,7 @@ function apriNavigatore(idN, c) { var n = NAVIGATORI.filter(function (x) { retur
 function naviga(c) {
   var scelto = navigatore();
   if (scelto) { apriNavigatore(scelto, c); return; }
-  var f = el('div', 'foglio'); f.innerHTML = '<div class="fg"><h4>Con quale app vuoi navigare?</h4>' + NAVIGATORI.map(function (n) { return '<button class="v" data-n="' + n.id + '">' + n.nome + '</button>'; }).join('') + '<label><input type="checkbox" id="nav-ric" checked> Ricorda la scelta (si cambia in Altro → Aspetto)</label><button class="btn" id="nav-ann" style="width:100%">Annulla</button></div>';
+  var f = el('div', 'foglio'); f.innerHTML = '<div class="fg"><h4>Con quale app vuoi navigare?</h4>' + NAVIGATORI.map(function (n) { return '<button class="v" data-n="' + n.id + '">' + n.nome + '</button>'; }).join('') + '<label class="ric"><input type="checkbox" id="nav-ric" checked> Ricorda la scelta (si cambia in Altro → Aspetto)</label><button class="btn" id="nav-ann" style="width:100%">Annulla</button></div>';
   document.body.appendChild(f);
   f.addEventListener('click', function (ev) { if (ev.target === f) f.remove(); });
   $('#nav-ann', f).addEventListener('click', function () { f.remove(); });
@@ -941,7 +981,7 @@ function disegnaAltro() {
   $('#op-nav').addEventListener('change', function () { try { if (this.value) localStorage.setItem('cm.nav', this.value); else localStorage.removeItem('cm.nav'); } catch (e) {} toast('App di navigazione: ' + (this.options[this.selectedIndex].text)); });
   $$('.seg [data-t]', box).forEach(function (b) { b.addEventListener('click', function () { setTema(b.dataset.t); disegnaAltro(); }); });
   $$('.seg [data-fs]', box).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('cm.fs', b.dataset.fs); applicaFs(); disegnaAltro(); }); });
-  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
+  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
 function tema() { return localStorage.getItem('cm.tema') || 'auto'; }
 function setTema(t) { localStorage.setItem('cm.tema', t); applicaTema(); }
@@ -956,7 +996,7 @@ function spia(s, msg) { var sp = $('#sy-spia'); sp.className = 'sy-' + s; sp.tit
 function applicaRemoti(mod, del) {
   var n = 0;
   ['contatti', 'situazioni', 'eventi', 'pratiche', 'config'].forEach(function (c) {
-    (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti' && DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; });
+    (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
   });
   return n;
@@ -965,7 +1005,7 @@ function avviaSync() {
   if (!window.SyncMotore) return;
   SY = SyncMotore({
     nome: 'gc', dbNome: 'contatti_mobile_sync', clientId: GC_CLIENT_ID,
-    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'nuoviContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
+    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
     dopo: function (info) { if (info.applicati) { toast('Aggiornati ' + num(info.applicati) + ' record dal Mac'); if (schedaId) apriScheda(schedaId); else mostraVista(vista, true); } else if (vista === 'altro') disegnaAltro(); },
@@ -977,7 +1017,7 @@ function avviaSync() {
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
-  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, config: {} }, j); } catch (e) {} }
+  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }, j); } catch (e) {} }
   var v = 'cerca'; try { v = localStorage.getItem('cm.vista') || 'cerca'; } catch (e) {}
   if (v === 'vicino' || v === 'mappa') v = 'cerca';
   mostraVista(v); avviaSync();
