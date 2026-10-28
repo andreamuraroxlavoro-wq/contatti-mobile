@@ -137,14 +137,15 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.0.2</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.1.0</small></div></div>
   <div class="sp"></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
   <button id="tema" title="Chiaro / scuro">&#9790;</button>
 </header>
 <main>
   <section class="vista on" id="v-cerca">
-    <div class="cerca"><input id="q" type="search" placeholder="Cerca azienda, comune, provincia…" autocomplete="off"></div>
+    <div class="cerca"><input id="q" type="search" placeholder="Cerca azienda, comune, provincia…" autocomplete="off"><button class="btn pri" id="nc-apri" title="Nuovo contatto" style="padding:10px 14px;font-size:20px;line-height:1">+</button></div>
+    <div id="nc-form" class="sz sz-clas" style="display:none"><h3>Nuovo contatto</h3><div class="c form"></div></div>
     <div class="chips" id="chips"></div>
     <div class="conta" id="conta"></div>
     <div class="lista" id="lista"></div>
@@ -387,7 +388,15 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
           log('compattazione eseguita');
         }
         S.meta.nDelta = nDelta;
-        S.meta.hash = snapshotHash(locali()); S.meta.ultimoSync = Date.now(); pulisciTombe(); await salvaMeta();
+        /* memoria degli hash: parto da com'era l'archivio all'inizio del ciclo e aggiorno solo i record ricevuti dal cloud.
+           Così le modifiche che l'app fa da sé mentre applica i record remoti (es. un contatto creato dal telefono che
+           diventa un contatto vero) vengono viste come nuove e inviate al ciclo successivo. */
+        var hashNuovo = snapshotHash(diff.loc), locOra = locali();
+        Object.keys(ricevuti.mod).forEach(function (c) { hashNuovo[c] = hashNuovo[c] || {}; ricevuti.mod[c].forEach(function (r) { if (locOra[c] && locOra[c][r.id]) hashNuovo[c][r.id] = hash(norm(locOra[c][r.id])); else delete hashNuovo[c][r.id]; }); });
+        Object.keys(ricevuti.del).forEach(function (c) { if (hashNuovo[c]) ricevuti.del[c].forEach(function (t) { delete hashNuovo[c][t.id]; }); });
+        /* i record locali appena inviati sono già in diff.loc, quindi già nella memoria */
+        S.meta.hash = hashNuovo; S.meta.ultimoSync = Date.now(); pulisciTombe(); await salvaMeta();
+        if (applicati) { var resto = diffLocale(Date.now(), []).n; if (resto) S.richiesto = true; }
         if (applicati && cfg.salvaLocale) { S.sospendi = true; try { cfg.salvaLocale(); } finally { S.sospendi = false; } }
         if (cfg.dopo) try { cfg.dopo({ applicati: applicati, inviati: inviati }); } catch (e) {}
         stato('ok');
@@ -435,7 +444,7 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.0.2';
+var APP_VER = '1.1.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -451,7 +460,7 @@ function normNome(t) { return String(t || '').toLowerCase().normalize('NFD').rep
 var toastT = null; function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, ms || 2200); }
 
 /* ---------- archivio locale (IndexedDB, un unico documento) ---------- */
-var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, config: {} };
+var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, config: {} };
 var IDB = (function () {
   function db() { return new Promise(function (ris, rej) { var r = indexedDB.open('contatti_mobile', 1); r.onupgradeneeded = function (e) { e.target.result.createObjectStore('kv'); }; r.onsuccess = function (e) { ris(e.target.result); }; r.onerror = function () { rej(r.error); }; }); }
   return {
@@ -542,6 +551,35 @@ function disegnaCerca() {
   if (L.length > mostraN) { var b = el('button', 'altri', 'Mostra altri ' + num(Math.min(150, L.length - mostraN)) + ' (' + num(L.length - mostraN) + ' rimanenti)'); b.addEventListener('click', function () { mostraN += 150; disegnaCerca(); }); box.appendChild(b); }
 }
 var qT = null; $('#q').value = F.q || ''; $('#q').addEventListener('input', function () { clearTimeout(qT); var v = this.value; qT = setTimeout(function () { F.q = v; mostraN = 150; disegnaCerca(); }, 180); });
+
+/* NUOVO CONTATTO (creato dal telefono: va al Mac, che lo inserisce fra i contatti aggiunti a mano) */
+function CATEGORIE() { return cfg().categorie || ['Ordinari', 'Produttore', 'Servizi', 'Onorari', 'Cliente finale', 'Installatore', 'Istituto di Vigilanza', 'Azienda', 'Ente pubblico', 'Altro']; }
+function formNuovoContatto() {
+  var box = $('#nc-form'), c = $('.c', box);
+  c.innerHTML = '<label>Ragione sociale * <input id="nc-nome" type="text" autocapitalize="characters"></label>' +
+    '<div class="due"><label>Categoria <select id="nc-cat">' + CATEGORIE().map(function (x) { return '<option' + (x === 'Cliente finale' ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label><label>Gruppo <select id="nc-gr"><option value="st">Security TOWER</option><option value="cl">Clienti</option><option value="st,cl">Entrambi</option></select></label></div>' +
+    '<div class="due"><label>Provincia (sigla) <input id="nc-prov" type="text" maxlength="2" autocapitalize="characters" placeholder="PD"></label><label>Partita IVA <input id="nc-piva" type="text" inputmode="numeric"></label></div>' +
+    '<label>Sede <input id="nc-sede" type="text" placeholder="Via …, CAP Comune (PV)"></label>' +
+    '<div class="due"><label>Telefono aziendale <input id="nc-tel" type="tel"></label><label>Email aziendale <input id="nc-email" type="email" autocapitalize="off"></label></div>' +
+    '<label>Sito <input id="nc-sito" type="text" autocapitalize="off" placeholder="www.…"></label>' +
+    '<label>Perché è interessante <textarea id="nc-motivo"></textarea></label>' +
+    '<label>Note <textarea id="nc-note"></textarea></label>' +
+    '<div class="az"><button class="btn pri" id="nc-salva">Crea contatto</button><button class="btn" id="nc-annulla">Annulla</button></div>';
+  box.style.display = ''; $('#nc-nome').focus();
+  $('#nc-annulla').addEventListener('click', function () { box.style.display = 'none'; });
+  $('#nc-salva').addEventListener('click', function () {
+    var nome = $('#nc-nome').value.trim(); if (!nome) { toast('Scrivi la ragione sociale'); return; }
+    var dopp = lista().filter(function (x) { return normNome(x.nome).replace(/[^a-z0-9]/g, '') === normNome(nome).replace(/[^a-z0-9]/g, ''); })[0];
+    if (dopp && !confirm('Esiste già «' + dopp.nome + '» (' + (dopp.prov || '—') + '). Creare lo stesso un nuovo contatto?')) { apriScheda(dopp.id); return; }
+    var id = 'n_mob_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), og = oggi();
+    var r = { id: id, nome: nome, cat: $('#nc-cat').value, gruppi: $('#nc-gr').value, prov: $('#nc-prov').value.trim().toUpperCase(), piva: $('#nc-piva').value.trim(), sede: $('#nc-sede').value.trim(), tel: $('#nc-tel').value.trim(), email: $('#nc-email').value.trim(), sito: $('#nc-sito').value.trim().replace(/^https?:\/\//, ''), motivo: $('#nc-motivo').value.trim(), note: $('#nc-note').value.trim(), creato: og, _m: Date.now() };
+    DB.nuoviContatti[id] = r;
+    /* lo vedo subito anche qui; quando il Mac lo avrà preso in carico arriverà la sua versione definitiva */
+    var c2 = {}; for (var k in r) if (k !== '_m') c2[k] = r[k]; c2.fonte = 'nuovo'; c2.liv = 'B'; c2.importato = 'CONTATTI MOBILE'; DB.contatti[id] = c2;
+    salva(true); box.style.display = 'none'; toast('Contatto creato: arriva al Mac alla prossima sincronizzazione'); apriScheda(id);
+  });
+}
+$('#nc-apri').addEventListener('click', function () { if ($('#nc-form').style.display === 'none') formNuovoContatto(); else $('#nc-form').style.display = 'none'; });
 
 /* OGGI */
 function disegnaOggi() {
@@ -719,7 +757,7 @@ function disegnaAltro() {
   $('#sy-scollega').addEventListener('click', function () { if (!SY || !confirm('Scollegare la sincronizzazione? I dati sul telefono restano.')) return; SY.scollega().then(disegnaAltro); });
   $$('.seg [data-t]', box).forEach(function (b) { b.addEventListener('click', function () { setTema(b.dataset.t); disegnaAltro(); }); });
   $$('.seg [data-fs]', box).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('cm.fs', b.dataset.fs); applicaFs(); disegnaAltro(); }); });
-  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
+  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
 function tema() { return localStorage.getItem('cm.tema') || 'auto'; }
 function setTema(t) { localStorage.setItem('cm.tema', t); applicaTema(); }
@@ -734,7 +772,7 @@ function spia(s, msg) { var sp = $('#sy-spia'); sp.className = 'sy-' + s; sp.tit
 function applicaRemoti(mod, del) {
   var n = 0;
   ['contatti', 'situazioni', 'eventi', 'pratiche', 'config'].forEach(function (c) {
-    (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; });
+    (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti' && DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
   });
   return n;
@@ -743,7 +781,7 @@ function avviaSync() {
   if (!window.SyncMotore) return;
   SY = SyncMotore({
     nome: 'gc', dbNome: 'contatti_mobile_sync', clientId: GC_CLIENT_ID,
-    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche'], singoli: ['config'], soloLettura: ['contatti', 'config'],
+    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'nuoviContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
     dopo: function (info) { if (info.applicati) { toast('Aggiornati ' + num(info.applicati) + ' record dal Mac'); if (schedaId) apriScheda(schedaId); else mostraVista(vista); } else if (vista === 'altro') disegnaAltro(); },
@@ -755,7 +793,7 @@ function avviaSync() {
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
-  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, config: {} }, j); } catch (e) {} }
+  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, config: {} }, j); } catch (e) {} }
   var v = 'cerca'; try { v = localStorage.getItem('cm.vista') || 'cerca'; } catch (e) {}
   if (v === 'vicino') v = 'cerca';
   mostraVista(v); avviaSync();
