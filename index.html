@@ -50,8 +50,11 @@ header.top{position:fixed;top:0;left:0;right:0;z-index:30;background:var(--capo)
 .hbt.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .gruppi{display:flex;gap:4px;flex:none}
 .gruppi button{border:1.5px solid var(--bordo);background:var(--carta);color:var(--tenue);border-radius:20px;padding:5px 9px;font-size:calc(11px * var(--scala));font-weight:700;letter-spacing:.02em;white-space:nowrap;line-height:1.1}
-.gruppi button[data-g="st"].on{background:var(--cremisi);border-color:var(--cremisi);color:#fff}
-.gruppi button[data-g="cl"].on{background:var(--accent);border-color:var(--accent);color:#fff}
+.gruppi button.on{background:var(--gc,var(--accent));border-color:var(--gc,var(--accent));color:#fff}
+.grsel{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+.grsel .grc{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--bordo);border-radius:10px;padding:8px 11px;font-size:calc(14px * var(--scala));color:var(--testo);background:var(--carta);min-height:40px}
+.grsel .grc i{display:inline-block;width:11px;height:11px;border-radius:3px}
+.grsel .grc input{width:20px;height:20px;margin:0}
 @media (max-width:360px){.marchio small{display:none}.gruppi button{padding:5px 7px;font-size:calc(10px * var(--scala))}}
 main{padding:calc(60px + var(--sat)) 12px calc(74px + var(--sab));min-height:100%}
 .vista{display:none}.vista.on{display:block}
@@ -185,9 +188,9 @@ summary::-webkit-details-marker{display:none}
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.5.2</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.6.0</small></div></div>
   <div class="sp"></div>
-  <div class="gruppi" id="gruppi" title="Gruppi di contatti: attivi uno alla volta o insieme"><button data-g="st" class="on">Security TOWER</button><button data-g="cl" class="on">Clienti</button></div>
+  <div class="gruppi" id="gruppi" title="Gruppi di contatti: si accendono e spengono singolarmente"></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
   <button id="tema" title="Chiaro / scuro" style="display:none">&#9790;</button>
   <button id="bt-altro" class="hbt" title="Impostazioni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -503,7 +506,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.5.2';
+var APP_VER = '1.6.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -538,8 +541,15 @@ function tipoP(q) { var id = (q && q.tipo) || 'offerta', t = TIPI(); return t.fi
 function classeEsito(e) { if (!e || e === 'Da contattare') return ''; if (POSITIVI().indexOf(e) >= 0) return 'es'; if (e === 'Non interessato') return 'no'; return 'at'; }
 function colEsito(e) { var k = classeEsito(e); return k === 'es' ? '#1C6B4A' : k === 'no' ? '#C00000' : k === 'at' ? '#B08A2E' : '#9A9A9A'; }
 function sit(id) { return DB.situazioni[id] || {}; }
-function gruppi(c) { var g = (c.gruppi || 'st').split(','); return g; }
-function barre(c) { var g = gruppi(c); return '<span class="gbar"><i class="st' + (g.indexOf('st') >= 0 ? ' on' : '') + '"></i><i class="cl' + (g.indexOf('cl') >= 0 ? ' on' : '') + '"></i></span>'; }
+var GRUPPI_BASE = [{ id: 'st', nome: 'Security TOWER', colore: '#D51544' }, { id: 'cl', nome: 'Clienti', colore: '#2a78d6' }];
+function gruppiL() { var l = cfg().gruppi; if (Array.isArray(l) && l.length) return l.filter(function (g) { return g && g.id; }); if (l && typeof l === 'object') return Object.keys(l).map(function (k, i) { return { id: k, nome: l[k], colore: (GRUPPI_BASE[i] || {}).colore || '#8A8A8A' }; }); return GRUPPI_BASE; }
+function grp(id) { var l = gruppiL(); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
+function grNome(id) { var g = grp(id); return g ? g.nome : id; }
+function grColore(id) { var g = grp(id); return (g && g.colore) || '#8A8A8A'; }
+function grPrimo() { return gruppiL()[0].id; }
+function gruppi(c) { var g = c && c.gruppi; if (!g) return [grPrimo()]; var l = String(g).split(',').filter(function (x) { return !!grp(x); }); return l.length ? l : [grPrimo()]; }
+function barre(c) { var l = gruppi(c); return '<span class="gbar" title="' + esc(l.map(grNome).join(' e ')) + '">' + gruppiL().map(function (g) { var on = l.indexOf(g.id) >= 0; return '<i' + (on ? ' class="on" style="background:' + esc(g.colore || '#8A8A8A') + '"' : '') + '></i>'; }).join('') + '</span>'; }
+function pillGruppo(id) { return '<span class="pill gr" style="background:' + esc(grColore(id)) + ';color:#fff;font-weight:600">' + esc(grNome(id)) + '</span>'; }
 function referentiDi(c) { var r = c && c.referenti; if (!r) return []; if (typeof r === 'string') { try { r = JSON.parse(r); } catch (e) { r = []; } } return Array.isArray(r) ? r : []; }
 /* testo su cui lavora la ricerca: anagrafica, situazione e persone di riferimento (nome, ruolo, recapiti, nota) */
 var cacheTx = {};
@@ -572,7 +582,7 @@ function refTrovato(c, parole) {
 }
 function eventiDi(id) { return Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; }).filter(function (v) { return v.cid === id; }).sort(function (a, b) { return ((b.d || '') + (b.o || '')).localeCompare((a.d || '') + (a.o || '')); }); }
 function listaTutti() { return Object.keys(DB.contatti).map(function (k) { return DB.contatti[k]; }); }
-function lista() { var l = listaTutti().filter(function (c) { if (GR.st && GR.cl) return true; var g = gruppi(c); return (GR.st && g.indexOf('st') >= 0) || (GR.cl && g.indexOf('cl') >= 0); }); l.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }); return l; }
+function lista() { var l = listaTutti().filter(function (c) { if (tuttiAccesi()) return true; return gruppi(c).some(function (g) { return GR[g]; }); }); l.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }); return l; }
 function conta() { return Object.keys(DB.contatti).length; }
 function pillEsito(e) { return e && e !== 'Da contattare' ? '<span class="pill ' + classeEsito(e) + '">' + esc(e) + '</span>' : ''; }
 function tagPratica(c) { var q = DB.pratiche[c.id]; if (!q) return ''; var t = tipoP(q), s = q.stato || 'sospesa'; return '<span class="rq ' + s + '" title="' + esc(t.nome) + '"><i style="background:' + esc(t.colore) + '">' + esc(t.sigla || t.nome.charAt(0)) + '</i>' + s + '</span>'; }
@@ -604,10 +614,22 @@ var vistaPrima = 'cerca';
 
 /* CERCA */
 /* GRUPPI: come sul Mac, i due pulsanti in alto filtrano tutte le viste; attivi uno alla volta o insieme */
-var GR = { st: true, cl: true };
-try { var g0 = JSON.parse(localStorage.getItem('cm.gruppi') || 'null'); if (g0 && (g0.st || g0.cl)) GR = { st: !!g0.st, cl: !!g0.cl }; } catch (e) {}
-function disegnaGruppi() { $$('#gruppi button').forEach(function (b) { b.classList.toggle('on', !!GR[b.dataset.g]); }); }
-$$('#gruppi button').forEach(function (b) { b.addEventListener('click', function () { var g = b.dataset.g, n = { st: GR.st, cl: GR.cl }; n[g] = !n[g]; if (!n.st && !n.cl) n[g === 'st' ? 'cl' : 'st'] = true; GR = n; try { localStorage.setItem('cm.gruppi', JSON.stringify(GR)); } catch (e) {} disegnaGruppi(); mostraN = 150; if (schedaId) return; mostraVista(vista, true); }); });
+var GR = {};
+function normalizzaGR(salvato) {
+  var l = gruppiL(), n = {}, acceso = false;
+  l.forEach(function (g) { var v = salvato && salvato[g.id] !== undefined ? !!salvato[g.id] : (GR[g.id] !== undefined ? !!GR[g.id] : true); n[g.id] = v; if (v) acceso = true; });
+  if (!acceso && l.length) n[l[0].id] = true;
+  GR = n;
+}
+try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
+function tuttiAccesi() { var l = gruppiL(); for (var i = 0; i < l.length; i++) if (!GR[l[i].id]) return false; return true; }
+/* i tasti in alto nascono dai gruppi configurati sul Mac: nome e colore arrivano da lì */
+function disegnaGruppi() {
+  var box = $('#gruppi'); if (!box) return;
+  box.innerHTML = gruppiL().map(function (g) { return '<button data-g="' + esc(g.id) + '"' + (GR[g.id] ? ' class="on"' : '') + ' style="--gc:' + esc(g.colore || '#8A8A8A') + '">' + esc(g.nome) + '</button>'; }).join('');
+  $$('#gruppi button').forEach(function (b) { b.addEventListener('click', function () { var g = b.dataset.g, n = {}; Object.keys(GR).forEach(function (k) { n[k] = GR[k]; }); n[g] = !n[g]; if (!Object.keys(n).some(function (k) { return n[k]; })) n[g] = true; GR = n; try { localStorage.setItem('cm.gruppi', JSON.stringify(GR)); } catch (e) {} disegnaGruppi(); mostraN = 150; if (schedaId) return; mostraVista(vista, true); }); });
+  if (typeof adattaTestata === 'function') adattaTestata();
+}
 disegnaGruppi();
 var F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '' }, mostraN = 150;
 try { Object.assign(F, JSON.parse(localStorage.getItem('cm.filtri') || '{}')); } catch (e) {}
@@ -642,7 +664,7 @@ function disegnaCerca() {
   disegnaChips();
   var L = filtra(), box = $('#lista'); box.innerHTML = '';
   if (!conta()) { box.innerHTML = '<div class="benvenuto"><b>Nessun contatto ancora</b>Collega Google Drive da <b>Altro → Sincronizzazione</b>: i contatti arrivano da GESTIONE CONTATTI sul Mac.</div>'; $('#conta').textContent = ''; return; }
-  var tot = lista().length; $('#conta').textContent = num(L.length) + (L.length === 1 ? ' contatto' : ' contatti') + (L.length !== tot ? ' su ' + num(tot) : '') + (!(GR.st && GR.cl) ? ' · ' + (GR.st ? 'Security TOWER' : 'Clienti') : '');
+  var tot = lista().length; $('#conta').textContent = num(L.length) + (L.length === 1 ? ' contatto' : ' contatti') + (L.length !== tot ? ' su ' + num(tot) : '') + (!tuttiAccesi() ? ' · ' + gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ') : '');
   if (!L.length) { box.innerHTML = '<div class="vuoto">Nessun contatto con questi filtri.</div>'; return; }
   var frag = document.createDocumentFragment(), par = normNome(F.q).trim() ? normNome(F.q).trim().split(/\s+/) : [];
   L.slice(0, mostraN).forEach(function (c) { var r = refTrovato(c, par); frag.appendChild(rigaContatto(c, '', r ? '<span class="pill ref">&#128100; ' + esc([r.nome, r.ruolo].filter(Boolean).join(' · ')) + '</span>' : '')); });
@@ -656,7 +678,8 @@ function CATEGORIE() { return cfg().categorie || ['Ordinari', 'Produttore', 'Ser
 function formNuovoContatto() {
   var box = $('#nc-form'), c = $('.c', box);
   c.innerHTML = '<label>Ragione sociale * <input id="nc-nome" type="text" autocapitalize="characters"></label>' +
-    '<div class="due"><label>Categoria <select id="nc-cat">' + CATEGORIE().map(function (x) { return '<option' + (x === 'Cliente finale' ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label><label>Gruppo <select id="nc-gr"><option value="st">Security TOWER</option><option value="cl">Clienti</option><option value="st,cl">Entrambi</option></select></label></div>' +
+    '<label>Categoria <select id="nc-cat">' + CATEGORIE().map(function (x) { return '<option' + (x === 'Cliente finale' ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' +
+    '<label>Gruppi <span class="grsel" id="nc-gr">' + gruppiL().map(function (g, i) { return '<label class="grc"><input type="checkbox" value="' + esc(g.id) + '"' + (i === 0 ? ' checked' : '') + '><i style="background:' + esc(g.colore || '#8A8A8A') + '"></i>' + esc(g.nome) + '</label>'; }).join('') + '</span></label>' +
     '<div class="due"><label>Provincia (sigla) <input id="nc-prov" type="text" maxlength="2" autocapitalize="characters" placeholder="PD"></label><label>Partita IVA <input id="nc-piva" type="text" inputmode="numeric"></label></div>' +
     '<label>Sede <input id="nc-sede" type="text" placeholder="Via …, CAP Comune (PV)"></label>' +
     '<div class="due"><label>Telefono aziendale <input id="nc-tel" type="tel"></label><label>Email aziendale <input id="nc-email" type="email" autocapitalize="off"></label></div>' +
@@ -675,7 +698,7 @@ function formNuovoContatto() {
     var dopp = lista().filter(function (x) { return normNome(x.nome).replace(/[^a-z0-9]/g, '') === normNome(nome).replace(/[^a-z0-9]/g, ''); })[0];
     if (dopp && !confirm('Esiste già «' + dopp.nome + '» (' + (dopp.prov || '—') + '). Creare lo stesso un nuovo contatto?')) { apriScheda(dopp.id); return; }
     var id = 'n_mob_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), og = oggi();
-    var r = { id: id, nome: nome, cat: $('#nc-cat').value, gruppi: $('#nc-gr').value, prov: $('#nc-prov').value.trim().toUpperCase(), piva: $('#nc-piva').value.trim(), sede: $('#nc-sede').value.trim(), tel: $('#nc-tel').value.trim(), email: $('#nc-email').value.trim(), sito: $('#nc-sito').value.trim().replace(/^https?:\/\//, ''), motivo: $('#nc-motivo').value.trim(), note: $('#nc-note').value.trim(), creato: og, _m: Date.now() };
+    var r = { id: id, nome: nome, cat: $('#nc-cat').value, gruppi: (function () { var s = $$('#nc-gr input:checked').map(function (x) { return x.value; }); return (s.length ? s : [grPrimo()]).join(','); })(), prov: $('#nc-prov').value.trim().toUpperCase(), piva: $('#nc-piva').value.trim(), sede: $('#nc-sede').value.trim(), tel: $('#nc-tel').value.trim(), email: $('#nc-email').value.trim(), sito: $('#nc-sito').value.trim().replace(/^https?:\/\//, ''), motivo: $('#nc-motivo').value.trim(), note: $('#nc-note').value.trim(), creato: og, _m: Date.now() };
     var rn = $('#nc-rnome').value.trim(), rc = $('#nc-rcell').value.trim(), re_ = $('#nc-remail').value.trim(), rr = $('#nc-rruolo').value.trim();
     if (rn || rc || re_) r.referenti = [{ id: 'r_' + Date.now().toString(36), nome: rn, ruolo: rr, tel: '', cell: rc, email: re_, note: '' }];
     DB.nuoviContatti[id] = r;
@@ -786,7 +809,7 @@ function disegnaPin() {
   /* contatti sullo stesso punto: li apro a spirale come sul Mac */
   var perPunto = {}; dentro.forEach(function (c) { var key = (+c.lat).toFixed(4) + ',' + (+c.lng).toFixed(4); (perPunto[key] = perPunto[key] || []).push(c); });
   Object.keys(perPunto).forEach(function (key) { perPunto[key].forEach(function (c, i) { var ox = 0, oy = 0; if (i > 0) { var rr = 7 * Math.sqrt(i), ang = i * 2.39996; ox = Math.cos(ang) * rr; oy = Math.sin(ang) * rr; } var m = L_.marker([+c.lat, +c.lng], { icon: iconaPin(c, ox, oy), riseOnHover: true }); m.bindPopup(function () { return popupPin(c); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] }); /* niente apri/chiudi a tocchi alterni: un tocco apre sempre (su alcuni telefoni il tocco arriva doppio) */ m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); }); MP.pins.addLayer(m); }); });
-  $('#mp-conta').textContent = num(MP.vis) + (taglio ? ' (mostrati ' + num(MAX) + ': ingrandisci)' : '') + ' in vista · ' + num(MP.tot) + ' sulla mappa' + (!(GR.st && GR.cl) ? ' · ' + (GR.st ? 'Security TOWER' : 'Clienti') : '');
+  $('#mp-conta').textContent = num(MP.vis) + (taglio ? ' (mostrati ' + num(MAX) + ': ingrandisci)' : '') + ' in vista · ' + num(MP.tot) + ' sulla mappa' + (!tuttiAccesi() ? ' · ' + gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ') : '');
   disegnaLegenda();
 }
 function disegnaLegenda() {
@@ -895,7 +918,7 @@ function apriScheda(id) {
   h.push('<dt>Livello</dt><dd>' + (c.liv ? '<span class="liv ' + esc(c.liv) + '">' + esc(c.liv) + '</span>' : '—') + (c.pt != null ? ' <span style="color:var(--tenue);font-size:calc(13px * var(--scala))">punteggio ' + esc(c.pt) + '</span>' : '') + '</dd>');
   h.push('<dt>Categoria</dt><dd>' + esc(c.cat || '—') + '</dd>');
   if (c.sett) h.push('<dt>Settori</dt><dd>' + String(c.sett).split(' · ').map(function (x) { return '<span class="pill">' + esc(x) + '</span> '; }).join('') + '</dd>');
-  h.push('<dt>Gruppi</dt><dd>' + gruppi(c).map(function (g) { return '<span class="pill gr-' + g + '">' + (g === 'st' ? 'Security TOWER' : 'Clienti') + '</span> '; }).join('') + '</dd>');
+  h.push('<dt>Gruppi</dt><dd>' + gruppi(c).map(function (g) { return pillGruppo(g) + ' '; }).join('') + '</dd>');
   if (c.gruppo) h.push('<dt>Gruppo aziendale</dt><dd>' + esc(c.gruppo) + '</dd>');
   if (c.tutela) h.push('<dt>Tutela</dt><dd style="color:var(--rosso);font-weight:600">' + esc(c.tutela) + '</dd>');
   if (c.importato) h.push('<dt>Origine</dt><dd>' + esc(c.importato) + '</dd>');
@@ -924,7 +947,8 @@ function formModifica(id) {
   function righeRef() { return R.map(function (r, i) { return '<div class="ref" data-i="' + i + '"><div class="due"><label>Nome e cognome <input data-r="nome" value="' + esc(r.nome || '') + '"></label><label>Ruolo <input data-r="ruolo" value="' + esc(r.ruolo || '') + '"></label></div><div class="due"><label>Cell. <input data-r="cell" type="tel" value="' + esc(r.cell || '') + '"></label><label>Telefono diretto <input data-r="tel" type="tel" value="' + esc(r.tel || '') + '"></label></div><label>E-mail <input data-r="email" type="email" autocapitalize="off" value="' + esc(r.email || '') + '"></label><label>Nota <input data-r="note" value="' + esc(r.note || '') + '"></label><div class="az"><button class="btn mini peri" data-rimuovi="' + i + '">Rimuovi persona</button></div></div>'; }).join(''); }
   f.innerHTML = '<div class="fg" style="max-height:100%;overflow:auto;border-radius:0;max-width:none;padding-top:calc(10px + var(--sat))"><h4>Modifica — ' + esc(c.nome) + '</h4><div class="form">' +
     campo('nome', 'Ragione sociale *', 'text', 'autocapitalize="characters"') +
-    '<div class="due"><label>Categoria <select data-k="cat">' + CATEGORIE().map(function (x) { return '<option' + (x === c.cat ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + (CATEGORIE().indexOf(c.cat) < 0 && c.cat ? '<option selected>' + esc(c.cat) + '</option>' : '') + '</select></label><label>Gruppo <select data-k="gruppi">' + [['st', 'Security TOWER'], ['cl', 'Clienti'], ['st,cl', 'Entrambi']].map(function (o) { return '<option value="' + o[0] + '"' + (gruppi(c).sort().join(',') === o[0].split(',').sort().join(',') ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label></div>' +
+    '<label>Categoria <select data-k="cat">' + CATEGORIE().map(function (x) { return '<option' + (x === c.cat ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + (CATEGORIE().indexOf(c.cat) < 0 && c.cat ? '<option selected>' + esc(c.cat) + '</option>' : '') + '</select></label>' +
+    '<label>Gruppi <span class="grsel" data-k="gruppi">' + gruppiL().map(function (g) { return '<label class="grc"><input type="checkbox" value="' + esc(g.id) + '"' + (gruppi(c).indexOf(g.id) >= 0 ? ' checked' : '') + '><i style="background:' + esc(g.colore || '#8A8A8A') + '"></i>' + esc(g.nome) + '</label>'; }).join('') + '</span></label>' +
     '<div class="due">' + campo('prov', 'Provincia (sigla)', 'text', 'maxlength="2" autocapitalize="characters"') + campo('piva', 'Partita IVA', 'text', 'inputmode="numeric"') + '</div>' +
     campo('sede', 'Sede') + '<div class="due">' + campo('tel', 'Telefono aziendale', 'tel') + campo('email', 'Email aziendale', 'email', 'autocapitalize="off"') + '</div>' + campo('sito', 'Sito', 'text', 'autocapitalize="off"') +
     campo('motivo', 'Perché è interessante', 'textarea') + campo('profilo', 'Profilo aziendale', 'textarea') + campo('note', 'Note sui recapiti', 'textarea') +
@@ -939,7 +963,7 @@ function formModifica(id) {
   $('#md-annulla', f).addEventListener('click', function () { f.remove(); });
   $('#md-salva', f).addEventListener('click', function () {
     var campi = {}, cambiati = 0;
-    CAMPI_MOD.forEach(function (k) { var inp = $('[data-k="' + k + '"]', f); if (!inp) return; var v = inp.value.trim(); if (k === 'prov') v = v.toUpperCase(); if (k === 'sito') v = v.replace(/^https?:\/\//, ''); var prima = k === 'gruppi' ? gruppi(c).sort().join(',') : String(c[k] || ''); var dopo = k === 'gruppi' ? v.split(',').sort().join(',') : v; if (prima !== dopo) { campi[k] = v; cambiati++; } });
+    CAMPI_MOD.forEach(function (k) { var inp = $('[data-k="' + k + '"]', f); if (!inp) return; var v = k === 'gruppi' ? (function () { var s = $$('input:checked', inp).map(function (x) { return x.value; }); return (s.length ? s : [grPrimo()]).join(','); })() : inp.value.trim(); if (k === 'prov') v = v.toUpperCase(); if (k === 'sito') v = v.replace(/^https?:\/\//, ''); var prima = k === 'gruppi' ? gruppi(c).sort().join(',') : String(c[k] || ''); var dopo = k === 'gruppi' ? v.split(',').sort().join(',') : v; if (prima !== dopo) { campi[k] = v; cambiati++; } });
     if (!campi.nome && !String(c.nome || '').trim()) { toast('La ragione sociale è obbligatoria'); return; }
     if (campi.nome === '') { toast('La ragione sociale è obbligatoria'); return; }
     leggiRef(); var Rp = R.filter(function (r) { return r.nome || r.cell || r.tel || r.email; });
@@ -1036,10 +1060,12 @@ function spia(s, msg) { var sp = $('#sy-spia'); sp.className = 'sy-' + s; sp.tit
 function applicaRemoti(mod, del) {
   var n = 0;
   cacheTx = {}; cacheNum = {};
+  var primaG = JSON.stringify(gruppiL());
   ['contatti', 'situazioni', 'eventi', 'pratiche', 'config'].forEach(function (c) {
     (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
   });
+  if (JSON.stringify(gruppiL()) !== primaG) { normalizzaGR(null); disegnaGruppi(); }
   return n;
 }
 function avviaSync() {
