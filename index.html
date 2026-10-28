@@ -73,7 +73,7 @@ select.chip{appearance:none;-webkit-appearance:none;padding-right:22px;backgroun
 .riga .tx{flex:1;min-width:0}
 .riga .nm{font-weight:650;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .riga .ds{font-size:12.5px;color:var(--tenue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.riga .sopra{margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.riga .sopra .tag-tipo{font-size:10px;padding:1px 7px}
+.riga .sopra{margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.riga .sopra .tag-tipo{font-size:10px;padding:1px 7px}.riga .sopra .pill{max-width:100%}.riga .sopra .pill.ref{background:color-mix(in srgb,var(--sz-ref) 18%,var(--carta));color:var(--sz-ref);font-weight:700}
 .riga .dx{text-align:right;flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
 .gbar{display:inline-flex;gap:2px;flex:none;height:30px}.gbar i{display:block;width:4px;border-radius:2px;background:var(--carta3)}.gbar i.st.on{background:var(--cremisi)}.gbar i.cl.on{background:var(--accent)}
 .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:var(--carta2);color:var(--testo);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
@@ -179,7 +179,7 @@ summary::-webkit-details-marker{display:none}
 </head>
 <body>
 <header class="top">
-  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.4.0</small></div></div>
+  <div class="marchio"><img src="icona.png" alt=""><div><b><span class="wa">CONTATTI</span> <span class="wd">MOBILE</span></b><small id="versione">v1.5.0</small></div></div>
   <div class="sp"></div>
   <div class="gruppi" id="gruppi" title="Gruppi di contatti: attivi uno alla volta o insieme"><button data-g="st" class="on">Security TOWER</button><button data-g="cl" class="on">Clienti</button></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
@@ -188,7 +188,7 @@ summary::-webkit-details-marker{display:none}
 </header>
 <main>
   <section class="vista on" id="v-cerca">
-    <div class="cerca"><input id="q" type="search" placeholder="Cerca azienda, comune, provincia…" autocomplete="off"><button class="btn pri" id="nc-apri" title="Nuovo contatto" style="padding:10px 14px;font-size:20px;line-height:1">+</button></div>
+    <div class="cerca"><input id="q" type="search" placeholder="Cerca azienda, persona, comune…" autocomplete="off"><button class="btn pri" id="nc-apri" title="Nuovo contatto" style="padding:10px 14px;font-size:20px;line-height:1">+</button></div>
     <div id="nc-form" class="sz sz-clas" style="display:none"><h3>Nuovo contatto</h3><div class="c form"></div></div>
     <div class="chips" id="chips"></div>
     <div class="conta" id="conta"></div>
@@ -203,7 +203,7 @@ summary::-webkit-details-marker{display:none}
   </section>
   <section class="vista" id="v-pratiche"></section>
   <section class="vista" id="v-mappa">
-    <div class="mp-top"><input id="mp-q" type="search" placeholder="Cerca sulla mappa…" autocomplete="off"><button class="hbt" id="mp-filtri" title="Filtri"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button><button class="hbt" id="mp-colore" title="Colore: livello / esito"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></div>
+    <div class="mp-top"><input id="mp-q" type="search" placeholder="Cerca azienda o persona…" autocomplete="off"><button class="hbt" id="mp-filtri" title="Filtri"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button><button class="hbt" id="mp-colore" title="Colore: livello / esito"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></div>
     <div id="mp-pannello" class="mp-pannello" style="display:none"></div>
     <div id="mappa2"></div>
     <div class="mp-ctrl"><button class="hbt" id="mp-qui" title="Dove sono"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></button><button class="hbt" id="mp-tutto" title="Vista intera">&#8635;</button><button class="hbt" id="mp-leg" title="Legenda">?</button></div>
@@ -497,7 +497,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.4.0';
+var APP_VER = '1.5.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -522,7 +522,7 @@ var IDB = (function () {
   };
 })();
 var salvaT = null;
-function salva(subito) { clearTimeout(salvaT); var f = function () { IDB.scrivi('db', JSON.stringify(DB)); }; if (subito) f(); else salvaT = setTimeout(f, 300); if (SY) SY.pianifica(); }
+function salva(subito) { cacheTx = {}; cacheNum = {}; clearTimeout(salvaT); var f = function () { IDB.scrivi('db', JSON.stringify(DB)); }; if (subito) f(); else salvaT = setTimeout(f, 300); if (SY) SY.pianifica(); }
 function cfg() { return DB.config.config || {}; }
 function ESITI() { return cfg().esiti || ['Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Interessato', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare']; }
 function CANALI() { return cfg().canali || ['Telefono', 'Modulo sito', 'Email', 'Visita', 'Tramite Assodimi', 'Fiera']; }
@@ -534,6 +534,36 @@ function colEsito(e) { var k = classeEsito(e); return k === 'es' ? '#1C6B4A' : k
 function sit(id) { return DB.situazioni[id] || {}; }
 function gruppi(c) { var g = (c.gruppi || 'st').split(','); return g; }
 function barre(c) { var g = gruppi(c); return '<span class="gbar"><i class="st' + (g.indexOf('st') >= 0 ? ' on' : '') + '"></i><i class="cl' + (g.indexOf('cl') >= 0 ? ' on' : '') + '"></i></span>'; }
+function referentiDi(c) { var r = c && c.referenti; if (!r) return []; if (typeof r === 'string') { try { r = JSON.parse(r); } catch (e) { r = []; } } return Array.isArray(r) ? r : []; }
+/* testo su cui lavora la ricerca: anagrafica, situazione e persone di riferimento (nome, ruolo, recapiti, nota) */
+var cacheTx = {};
+function testoRicerca(c) {
+  var tx = cacheTx[c.id];
+  if (tx !== undefined) return tx;
+  var k = sit(c.id);
+  tx = normNome([c.nome, c.sede, c.prov, c.cat, c.sett, c.piva, c.tel, c.email, c.sito, c.note, c.profilo, c.motivo, k.referente, k.passo, k.note,
+    referentiDi(c).map(function (r) { return [r.nome, r.ruolo, r.tel, r.cell, r.email, r.note].join(' '); }).join(' ')].filter(Boolean).join(' '));
+  cacheTx[c.id] = tx; cacheNum[c.id] = tx.replace(/\D/g, ''); return tx;
+}
+var cacheNum = {};
+/* i numeri si cercano anche scritti con spazi o punti: «348 222» trova 3482226949 */
+function combacia(c, parole) {
+  var tx = testoRicerca(c), nm = null;
+  for (var i = 0; i < parole.length; i++) {
+    var w = parole[i];
+    if (tx.indexOf(w) >= 0) continue;
+    if (/\d/.test(w)) { var d = w.replace(/\D/g, ''); if (d.length >= 3) { if (nm === null) nm = cacheNum[c.id] || ''; if (nm.indexOf(d) >= 0) continue; } }
+    return false;
+  }
+  return true;
+}
+/* la persona di riferimento che corrisponde alle parole cercate (per mostrarla nella riga) */
+function refTrovato(c, parole) {
+  if (!parole.length) return null;
+  var l = referentiDi(c);
+  for (var i = 0; i < l.length; i++) { var r = l[i], tx = normNome([r.nome, r.ruolo, r.tel, r.cell, r.email, r.note].join(' ')); var ok = parole.some(function (w) { return tx.indexOf(w) >= 0; }); if (ok) return r; }
+  return null;
+}
 function eventiDi(id) { return Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; }).filter(function (v) { return v.cid === id; }).sort(function (a, b) { return ((b.d || '') + (b.o || '')).localeCompare((a.d || '') + (a.o || '')); }); }
 function listaTutti() { return Object.keys(DB.contatti).map(function (k) { return DB.contatti[k]; }); }
 function lista() { var l = listaTutti().filter(function (c) { if (GR.st && GR.cl) return true; var g = gruppi(c); return (GR.st && g.indexOf('st') >= 0) || (GR.cl && g.indexOf('cl') >= 0); }); l.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }); return l; }
@@ -584,7 +614,7 @@ function filtra() {
     if (F.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; } else if (F.esito && k.esito !== F.esito) return false;
     if (F.pr === 'rich' && !k.richiamo) return false;
     if (F.pr === 'prat' && !DB.pratiche[c.id]) return false;
-    if (parole.length) { var t = normNome([c.nome, c.sede, c.prov, c.cat, c.sett, c.piva].join(' ')); for (var i = 0; i < parole.length; i++) if (t.indexOf(parole[i]) < 0) return false; }
+    if (parole.length && !combacia(c, parole)) return false;
     return true;
   });
 }
@@ -606,10 +636,10 @@ function disegnaCerca() {
   disegnaChips();
   var L = filtra(), box = $('#lista'); box.innerHTML = '';
   if (!conta()) { box.innerHTML = '<div class="benvenuto"><b>Nessun contatto ancora</b>Collega Google Drive da <b>Altro → Sincronizzazione</b>: i contatti arrivano da GESTIONE CONTATTI sul Mac.</div>'; $('#conta').textContent = ''; return; }
-  var tot = lista().length; $('#conta').textContent = num(L.length) + ' contatti' + (L.length !== tot ? ' su ' + num(tot) : '') + (!(GR.st && GR.cl) ? ' · ' + (GR.st ? 'Security TOWER' : 'Clienti') : '');
+  var tot = lista().length; $('#conta').textContent = num(L.length) + (L.length === 1 ? ' contatto' : ' contatti') + (L.length !== tot ? ' su ' + num(tot) : '') + (!(GR.st && GR.cl) ? ' · ' + (GR.st ? 'Security TOWER' : 'Clienti') : '');
   if (!L.length) { box.innerHTML = '<div class="vuoto">Nessun contatto con questi filtri.</div>'; return; }
-  var frag = document.createDocumentFragment();
-  L.slice(0, mostraN).forEach(function (c) { frag.appendChild(rigaContatto(c)); });
+  var frag = document.createDocumentFragment(), par = normNome(F.q).trim() ? normNome(F.q).trim().split(/\s+/) : [];
+  L.slice(0, mostraN).forEach(function (c) { var r = refTrovato(c, par); frag.appendChild(rigaContatto(c, '', r ? '<span class="pill ref">&#128100; ' + esc([r.nome, r.ruolo].filter(Boolean).join(' · ')) + '</span>' : '')); });
   box.appendChild(frag);
   if (L.length > mostraN) { var b = el('button', 'altri', 'Mostra altri ' + num(Math.min(150, L.length - mostraN)) + ' (' + num(L.length - mostraN) + ' rimanenti)'); b.addEventListener('click', function () { mostraN += 150; disegnaCerca(); }); box.appendChild(b); }
 }
@@ -728,7 +758,7 @@ function filtratiMappa() {
     var k = sit(c.id);
     if (f.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; } else if (f.esito && k.esito !== f.esito) return false;
     var q2 = DB.pratiche[c.id]; if (f.prat === 'si' && !q2) return false; if (f.prat && f.prat !== 'si' && !(q2 && (q2.stato || 'sospesa') === f.prat)) return false;
-    if (parole.length) { var tx = normNome([c.nome, c.sede, c.prov, c.cat, c.sett].join(' ')); for (var i = 0; i < parole.length; i++) if (tx.indexOf(parole[i]) < 0) return false; }
+    if (parole.length && !combacia(c, parole)) return false;
     return true;
   });
 }
@@ -995,6 +1025,7 @@ function spia(s, msg) { var sp = $('#sy-spia'); sp.className = 'sy-' + s; sp.tit
 /* ---------- sincronizzazione: applica i record ricevuti ---------- */
 function applicaRemoti(mod, del) {
   var n = 0;
+  cacheTx = {}; cacheNum = {};
   ['contatti', 'situazioni', 'eventi', 'pratiche', 'config'].forEach(function (c) {
     (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
