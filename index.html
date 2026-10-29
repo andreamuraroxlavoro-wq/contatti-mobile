@@ -65,6 +65,8 @@ nav.tab{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--capo)
 nav.tab button{flex:1;background:transparent;border:0;color:var(--tenue);font-size:calc(10.5px * var(--scala));padding:5px 2px 3px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:600;letter-spacing:.02em}
 nav.tab button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 nav.tab button.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+nav.tab button{min-width:0;white-space:nowrap;overflow:hidden}
+@media (max-width:380px){nav.tab button{font-size:calc(9px * var(--scala));padding:5px 1px 3px}nav.tab button svg{width:21px;height:21px}nav.tab button .tn{margin-left:22px}}
 nav.tab button .tn{position:absolute;margin-left:26px;margin-top:-4px;background:var(--cremisi);color:#fff;font-size:calc(10px * var(--scala));border-radius:9px;padding:0 5px;min-width:16px;text-align:center}
 /* ricerca e filtri */
 .cerca{display:flex;gap:8px;align-items:center;margin-bottom:8px}
@@ -190,6 +192,54 @@ summary::-webkit-details-marker{display:none}
 .seg{display:inline-flex;flex:none;max-width:100%;border:1px solid var(--bordo);border-radius:9px;overflow:hidden}
 .opz .riga-o > select.chip{flex:none;max-width:100%}.seg button{border:0;background:var(--carta);padding:10px 12px;font-size:calc(14px * var(--scala));color:var(--testo2);min-height:38px}.seg button.on{background:var(--accent);color:#fff}
 .benvenuto{text-align:center;padding:40px 16px;color:var(--tenue)}.benvenuto b{display:block;color:var(--testo);font-size:calc(18px * var(--scala));margin-bottom:8px}
+/* ---------- CALENDARIO (v1.11.0) ---------- */
+.cl-testa{position:sticky;top:0;z-index:12;background:var(--sfondo);padding:6px 0 8px;margin-bottom:6px}
+.cl-nav{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cl-nav b{flex:1;text-align:center;font-size:calc(17px * var(--scala));font-weight:800}
+.cl-nav button{background:var(--carta);border:1px solid var(--bordo);color:var(--navy);border-radius:10px;padding:7px 12px;font:inherit;font-size:calc(13px * var(--scala))}
+.cl-nav .cl-oggi{font-weight:700}
+.cl-seg{display:flex;border:1px solid var(--bordo);border-radius:10px;overflow:hidden;background:var(--carta);margin-bottom:8px}
+.cl-seg button{flex:1;border:0;background:transparent;color:var(--navy);padding:8px 0;font:inherit;font-size:calc(13px * var(--scala));font-weight:600;border-right:1px solid var(--bordo)}
+.cl-seg button:last-child{border-right:0}
+.cl-seg button.on{background:var(--accent);color:#fff}
+.cl-fil{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.cl-fil .chip{display:inline-flex;align-items:center;gap:4px}
+.cl-fil .chip svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.cl-kpi{display:flex;gap:12px;font-size:calc(12px * var(--scala));color:var(--tenue);align-items:center;flex-wrap:wrap}
+.cl-kpi span{display:inline-flex;align-items:center;gap:4px;font-weight:700}
+.cl-kpi svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.cl-kpi .auto{color:#6B4FA0}.cl-kpi .tel{color:var(--accent)}.cl-kpi .fatto{color:var(--verde)}
+.cl-gg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px}
+.cl-gg span{text-align:center;font-size:calc(10px * var(--scala));font-weight:800;color:var(--tenue)}
+.cl-celle{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:14px}
+.cl-c{aspect-ratio:1/1;min-height:40px;background:var(--carta);border:1px solid var(--bordo);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0;color:var(--navy);font:inherit}
+.cl-c .n{font-size:calc(13px * var(--scala));font-weight:700}
+.cl-c .pt{display:flex;gap:2px;height:6px;align-items:center}
+.cl-c .pt i{width:5px;height:5px;border-radius:50%;display:block}
+.cl-c .pt i.auto{background:#6B4FA0}.cl-c .pt i.tel{background:var(--accent)}
+.cl-c .pt i.f{background:var(--verde)}.cl-c .pt i.r{background:var(--rosso)}
+.cl-c.fuori{opacity:.4}
+.cl-c.oggi{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.cl-c.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cl-c.sel .pt i.auto,.cl-c.sel .pt i.tel{background:#fff}
+.cl-el{display:flex;flex-direction:column;gap:9px}
+.cl-ag{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.cl-gd{font-weight:800;font-size:calc(13px * var(--scala));text-transform:capitalize;border-bottom:1px solid var(--bordo);padding:10px 0 4px}
+.cl-gd.oggi{color:var(--accent)}
+.cl-r{display:flex;flex-direction:column;gap:2px}
+.cl-n{font-size:calc(11.5px * var(--scala));color:var(--tenue);padding-left:4px}
+.cl-e{display:flex;align-items:center;gap:6px;width:100%;border:0;border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border-radius:8px;padding:8px 9px;font:inherit;font-size:calc(13.5px * var(--scala));font-weight:700;text-align:left;min-width:0}
+.cl-e svg{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.cl-e .eo{font-variant-numeric:tabular-nums;opacity:.8;flex:0 0 auto}
+.cl-e .en{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cl-e .ok{margin-left:auto;color:var(--verde)}
+.cl-e .rit{margin-left:auto;color:var(--rosso)}
+.cl-e.auto{border-left-color:#6B4FA0;background:color-mix(in srgb,#6B4FA0 13%,transparent);color:#6B4FA0}
+.cl-e.fatto{border-left-color:var(--verde);background:color-mix(in srgb,var(--verde) 11%,transparent);color:var(--verde)}
+.cl-e.tardi{border-left-color:var(--rosso);background:color-mix(in srgb,var(--rosso) 13%,transparent);color:var(--rosso)}
+.sc-ora .chk-ora{display:flex;align-items:center;gap:7px;font-size:calc(13px * var(--scala));align-self:end;padding-bottom:9px}
+.sc-ora .chk-ora input{width:19px;height:19px}
+
 </style>
 </head>
 <body>
@@ -216,6 +266,7 @@ summary::-webkit-details-marker{display:none}
     <div class="conta" id="vi-conta"></div>
     <div class="lista" id="vi-lista"></div>
   </section>
+  <section class="vista" id="v-cal"></section>
   <section class="vista" id="v-pratiche"></section>
   <section class="vista" id="v-mappa">
     <div class="mp-top"><input id="mp-q" type="search" placeholder="Cerca azienda o persona…" autocomplete="off"><button class="hbt" id="mp-filtri" title="Filtri"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button><button class="hbt" id="mp-colore" title="Colore: livello / esito"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></div>
@@ -230,8 +281,9 @@ summary::-webkit-details-marker{display:none}
 <nav class="tab" id="tab">
   <button data-v="cerca" class="on"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><path d="M16.2 10.8A3 3 0 1 0 15 5.3"/><path d="M17.6 14.1c2 .6 3.4 2.3 3.4 4.3"/></svg>Contatti</button>
   <button data-v="oggi"><svg viewBox="0 0 24 24"><path d="M3 12h3.5l2.2-6.5 4 13 2.3-6.5H21"/></svg>Attività<span class="tn" id="tn-oggi" style="display:none"></span></button>
+  <button data-v="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3.2v3.6M16 3.2v3.6"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="17.8" r="1.1" fill="currentColor" stroke="none"/></svg>Calendario<span class="tn" id="tn-cal" style="display:none"></span></button>
   <button data-v="mappa" id="tab-mappa"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>
-  <button data-v="vicino"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Vicino a me</button>
+  <button data-v="vicino"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Vicino</button>
   <button data-v="pratiche"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM8 7V5h8v2"/><path d="M4 12h16"/></svg>Pratiche<span class="tn" id="tn-prat" style="display:none"></span></button>
   <button data-v="altro" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Altro</button>
 </nav>
@@ -531,7 +583,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.10.0';
+var APP_VER = '1.11.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -558,9 +610,9 @@ var IDB = (function () {
 var salvaT = null;
 function salva(subito) { cacheTx = {}; cacheNum = {}; cacheAtt = null; clearTimeout(salvaT); var f = function () { IDB.scrivi('db', JSON.stringify(DB)); }; if (subito) f(); else salvaT = setTimeout(f, 300); if (SY) SY.pianifica(); }
 function cfg() { return DB.config.config || {}; }
-function ESITI() { return cfg().esiti || ['Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Interessato', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare']; }
+function ESITI() { return cfg().esiti || ['Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Interessato', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare', 'Visita confermata']; }
 function CANALI() { return cfg().canali || ['Telefono', 'Modulo sito', 'Email', 'Visita', 'Tramite Assodimi', 'Fiera']; }
-function POSITIVI() { return cfg().positivi || ['Interessato', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico']; }
+function POSITIVI() { return cfg().positivi || ['Interessato', 'Visita confermata', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico']; }
 function TIPI() { return cfg().tipiPratica || [{ id: 'offerta', nome: 'Offerta', sigla: 'O', colore: '#E8912D' }, { id: 'partner', nome: 'Proposta di partnership', sigla: 'P', colore: '#6B4FA0' }]; }
 function tipoP(q) { var id = (q && q.tipo) || 'offerta', t = TIPI(); return t.filter(function (x) { return x.id === id; })[0] || t[0]; }
 function classeEsito(e) { if (!e || e === 'Da contattare') return ''; if (POSITIVI().indexOf(e) >= 0) return 'es'; if (e === 'Non interessato') return 'no'; return 'at'; }
@@ -629,7 +681,7 @@ function mostraVista(v, ritorno) {
   vista = v; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
   if (ritorno) { var y = scrollV[v] || 0; setTimeout(function () { window.scrollTo(0, y); }, 0); } else window.scrollTo(0, 0);
-  if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
+  if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'cal') disegnaCal(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
   if (v === 'vicino' && mappa) setTimeout(function () { mappa.invalidateSize(); }, 250);
   try { localStorage.setItem('cm.vista', v); } catch (e) {}
 }
@@ -831,6 +883,8 @@ var KPI = [
     calc: function (L, og) { return L.filter(function (c) { return sit(c.id).richiamo === og; }); } },
   { id: 'visite', nome: 'Visite da fare', col: 'var(--sz-sit)', vuoto: 'Nessun contatto con esito «Da visitare» o «Da rivisitare».',
     calc: function (L, og) { return L.filter(function (c) { var k = sit(c.id); return (k.esito === 'Da visitare' || k.esito === 'Da rivisitare') && !(k.richiamo && k.richiamo <= og); }); } },
+  { id: 'confermate', nome: 'Visite confermate', col: '#6B4FA0', vuoto: 'Nessuna visita confermata. Nella scheda scegli l’esito «Visita confermata» e indica giorno e orario.',
+    calc: function (L) { return L.filter(function (c) { return sit(c.id).esito === 'Visita confermata'; }).sort(function (a, b) { var x = sit(a.id), y = sit(b.id); return ((x.richiamo || '9999-99-99') + (x.ora || '99:99')).localeCompare((y.richiamo || '9999-99-99') + (y.ora || '99:99')); }); } },
   { id: 'attivita', nome: 'Attività di oggi', col: 'var(--verde)', ev: true, vuoto: 'Nessuna attività registrata oggi.',
     calc: function (L, og) { return eventiPeriodo(og, og); } },
   { id: 'settimana', nome: 'Attività degli ultimi 7 giorni', col: 'var(--verde)', ev: true, vuoto: 'Nessuna attività negli ultimi sette giorni.',
@@ -854,10 +908,14 @@ var KPI = [
   { id: 'nuovi', nome: 'Contatti aggiunti questo mese', col: 'var(--accent)', vuoto: 'Nessun contatto aggiunto questo mese.',
     calc: function (L, og) { var m = og.slice(0, 7); return L.filter(function (c) { return (c.creato || '').slice(0, 7) === m; }); } }
 ];
-var KPI_BASE = ['scaduti', 'oggi', 'visite', 'attivita', 'prossimi'];
+var KPI_BASE = ['scaduti', 'oggi', 'visite', 'confermate', 'attivita', 'prossimi'];
 function kpiScelti() {
   try { var s = JSON.parse(localStorage.getItem('cm.kpi') || 'null');
-    if (Array.isArray(s)) { var l = s.filter(function (id) { return KPI.some(function (k) { return k.id === id; }); }); if (l.length) return l; } } catch (e) {}
+    if (Array.isArray(s)) { var l = s.filter(function (id) { return KPI.some(function (k) { return k.id === id; }); });
+      if (l.length) {
+        if (!localStorage.getItem('cm.kpi.v2')) { if (l.indexOf('confermate') < 0) { var q = l.indexOf('visite'); l.splice(q >= 0 ? q + 1 : l.length, 0, 'confermate'); } localStorage.setItem('cm.kpi', JSON.stringify(l)); localStorage.setItem('cm.kpi.v2', '1'); }
+        return l;
+      } } } catch (e) {}
   return KPI_BASE.slice();
 }
 function kpiDi(id) { return KPI.filter(function (k) { return k.id === id; })[0]; }
@@ -883,6 +941,119 @@ function disegnaOggi() {
     cnt.appendChild(d); sez.appendChild(cnt); box.appendChild(sez);
   });
   $$('#v-oggi .kpi').forEach(function (b) { b.addEventListener('click', function () { var e = $('#kpi-' + b.dataset.k); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
+}
+
+/* ---------- CALENDARIO (v1.11.0) ----------
+   Visite e telefonate, da fare e fatte, sul mese; tocco su un giorno per vedere l'elenco.
+   visita = esito «Visita confermata» · telefonata = ogni altro richiamo fissato · fatte = eventi in cronologia. */
+var CAL_ICO = {
+  auto: '<svg class="ei" viewBox="0 0 24 24"><path d="M5 11l1.6-4.3A2 2 0 0 1 8.5 5.4h7a2 2 0 0 1 1.9 1.3L19 11"/><rect x="3" y="11" width="18" height="5" rx="1.2"/><circle cx="7" cy="17.6" r="1.5"/><circle cx="17" cy="17.6" r="1.5"/></svg>',
+  tel: '<svg class="ei" viewBox="0 0 24 24"><path d="M5 3.5h3l1.5 4.2-2 1.3a10.5 10.5 0 0 0 5.5 5.5l1.3-2 4.2 1.5v3a2 2 0 0 1-2.2 2A16 16 0 0 1 3.5 5.7 2 2 0 0 1 5 3.5z"/></svg>'
+};
+var CAL_MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+var CAL_GG = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica'];
+var CAL = { modo: 'mese', rif: '', sel: '', vis: true, tel: true, fat: true };
+function calData(iso) { var p = String(iso).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function calIso(d) { function z(n) { return (n < 10 ? '0' : '') + n; } return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); }
+function calSomma(iso, g) { var d = calData(iso); d.setDate(d.getDate() + g); return calIso(d); }
+function calMesi(iso, m) { var d = calData(iso); d.setDate(1); d.setMonth(d.getMonth() + m); return calIso(d); }
+function calLun(iso) { var d = calData(iso), w = (d.getDay() + 6) % 7; d.setDate(d.getDate() - w); return calIso(d); }
+function calGiornoIt(iso) { var d = calData(iso); return CAL_GG[(d.getDay() + 6) % 7] + ' ' + d.getDate() + ' ' + CAL_MESI[d.getMonth()]; }
+function calOraTxt(e) { return e.o ? 'ore ' + e.o : (e.libera ? 'orario libero' : ''); }
+function calTipoTxt(e) { return (e.tipo === 'auto' ? 'visita' : 'telefonata') + (e.fatto ? ' fatta' : ' da fare'); }
+function calEventi() {
+  var ev = [], L = lista(), dentro = {};
+  L.forEach(function (c) {
+    dentro[c.id] = 1;
+    var k = sit(c.id);
+    if (k.richiamo) ev.push({ d: k.richiamo, o: k.ora || '', tipo: k.esito === 'Visita confermata' ? 'auto' : 'tel', fatto: false, c: c, libera: !!k.oraLibera, nota: k.oraNota || '', passo: k.passo || '' });
+  });
+  Object.keys(DB.eventi).forEach(function (x) {
+    var v = DB.eventi[x]; if (!v || !v.d || !dentro[v.cid] || !eAttivita(v)) return;
+    var t = v.c === 'Visita' ? 'auto' : v.c === 'Telefono' ? 'tel' : ''; if (!t) return;
+    ev.push({ d: v.d, o: v.o || '', tipo: t, fatto: true, c: DB.contatti[v.cid], nota: v.t || v.n || '' });
+  });
+  return ev.filter(function (e) { return e.c; });
+}
+function calOrdina(l) {
+  return l.slice().sort(function (a, b) {
+    if (a.d !== b.d) return a.d < b.d ? -1 : 1;
+    var x = a.o || (a.libera ? '00:01' : '99:99'), y = b.o || (b.libera ? '00:01' : '99:99');
+    return x === y ? a.c.nome.localeCompare(b.c.nome, 'it') : (x < y ? -1 : 1);
+  });
+}
+function calClasse(e, og) {
+  return 'cl-e ' + e.tipo + (e.fatto ? ' fatto' : ' dafare') + (!e.fatto && e.d < og ? ' tardi' : '') ;
+}
+function calRiga(e, og) {
+  return '<button class="' + calClasse(e, og) + '" data-id="' + esc(e.c.id) + '">' + CAL_ICO[e.tipo] +
+    '<span class="eo">' + esc(e.o || (e.libera ? 'libero' : '')) + '</span><span class="en">' + esc(e.c.nome) + '</span>' +
+    (e.fatto ? '<span class="ok">&#10003;</span>' : (e.d < og ? '<span class="rit">!</span>' : '')) + '</button>';
+}
+function disegnaCal() {
+  var og = oggi(), box = $('#v-cal');
+  if (!CAL.rif) { CAL.rif = og; CAL.sel = og; }
+  var tutte = calEventi().filter(function (e) {
+    if (e.tipo === 'auto' && !CAL.vis) return false;
+    if (e.tipo === 'tel' && !CAL.tel) return false;
+    if (e.fatto && !CAL.fat) return false;
+    return true;
+  });
+  var per = {}; tutte.forEach(function (e) { (per[e.d] = per[e.d] || []).push(e); });
+  var rd = calData(CAL.rif), dal, al, tit;
+  if (CAL.modo === 'mese') {
+    tit = CAL_MESI[rd.getMonth()].charAt(0).toUpperCase() + CAL_MESI[rd.getMonth()].slice(1) + ' ' + rd.getFullYear();
+    dal = calIso(new Date(rd.getFullYear(), rd.getMonth(), 1)); al = calIso(new Date(rd.getFullYear(), rd.getMonth() + 1, 0));
+  } else { dal = CAL.rif; al = calSomma(dal, 59); tit = 'Dal ' + dataIt(dal); }
+  var inPer = tutte.filter(function (e) { return e.d >= dal && e.d <= al; });
+  function cnt(t, f) { return inPer.filter(function (e) { return e.tipo === t && e.fatto === f; }).length; }
+  /* pallino sul tasto: visite e telefonate da fare, scadute o di oggi */
+  var urg = tutte.filter(function (e) { return !e.fatto && e.d <= og; }).length;
+  var tn = $('#tn-cal'); if (tn) { tn.style.display = urg ? '' : 'none'; tn.textContent = num(urg); }
+
+  var h = [];
+  h.push('<div class="cl-testa"><div class="cl-nav"><button id="cl-prec" title="Indietro">&#9664;</button><b id="cl-tit">' + esc(tit) + '</b><button id="cl-succ" title="Avanti">&#9654;</button><button class="cl-oggi" id="cl-oggi">Oggi</button></div>');
+  h.push('<div class="cl-seg">' + [['mese', 'Mese'], ['agenda', 'Agenda']].map(function (x) { return '<button data-m="' + x[0] + '"' + (CAL.modo === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>');
+  h.push('<div class="cl-fil">' +
+    '<button class="chip' + (CAL.vis ? ' on' : '') + '" data-f="vis">' + CAL_ICO.auto + 'Visite</button>' +
+    '<button class="chip' + (CAL.tel ? ' on' : '') + '" data-f="tel">' + CAL_ICO.tel + 'Telefonate</button>' +
+    '<button class="chip' + (CAL.fat ? ' on' : '') + '" data-f="fat">&#10003; Fatte</button></div>');
+  h.push('<div class="cl-kpi"><span class="auto">' + CAL_ICO.auto + num(cnt('auto', false)) + ' da fare</span><span class="tel">' + CAL_ICO.tel + num(cnt('tel', false)) + ' da fare</span><span class="fatto">&#10003; ' + num(cnt('auto', true) + cnt('tel', true)) + ' fatte</span></div></div>');
+
+  if (CAL.modo === 'mese') {
+    var inizio = calLun(dal);
+    h.push('<div class="cl-gg">' + CAL_GG.map(function (x) { return '<span>' + x.slice(0, 1).toUpperCase() + '</span>'; }).join('') + '</div><div class="cl-celle">');
+    for (var i = 0; i < 42; i++) {
+      var d = calSomma(inizio, i), dd = calData(d), fuori = dd.getMonth() !== rd.getMonth(), l = per[d] || [];
+      var pal = {}; l.forEach(function (e) { pal[(e.fatto ? 'f' : e.d < og ? 'r' : e.tipo)] = 1; });
+      h.push('<button class="cl-c' + (fuori ? ' fuori' : '') + (d === og ? ' oggi' : '') + (d === CAL.sel ? ' sel' : '') + '" data-d="' + d + '"><span class="n">' + dd.getDate() + '</span><span class="pt">' +
+        ['auto', 'tel', 'r', 'f'].filter(function (x) { return pal[x]; }).slice(0, 4).map(function (x) { return '<i class="' + x + '"></i>'; }).join('') + '</span></button>');
+    }
+    h.push('</div>');
+    var lg = calOrdina(per[CAL.sel] || []);
+    h.push('<section class="sz bl" style="--c:var(--accent)"><h3>' + esc(calGiornoIt(CAL.sel).charAt(0).toUpperCase() + calGiornoIt(CAL.sel).slice(1)) + '<span class="pill">' + num(lg.length) + '</span></h3><div class="c"><div class="cl-el">');
+    if (!lg.length) h.push('<div class="vuoto">Niente in programma in questo giorno.</div>');
+    lg.forEach(function (e) { h.push('<div class="cl-r">' + calRiga(e, og) + '<span class="cl-n">' + esc([calTipoTxt(e), calOraTxt(e), e.nota, e.c.prov].filter(Boolean).join(' · ')) + '</span></div>'); });
+    h.push('</div></div></section>');
+  } else {
+    var la = calOrdina(inPer), ug = '';
+    h.push('<div class="cl-ag">');
+    if (!la.length) h.push('<div class="vuoto">Nessuna visita e nessuna telefonata nei prossimi 60 giorni.</div>');
+    la.forEach(function (e) {
+      if (e.d !== ug) { ug = e.d; h.push('<div class="cl-gd' + (e.d === og ? ' oggi' : '') + '">' + esc(calGiornoIt(e.d)) + '</div>'); }
+      h.push('<div class="cl-r">' + calRiga(e, og) + '<span class="cl-n">' + esc([calTipoTxt(e), calOraTxt(e), e.nota, e.c.prov].filter(Boolean).join(' · ')) + '</span></div>');
+    });
+    h.push('</div>');
+  }
+  box.innerHTML = h.join('');
+  $('#cl-prec').addEventListener('click', function () { CAL.rif = CAL.modo === 'mese' ? calMesi(CAL.rif, -1) : calSomma(CAL.rif, -30); disegnaCal(); });
+  $('#cl-succ').addEventListener('click', function () { CAL.rif = CAL.modo === 'mese' ? calMesi(CAL.rif, 1) : calSomma(CAL.rif, 30); disegnaCal(); });
+  $('#cl-oggi').addEventListener('click', function () { CAL.rif = oggi(); CAL.sel = oggi(); disegnaCal(); });
+  $$('#v-cal .cl-seg button').forEach(function (b) { b.addEventListener('click', function () { CAL.modo = b.dataset.m; disegnaCal(); }); });
+  $$('#v-cal .cl-fil .chip').forEach(function (b) { b.addEventListener('click', function () { CAL[b.dataset.f] = !CAL[b.dataset.f]; disegnaCal(); }); });
+  $$('#v-cal .cl-c').forEach(function (b) { b.addEventListener('click', function () { CAL.sel = b.dataset.d; disegnaCal(); }); });
+  $$('#v-cal .cl-e').forEach(function (b) { b.addEventListener('click', function () { apriScheda(b.dataset.id); }); });
+  setTimeout(aggiornaFab, 60);
 }
 
 /* VICINO A ME */
@@ -1031,6 +1202,7 @@ function apriScheda(id) {
   /* situazione (modificabile) */
   h.push('<div class="sz sz-sit"><h3>Situazione' + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + '</h3><div class="c form">');
   h.push('<div class="due"><label>Esito <select id="sc-esito"><option value="">Da contattare</option>' + ESITI().filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option' + (k.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
+  h.push('<div class="sc-ora" id="sc-ora-box"' + (k.esito === 'Visita confermata' ? '' : ' style="display:none"') + '><div class="due"><label>Orario della visita <input type="time" id="sc-ora" value="' + esc(k.ora || '') + '"' + (k.oraLibera ? ' disabled' : '') + '></label><label class="chk-ora"><input type="checkbox" id="sc-ora-lib"' + (k.oraLibera ? ' checked' : '') + '> Orario libero</label></div><label>Nota sull\'orario <input type="text" id="sc-ora-nota" value="' + esc(k.oraNota || '') + '" placeholder="per esempio: in mattinata dopo le 11:00"></label></div>');
   h.push('<label>Referente <input type="text" id="sc-ref" value="' + esc(k.referente || '') + '" placeholder="Persona con cui parli"></label>');
   h.push('<label style="color:var(--sz-prom)">Prossimo passo <textarea id="sc-passo" style="background:var(--giallo)">' + esc(k.passo || '') + '</textarea></label>');
   h.push('<div class="ds" style="font-size:calc(12px * var(--scala));color:var(--tenue)">' + (k.data ? 'Ultimo contatto ' + dataIt(k.data) + (k.canale ? ' · ' + esc(k.canale) : '') : 'Mai contattato') + '</div>');
@@ -1086,7 +1258,14 @@ function apriScheda(id) {
   var nv = $('#sc-naviga'); if (nv) nv.addEventListener('click', function (ev) { ev.preventDefault(); naviga(c); });
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
   document.body.classList.add('sc-aperta');
-  $('#sc-salva-sit').addEventListener('click', function () { salvaSituazione(id, { esito: $('#sc-esito').value, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim() }); });
+  var selE = $('#sc-esito'), boxO = $('#sc-ora-box'), libO = $('#sc-ora-lib');
+  if (selE && boxO) selE.addEventListener('change', function () { boxO.style.display = selE.value === 'Visita confermata' ? '' : 'none'; });
+  if (libO) libO.addEventListener('change', function () { var i = $('#sc-ora'); i.disabled = libO.checked; if (libO.checked) i.value = ''; });
+  $('#sc-salva-sit').addEventListener('click', function () {
+    var vc = $('#sc-esito').value === 'Visita confermata', lb = libO && libO.checked;
+    salvaSituazione(id, { esito: $('#sc-esito').value, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim(),
+      ora: vc && !lb ? $('#sc-ora').value : '', oraLibera: vc && lb ? 1 : '', oraNota: vc ? $('#sc-ora-nota').value.trim() : '' });
+  });
   $$('.stati button', S).forEach(function (b) { b.addEventListener('click', function () { var q2 = Object.assign({}, DB.pratiche[id], { stato: b.dataset.st, _m: Date.now() }); DB.pratiche[id] = q2; salva(); toast('Pratica: ' + b.dataset.st); apriScheda(id); }); });
   $('#ev-salva').addEventListener('click', function () { registraEvento(id); });
 }
@@ -1151,7 +1330,7 @@ function naviga(c) {
 }
 function salvaSituazione(id, o) {
   var k = Object.assign({}, DB.situazioni[id] || { id: id }), prima = k.esito || '';
-  ['esito', 'richiamo', 'referente', 'passo'].forEach(function (f) { if (o[f]) k[f] = o[f]; else delete k[f]; });
+  ['esito', 'richiamo', 'referente', 'passo', 'ora', 'oraLibera', 'oraNota'].forEach(function (f) { if (o[f]) k[f] = o[f]; else delete k[f]; });
   k.id = id; k._m = Date.now(); DB.situazioni[id] = k;
   if ((o.esito || '') !== prima) { var vid = uid('v_'); DB.eventi[vid] = { id: vid, cid: id, d: oggi(), o: ora(), c: k.canale || '', e: o.esito || '', n: '', a: 1, _m: Date.now() }; k.data = oggi(); }
   salva(); toast('Situazione salvata'); apriScheda(id);
