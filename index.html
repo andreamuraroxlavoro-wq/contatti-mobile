@@ -181,6 +181,7 @@ summary::-webkit-details-marker{display:none}
 .bl{scroll-margin-top:calc(var(--hdrH,56px) + 10px)}.bl > .c{padding:0}.bl .lista{border:0;background:transparent;box-shadow:none;border-radius:0;margin:0}.bl .lista .riga:last-child{border-bottom:0}.bl .vuoto{padding:14px}.fab{position:fixed;right:14px;bottom:calc(84px + var(--sab));width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:28;opacity:0;transform:scale(.7);transition:opacity .18s ease,transform .18s ease}.fab.on{display:flex;opacity:1;transform:scale(1)}.fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}.fab.su svg{transform:rotate(180deg)}body.mappa-on .fab,body.sc-aperta .fab{display:none}
 .fab{background:var(--verde)}
 .fab.sopra{z-index:3100;bottom:calc(22px + var(--sab))}
+.fab.mirato{box-shadow:0 0 0 3px color-mix(in srgb,var(--verde) 35%,transparent),0 8px 22px rgba(0,0,0,.28)}
 .fab svg{stroke-width:2.6}
 .menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .menu-velo{position:absolute;top:0;right:0;bottom:0;left:0;display:block;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
@@ -627,7 +628,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.16.1';
+var APP_VER = '1.17.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -722,7 +723,7 @@ var scrollV = {};
 function mostraVista(v, ritorno) {
   if (!ritorno) scrollV[vista] = window.scrollY;
   if (vista !== 'altro') vistaPrima = vista;
-  vista = v; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  vista = v; if (v !== 'cerca' && v !== 'vicino') inVista = []; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
   if (ritorno) { var y = scrollV[v] || 0; setTimeout(function () { window.scrollTo(0, y); }, 0); } else window.scrollTo(0, 0);
   if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'cal') disegnaCal(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
@@ -851,10 +852,12 @@ function disegnaChips() {
   $$('button.chip', box).forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.f === 'azzera') { F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '' }; $('#q').value = ''; } else F[b.dataset.f] = F[b.dataset.f] === b.dataset.val ? '' : b.dataset.val; mostraN = 150; disegnaCerca(); }); });
   $$('select.chip', box).forEach(function (s) { s.addEventListener('change', function () { F[s.dataset.f] = s.value; mostraN = 150; disegnaCerca(); }); });
 }
+var inVista = []; /* contatti attualmente mostrati: se è uno solo, il tasto «+» lo compila da solo */
 function disegnaCerca() {
   try { localStorage.setItem('cm.filtri', JSON.stringify(F)); } catch (e) {}
   disegnaChips();
   var L = filtra(), box = $('#lista'); box.innerHTML = '';
+  if (vista === 'cerca') { inVista = L; aggiornaFab(); }
   if (!conta()) { box.innerHTML = '<div class="benvenuto"><b>Nessun contatto ancora</b>Collega Google Drive dal <b>menu in alto a destra → Sincronizzazione</b>: i contatti arrivano da GESTIONE CONTATTI sul Mac.</div>'; $('#conta').textContent = ''; return; }
   var tot = lista().length; $('#conta').textContent = num(L.length) + (L.length === 1 ? ' contatto' : ' contatti') + (L.length !== tot ? ' su ' + num(tot) : '') + (!tuttiAccesi() ? ' · ' + gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ') : '');
   if (!L.length) { box.innerHTML = '<div class="vuoto">Nessun contatto con questi filtri.</div>'; return; }
@@ -1387,6 +1390,7 @@ function disegnaVicino() {
   conta_.textContent = num(L.length) + ' contatti entro ' + raggio + ' km' + (L.length > 200 ? ' (in elenco i 200 più vicini)' : '');
   box.innerHTML = ''; var frag = document.createDocumentFragment();
   L.slice(0, 200).forEach(function (x) { frag.appendChild(rigaContatto(x.c, '<span class="km">' + kmIt(x.km) + ' km</span>')); }); box.appendChild(frag);
+  if (vista === 'vicino') { inVista = L.map(function (x) { return x.c; }); aggiornaFab(); }
   if (!L.length) box.innerHTML = '<div class="vuoto">Nessun contatto con coordinate entro ' + raggio + ' km.</div>';
   if (window.L) {
     if (!mappa) { mappa = window.L.map('mappa', { zoomControl: false }); window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(mappa); livelloPin = window.L.layerGroup().addTo(mappa); }
@@ -1892,14 +1896,22 @@ function applicaAggiornamento() {
   Promise.all(p).catch(function () {}).then(function () { location.replace(location.pathname + '?v=' + Date.now()); });
 }
 /* ---------- tasto fluttuante: mette in calendario una nuova attività ---------- */
+/* il cliente che si capisce da solo: la scheda aperta, oppure l'unico contatto rimasto in elenco */
+function clienteContesto() {
+  if (document.body.classList.contains('sc-aperta') && schedaId) return schedaId;
+  if ((vista === 'cerca' || vista === 'vicino') && inVista.length === 1) return inVista[0].id;
+  return '';
+}
 function aggiornaFab() {
   var f = $('#fab'); if (!f) return;
   f.classList.add('on');
   f.classList.toggle('sopra', document.body.classList.contains('sc-aperta'));
+  var c = clienteContesto() ? DB.contatti[clienteContesto()] : null;
+  f.title = c ? 'Aggiungi per ' + c.nome : 'Visita, telefonata o mail da programmare, oppure il report di una cosa già fatta';
+  f.classList.toggle('mirato', !!c);
 }
 $('#fab').addEventListener('click', function () {
-  var cid = document.body.classList.contains('sc-aperta') ? (schedaId || '') : '';
-  attForm({ cid: cid, d: (vista === 'cal' && CAL.sel) ? CAL.sel : oggi() });
+  attForm({ cid: clienteContesto(), d: (vista === 'cal' && CAL.sel) ? CAL.sel : oggi() });
 });
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
