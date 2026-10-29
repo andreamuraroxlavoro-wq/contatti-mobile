@@ -615,7 +615,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.13.1';
+var APP_VER = '1.13.2';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1092,7 +1092,7 @@ function calEventi() {
     ev.push({ k: 'cron', id: v.id, d: v.d, o: v.o || '', tipo: t, fatto: true, c: vivi[v.cid], nota: v.t || v.n || '', oraNota: '' });
   });
   var cron = {}; ev.forEach(function (e) { if (e.k === 'cron') cron[e.c.id + '|' + e.d + '|' + e.tipo] = 1; });
-  return ev.filter(function (e) { return !(e.k === 'app' && e.fatto && cron[e.c.id + '|' + e.d + '|' + e.tipo]); });
+  return ev.filter(function (e) { return !(e.k === 'app' && cron[e.c.id + '|' + e.d + '|' + e.tipo]); });
 }
 function calOrdina(l) {
   return l.slice().sort(function (a, b) {
@@ -1172,8 +1172,31 @@ function disegnaCal() {
   $$('#v-cal .cl-fil .chip[data-t]').forEach(function (b) { b.addEventListener('click', function () { CAL.tipi[b.dataset.t] = CAL.tipi[b.dataset.t] ? 0 : 1; calRicorda(); disegnaCal(); }); });
   $$('#v-cal .cl-fil .chip[data-f]').forEach(function (b) { b.addEventListener('click', function () { CAL[b.dataset.f] = CAL[b.dataset.f] ? 0 : 1; calRicorda(); disegnaCal(); }); });
   $$('#v-cal .cl-c').forEach(function (b) { b.addEventListener('click', function () { CAL.sel = b.dataset.d; disegnaCal(); }); });
-  $$('#v-cal .cl-e').forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.k === 'app') attForm({ id: b.dataset.id }); else apriScheda(b.dataset.c); }); });
+  $$('#v-cal .cl-e').forEach(function (b) { b.addEventListener('click', function () { calApri(b.dataset.k, b.dataset.id, b.dataset.c); }); });
   setTimeout(aggiornaFab, 60);
+}
+
+/* toccando una riga del calendario: un «report da fare» porta direttamente al modulo del report,
+   l'attività in programma si corregge, l'evento già registrato apre la scheda del cliente */
+function calApri(k, id, cid) {
+  if (k === 'cron') { apriScheda(cid); return; }
+  var a = attArchivio()[id]; if (!a) return;
+  if (a.tipo === 'report' && !a.fatto) { calRegistra(a); return; }
+  attForm({ id: id });
+}
+function calRegistra(a) {
+  var canale = { visita: 'Visita', telefonata: 'Telefono', mail: 'Email' }[a.tipo] || '';
+  apriReportCliente(a.cid, { d: a.d, o: a.o || '', c: canale, t: a.nota || '' });
+}
+function apriReportCliente(cid, pre) {
+  apriScheda(cid);
+  setTimeout(function () {
+    var d = $('#sc-nuovo'); if (!d) return;
+    d.open = true;
+    if (pre) ['d', 'o', 'c', 't'].forEach(function (k) { var e = $('#ev-' + k); if (e && pre[k]) e.value = pre[k]; });
+    d.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var t = $('#ev-t'); if (t) setTimeout(function () { t.focus(); }, 350);
+  }, 220);
 }
 
 /* ---------- foglio «attività» ---------- */
@@ -1258,7 +1281,7 @@ function bloccoProgramma(id) {
 }
 function agganciaProgramma(id) {
   var p = $('#sc-piu'); if (p) p.addEventListener('click', function () { attForm({ cid: id }); });
-  $$('#scheda [data-att]').forEach(function (b) { b.addEventListener('click', function () { attForm({ id: b.dataset.att }); }); });
+  $$('#scheda [data-att]').forEach(function (b) { b.addEventListener('click', function () { calApri('app', b.dataset.att, id); }); });
 }
 
 /* VICINO A ME */
