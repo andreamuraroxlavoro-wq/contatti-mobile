@@ -176,6 +176,7 @@ summary::-webkit-details-marker{display:none}
 .leaflet-container{font:inherit}
 .pin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .pin.me{background:var(--accent);width:16px;height:16px;box-shadow:0 0 0 4px rgba(42,120,214,.3)}
+.agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
 .toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:#0b0b0b;color:#fff;padding:10px 16px;border-radius:12px;font-size:calc(14px * var(--scala));z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:.95}
 .opz{background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--ombra)}
@@ -233,6 +234,7 @@ summary::-webkit-details-marker{display:none}
   <button data-v="altro" style="display:none"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Altro</button>
 </nav>
 <div id="scheda"></div>
+<div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
 <div class="toast" id="toast"></div>
 <script src="lib/leaflet.js" onerror="window.L=undefined"></script>
 <script>
@@ -509,7 +511,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.6.3';
+var APP_VER = '1.7.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1034,7 +1036,7 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>App per navigare</span><span class="sp"></span><select id="op-nav" class="chip"><option value=""' + (navigatore() === '' ? ' selected' : '') + '>Chiedi al primo uso</option>' + NAVIGATORI.map(function (n) { return '<option value="' + n.id + '"' + (navigatore() === n.id ? ' selected' : '') + '>' + n.nome + '</option>'; }).join('') + '</select></div>');
   h.push('<div class="riga-o"><span>Dimensione testo</span><span class="sp"></span><div class="seg">' + [14, 16, 18].map(function (f) { return '<button data-fs="' + f + '"' + (fs === f ? ' class="on"' : '') + '>' + (f === 14 ? 'Piccolo' : f === 16 ? 'Normale' : 'Grande') + '</button>'; }).join('') + '</div></div></div>');
   h.push('<div class="opz"><h2>Dati</h2><div class="riga-o"><span>I contatti si modificano su GESTIONE CONTATTI (Mac). Dal telefono registri eventi, esiti, richiami, prossimi passi e stati delle pratiche: tornano al Mac alla prima sincronizzazione.</span></div><div class="az"><button class="btn peri" id="dt-azzera">Cancella i dati su questo telefono</button></div></div>');
-  h.push('<div class="opz"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
+  h.push('<div class="opz"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="riga-o"><span>Aggiornamento</span><span class="sp"></span><button class="btn mini" id="agg-chk">Controlla</button></div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
   box.innerHTML = h.join('');
   $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); disegnaAltro(); }); });
   $('#sy-url').addEventListener('change', function () { if (SY && this.value.trim()) SY.imposta({ serverUrl: this.value.trim(), tipo: 'server' }).then(function () { SY.avvia(); disegnaAltro(); }); });
@@ -1044,6 +1046,7 @@ function disegnaAltro() {
   $('#op-nav').addEventListener('change', function () { try { if (this.value) localStorage.setItem('cm.nav', this.value); else localStorage.removeItem('cm.nav'); } catch (e) {} toast('App di navigazione: ' + (this.options[this.selectedIndex].text)); });
   $$('.seg [data-t]', box).forEach(function (b) { b.addEventListener('click', function () { setTema(b.dataset.t); disegnaAltro(); }); });
   $$('.seg [data-fs]', box).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('cm.fs', b.dataset.fs); applicaFs(); disegnaAltro(); }); });
+  $('#agg-chk').addEventListener('click', function () { toast('Controllo in corso…'); controllaAggiornamenti(true); });
   $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
 function tema() { return localStorage.getItem('cm.tema') || 'auto'; }
@@ -1084,6 +1087,32 @@ function avviaSync() {
   SY.carica().then(function () { SY.avvia(); if (vista === 'altro') disegnaAltro(); });
 }
 
+/* ---------- aggiornamenti dell'app ---------- */
+/* l'app pubblicata puo' cambiare mentre quella installata resta in memoria: controllo la versione in rete e avviso */
+var aggUltimo = 0, aggVersione = '';
+function barraAgg(mostra) {
+  var b = $('#agg'); if (!b) return;
+  if (!mostra) { b.classList.remove('on'); return; }
+  $('#agg-txt', b).innerHTML = 'Nuova versione <b>v' + esc(aggVersione) + '</b> disponibile';
+  b.classList.add('on');
+}
+function controllaAggiornamenti(manuale) {
+  var ora = Date.now();
+  if (!manuale && ora - aggUltimo < 600000) return;
+  aggUltimo = ora;
+  fetch('index.html?v=' + ora, { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (x) {
+    var m = x.match(/APP_VER\s*=\s*'([\d.]+)'/); if (!m) return;
+    if (m[1] === APP_VER) { aggVersione = ''; barraAgg(false); if (manuale) toast('Hai già l’ultima versione (v' + APP_VER + ')'); return; }
+    aggVersione = m[1]; barraAgg(true);
+  }).catch(function () { if (manuale) toast('Controllo non riuscito: serve la rete', 3000); });
+}
+function applicaAggiornamento() {
+  toast('Aggiorno l’app…', 6000);
+  var p = [];
+  try { if (window.caches) p.push(caches.keys().then(function (k) { return Promise.all(k.map(function (x) { return caches.delete(x); })); })); } catch (e) {}
+  try { if (navigator.serviceWorker) p.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+  Promise.all(p).catch(function () {}).then(function () { location.replace(location.pathname + '?v=' + Date.now()); });
+}
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
@@ -1094,6 +1123,11 @@ IDB.leggi('db').then(function (t) {
   try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
   disegnaGruppi();
   mostraVista(v); avviaSync();
+  $('#agg-ora').addEventListener('click', applicaAggiornamento);
+  $('#agg-no').addEventListener('click', function () { barraAgg(false); });
+  controllaAggiornamenti();
+  setInterval(function () { if (!document.hidden) controllaAggiornamenti(); }, 1800000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) controllaAggiornamenti(); });
   if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
 });
 window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { return MP; }, apriScheda: apriScheda, mostraVista: mostraVista };
