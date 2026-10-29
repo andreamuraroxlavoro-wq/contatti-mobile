@@ -244,6 +244,9 @@ summary::-webkit-details-marker{display:none}
 .cl-ag{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
 .cl-gd{font-weight:800;font-size:calc(13px * var(--scala));text-transform:capitalize;border-bottom:1px solid var(--bordo);padding:10px 0 4px}
 .cl-gd.oggi{color:var(--accent)}
+.cl-gd.we{color:var(--rosso)}
+.cl-gd i{font-style:normal;font-size:calc(11.5px * var(--scala));font-weight:700;margin-left:6px}
+.sz h3 .pill.fs{background:color-mix(in srgb,var(--rosso) 14%,transparent);color:var(--rosso)}
 .cl-r{display:flex;flex-direction:column;gap:2px}
 .cl-n{font-size:calc(11.5px * var(--scala));color:var(--tenue);padding-left:4px}
 .cl-e{display:flex;align-items:center;gap:6px;width:100%;border:0;border-left:3px solid var(--tc,var(--accent));background:color-mix(in srgb,var(--tc,var(--accent)) 12%,transparent);color:var(--tc,var(--accent));border-radius:8px;padding:8px 9px;font:inherit;font-size:calc(13.5px * var(--scala));font-weight:700;text-align:left;min-width:0}
@@ -612,7 +615,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.13.0';
+var APP_VER = '1.13.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1039,6 +1042,31 @@ function calMesi(iso, m) { var d = calData(iso); d.setDate(1); d.setMonth(d.getM
 function calLun(iso) { var d = calData(iso), w = (d.getDay() + 6) % 7; d.setDate(d.getDate() - w); return calIso(d); }
 function calFestivo(iso) { var g = calData(iso).getDay(); return g === 0 || g === 6; }
 function calGiornoIt(iso) { var d = calData(iso); return CAL_GG[(d.getDay() + 6) % 7] + ' ' + d.getDate() + ' ' + CAL_MESI[d.getMonth()]; }
+/* ---------- giorni festivi italiani ----------
+   Servono solo a colorare il giorno come sabato e domenica: niente blocchi, l'attività si può fissare lo stesso. */
+var FESTE_FISSE = { '01-01': 'Capodanno', '01-06': 'Epifania', '04-25': 'Festa della Liberazione', '05-01': 'Festa del lavoro', '06-02': 'Festa della Repubblica', '08-15': 'Ferragosto', '11-01': 'Ognissanti', '12-08': 'Immacolata Concezione', '12-25': 'Natale', '12-26': 'Santo Stefano' };
+var FESTE_ANNO = {};
+function calPasqua(y) {
+  var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4,
+      f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30,
+      i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7,
+      m = Math.floor((a + 11 * h + 22 * l) / 451), mese = Math.floor((h + l - 7 * m + 114) / 31), gg = ((h + l - 7 * m + 114) % 31) + 1;
+  function z(n) { return (n < 10 ? '0' : '') + n; }
+  return y + '-' + z(mese) + '-' + z(gg);
+}
+function calFesta(iso) {
+  var y = String(iso).slice(0, 4);
+  if (!FESTE_ANNO[y]) {
+    var m = {};
+    Object.keys(FESTE_FISSE).forEach(function (k) { m[y + '-' + k] = FESTE_FISSE[k]; });
+    var p = calPasqua(+y); m[p] = 'Pasqua'; m[calSomma(p, 1)] = 'Lunedì dell\'Angelo';
+    FESTE_ANNO[y] = m;
+  }
+  return FESTE_ANNO[y][iso] || '';
+}
+/* giorno da colorare: sabato, domenica o festa comandata */
+function calRosso(iso) { return calFestivo(iso) || !!calFesta(iso); }
+
 
 var CAL = { modo: 'mese', rif: '', sel: '', tipi: { visita: 1, telefonata: 1, mail: 0, report: 1 }, fatte: 1 };
 (function () {
@@ -1115,12 +1143,12 @@ function disegnaCal() {
       var d = calSomma(inizio, i);
       var dd = calData(d), fuori = dd.getMonth() !== rd.getMonth(), l = per[d] || [];
       var pal = {}; l.forEach(function (e) { pal[e.fatto ? 'f' : e.tipo] = 1; if (!e.fatto && e.d < og) pal.r = 1; });
-      h.push('<button class="cl-c' + (fuori ? ' fuori' : '') + (calFestivo(d) ? ' we' : '') + (d === og ? ' oggi' : '') + (d === CAL.sel ? ' sel' : '') + (pal.r ? ' tardi' : '') + '" data-d="' + d + '"><span class="n">' + dd.getDate() + '</span><span class="pt">' +
+      h.push('<button class="cl-c' + (fuori ? ' fuori' : '') + (calRosso(d) ? ' we' : '') + (d === og ? ' oggi' : '') + (d === CAL.sel ? ' sel' : '') + (pal.r ? ' tardi' : '') + '" data-d="' + d + '"' + (calFesta(d) ? ' title="' + esc(calFesta(d)) + '"' : '') + '><span class="n">' + dd.getDate() + '</span><span class="pt">' +
         ['visita', 'telefonata', 'mail', 'report', 'f'].filter(function (x) { return pal[x]; }).slice(0, 4).map(function (x) { return '<i class="p-' + x + '"></i>'; }).join('') + '</span></button>');
     }
     h.push('</div>');
     var lg = calOrdina(per[CAL.sel] || []);
-    h.push('<section class="sz bl" style="--c:var(--accent)"><h3>' + esc(calGiornoIt(CAL.sel).charAt(0).toUpperCase() + calGiornoIt(CAL.sel).slice(1)) + '<span class="pill">' + num(lg.length) + '</span></h3><div class="c"><div class="cl-el">');
+    h.push('<section class="sz bl" style="--c:var(--accent)"><h3>' + esc(calGiornoIt(CAL.sel).charAt(0).toUpperCase() + calGiornoIt(CAL.sel).slice(1)) + (calFesta(CAL.sel) ? '<span class="pill fs">' + esc(calFesta(CAL.sel)) + '</span>' : '') + '<span class="pill">' + num(lg.length) + '</span></h3><div class="c"><div class="cl-el">');
     if (!lg.length) h.push('<div class="vuoto">Niente in programma in questo giorno.</div>');
     lg.forEach(function (e) { h.push('<div class="cl-r">' + calRiga(e, og) + '<span class="cl-n">' + esc([calStatoTxt(e), calOraTxt(e), e.oraNota, e.nota, e.c.prov].filter(Boolean).join(' · ')) + '</span></div>'); });
     h.push('<button class="btn" id="cl-piu-g">+ Aggiungi attività in questo giorno</button>');
@@ -1130,7 +1158,7 @@ function disegnaCal() {
     h.push('<div class="cl-ag">');
     if (!la.length) h.push('<div class="vuoto">Nessuna attività nei prossimi 60 giorni. Con <b>+ Attività</b> metti in programma una visita, una telefonata o una mail.</div>');
     la.forEach(function (e) {
-      if (e.d !== ug) { ug = e.d; h.push('<div class="cl-gd' + (e.d === og ? ' oggi' : '') + '">' + esc(calGiornoIt(e.d)) + '</div>'); }
+      if (e.d !== ug) { ug = e.d; h.push('<div class="cl-gd' + (e.d === og ? ' oggi' : '') + (calRosso(e.d) ? ' we' : '') + '">' + esc(calGiornoIt(e.d)) + (calFesta(e.d) ? ' <i>' + esc(calFesta(e.d)) + '</i>' : '') + '</div>'); }
       h.push('<div class="cl-r">' + calRiga(e, og) + '<span class="cl-n">' + esc([calStatoTxt(e), calOraTxt(e), e.oraNota, e.nota, e.c.prov].filter(Boolean).join(' · ')) + '</span></div>');
     });
     h.push('</div>');
