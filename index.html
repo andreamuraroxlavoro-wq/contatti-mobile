@@ -256,6 +256,12 @@ summary::-webkit-details-marker{display:none}
 .cl-e .ok{margin-left:auto;color:var(--verde)}
 /* foglio delle attività */
 .att-f .fg{max-height:88vh;overflow:auto}
+.att-scelta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.att-scelta button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--bordo);border-left:4px solid var(--tc);background:color-mix(in srgb,var(--tc) 8%,transparent);color:var(--testo);border-radius:12px;padding:12px;font:inherit;text-align:left}
+.att-scelta button svg{width:22px;height:22px;fill:none;stroke:var(--tc);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.att-scelta button b{font-size:calc(15px * var(--scala));color:var(--tc)}
+.att-scelta button span{font-size:calc(11px * var(--scala));color:var(--tenue);line-height:1.25}
+.att-avviso{margin-top:6px;font-size:calc(12.5px * var(--scala));font-weight:700;color:var(--rosso);background:color-mix(in srgb,var(--rosso) 10%,transparent);border-radius:9px;padding:8px 10px}
 .att-f .att-c{margin-bottom:10px}
 .att-f .att-c>label{display:block;font-size:calc(12px * var(--scala));font-weight:700;color:var(--tenue);margin-bottom:4px}
 .att-f input[type=search],.att-f input[type=text],.att-f input[type=date],.att-f input[type=time],.att-f textarea{width:100%;font:inherit;font-size:calc(15px * var(--scala));padding:9px 10px;border:1px solid var(--bordo);border-radius:10px;background:var(--sfondo);color:var(--testo)}
@@ -321,7 +327,7 @@ summary::-webkit-details-marker{display:none}
 </nav>
 <div id="scheda"></div>
 <div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
-<button class="fab" id="fab" title="Nuova attività in calendario"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+<button class="fab" id="fab" title="Visita, telefonata o mail da programmare, oppure il report di una cosa già fatta"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 <div class="menu" id="menu"><div class="menu-velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
 <div class="toast" id="toast"></div>
 <script src="lib/leaflet.js" onerror="window.L=undefined"></script>
@@ -615,7 +621,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.14.0';
+var APP_VER = '1.15.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1203,21 +1209,77 @@ function apriReportCliente(cid, pre) {
   }, 220);
 }
 
-/* ---------- foglio «attività» ---------- */
+/* ---------- foglio «che cosa vuoi fare» ----------
+   Primo passo: si sceglie l'azione. Visita, Telefonata e Mail finiscono in calendario come attività
+   da fare; Report porta dritto alla scheda del cliente, nel punto dove si scrive il report.
+   Il cliente è sempre obbligatorio: finché non lo scegli, non si va avanti. */
 function attForm(o) {
   o = o || {};
   var esistente = o.id ? attArchivio()[o.id] : null;
-  var a = esistente ? JSON.parse(JSON.stringify(esistente)) : { tipo: 'visita', d: o.d || oggi(), cid: o.cid || '' };
+  var a = esistente ? JSON.parse(JSON.stringify(esistente)) : { tipo: o.tipo || '', d: o.d || oggi(), cid: o.cid || '' };
   var nuovo = !esistente;
   var f = el('div', 'foglio att-f');
   function chiudi() { f.remove(); }
+
+  function cercatore(dopo) {
+    var ce = $('#att-cerca', f); if (!ce) return;
+    ce.addEventListener('input', function () {
+      var t = ce.value.trim().toLowerCase();
+      if (t.length < 2) { $('#att-sugg', f).innerHTML = ''; return; }
+      var l = lista().filter(function (x) { return x.nome.toLowerCase().indexOf(t) >= 0; }).slice(0, 10);
+      $('#att-sugg', f).innerHTML = l.length
+        ? l.map(function (x) { return '<button data-c="' + esc(x.id) + '">' + esc(x.nome) + (x.prov ? '<span> · ' + esc(x.prov) + '</span>' : '') + '</button>'; }).join('')
+        : '<div class="vuoto">Nessun cliente con questo nome.</div>';
+      $$('#att-sugg button', f).forEach(function (b) { b.addEventListener('click', function () { a.cid = b.dataset.c; dopo(); }); });
+    });
+  }
+  function avvisoCliente() {
+    var av = $('#att-avviso', f);
+    if (av) { av.textContent = 'Scegli prima il cliente: scrivi il nome e toccalo nell\'elenco.'; av.style.display = 'block'; }
+    var ce = $('#att-cerca', f); if (ce) ce.focus();
+    toast('Manca il cliente');
+  }
+
+  /* passo 1 */
+  function disegnaScelta() {
+    var h = ['<div class="fg"><h4>Che cosa vuoi fare?</h4><div class="att-scelta">'];
+    ATT_PIANIFICA.forEach(function (t) {
+      h.push('<button class="t-' + t.id + '" data-t="' + t.id + '">' + CAL_ICO[t.ico] + '<b>' + esc(t.nome) + '</b><span>da fare: va in calendario</span></button>');
+    });
+    h.push('<button class="t-report" data-t="report">' + CAL_ICO.report + '<b>Report</b><span>gi&agrave; fatta: la racconto adesso</span></button>');
+    h.push('</div><div class="az"><button class="btn" id="att-ann">Annulla</button></div></div>');
+    f.innerHTML = h.join('');
+    $('#att-ann', f).addEventListener('click', chiudi);
+    $$('.att-scelta button', f).forEach(function (b) {
+      b.addEventListener('click', function () {
+        a.tipo = b.dataset.t;
+        if (a.tipo === 'report') { if (a.cid) { var cid = a.cid; chiudi(); apriReportCliente(cid, { d: a.d }); } else disegnaClienteReport(); }
+        else disegna();
+      });
+    });
+  }
+
+  /* passo 2 del report */
+  function disegnaClienteReport() {
+    f.innerHTML = '<div class="fg"><h4>Report: per quale cliente?</h4>' +
+      '<div class="att-c"><label>Cliente</label><input type="search" id="att-cerca" placeholder="Nome del cliente…" autocomplete="off"><div class="att-sugg" id="att-sugg"></div>' +
+      '<div class="att-avviso" id="att-avviso" style="display:none"></div></div>' +
+      '<div class="az"><button class="btn" id="att-indietro">Indietro</button><button class="btn" id="att-ann">Annulla</button></div></div>';
+    $('#att-ann', f).addEventListener('click', chiudi);
+    $('#att-indietro', f).addEventListener('click', function () { a.tipo = ''; disegnaScelta(); });
+    cercatore(function () { var cid = a.cid; chiudi(); apriReportCliente(cid, { d: a.d }); });
+    setTimeout(function () { var ce = $('#att-cerca', f); if (ce) ce.focus(); }, 120);
+  }
+
+  /* passo 2 dell'attività */
   function disegna() {
     var c = a.cid ? DB.contatti[a.cid] : null;
     var h = ['<div class="fg">'];
     h.push('<h4>' + (nuovo ? 'Nuova attività' : 'Attività in programma') + '</h4>');
     h.push('<div class="att-c"><label>Cliente</label>' + (c
       ? '<div class="att-cli"><b>' + esc(c.nome) + '</b>' + (c.prov ? ' <span>· ' + esc(c.prov) + '</span>' : '') + '<button class="btn" id="att-cambia">cambia</button></div>'
-      : '<input type="search" id="att-cerca" placeholder="Nome del cliente…" autocomplete="off"><div class="att-sugg" id="att-sugg"></div>') + '</div>');
+      : '<input type="search" id="att-cerca" placeholder="Nome del cliente…" autocomplete="off"><div class="att-sugg" id="att-sugg"></div>') +
+      '<div class="att-avviso" id="att-avviso" style="display:none"></div></div>');
     h.push('<div class="att-c"><label>Che cosa</label><div class="att-tipi">' + ATT_PIANIFICA.map(function (t) {
       return '<button class="chip t-' + t.id + (a.tipo === t.id ? ' on' : '') + '" data-t="' + t.id + '">' + CAL_ICO[t.ico] + esc(t.nome) + '</button>';
     }).join('') + '</div></div>');
@@ -1227,31 +1289,28 @@ function attForm(o) {
     h.push('<label>Nota <textarea id="att-n" rows="2" placeholder="Che cosa devo fare o portare…">' + esc(a.nota || '') + '</textarea></label>');
     if (!nuovo) h.push('<label class="ric"><input type="checkbox" id="att-f"' + (a.fatto ? ' checked' : '') + '> Attività già svolta</label>' +
       '<button class="btn pri" id="att-rep" style="width:100%;margin-bottom:10px">' + (a.fatto ? 'Registra il report' : 'Fatta: registra il report') + '</button>');
-    h.push('<div class="az">' + (nuovo ? '' : '<button class="btn peri" id="att-del">Elimina</button>') + '<button class="btn" id="att-ann">Annulla</button><button class="btn pri" id="att-ok">Salva</button></div>');
-    h.push('</div>');
+    h.push('<div class="az">' + (nuovo ? '' : '<button class="btn peri" id="att-del">Elimina</button>') +
+      (nuovo && !o.tipo && !o.id ? '<button class="btn" id="att-indietro">Indietro</button>' : '<button class="btn" id="att-ann">Annulla</button>') +
+      '<button class="btn pri" id="att-ok">Salva</button></div></div>');
     f.innerHTML = h.join('');
-    var ce = $('#att-cerca', f);
-    if (ce) {
-      ce.addEventListener('input', function () {
-        var t = ce.value.trim().toLowerCase();
-        if (t.length < 2) { $('#att-sugg', f).innerHTML = ''; return; }
-        var l = lista().filter(function (x) { return x.nome.toLowerCase().indexOf(t) >= 0; }).slice(0, 10);
-        $('#att-sugg', f).innerHTML = l.length ? l.map(function (x) { return '<button data-c="' + esc(x.id) + '">' + esc(x.nome) + (x.prov ? '<span> · ' + esc(x.prov) + '</span>' : '') + '</button>'; }).join('') : '<div class="vuoto">Nessun cliente con questo nome.</div>';
-        $$('#att-sugg button', f).forEach(function (b) { b.addEventListener('click', function () { a.cid = b.dataset.c; disegna(); }); });
-      });
-    }
+
+    cercatore(disegna);
     var cb = $('#att-cambia', f); if (cb) cb.addEventListener('click', function () { a.cid = ''; disegna(); });
     function raccogli() { a.d = $('#att-d', f).value; a.o = $('#att-o', f).value; a.oraNota = $('#att-on', f).value; a.nota = $('#att-n', f).value; }
     $$('.att-tipi .chip', f).forEach(function (b) { b.addEventListener('click', function () { raccogli(); a.tipo = b.dataset.t; disegna(); }); });
     var lib = $('#att-lib', f);
     lib.addEventListener('change', function () { raccogli(); a.oraLibera = lib.checked ? 1 : 0; if (lib.checked) a.o = ''; disegna(); });
-    $('#att-ann', f).addEventListener('click', chiudi);
+    var an = $('#att-ann', f); if (an) an.addEventListener('click', chiudi);
+    var ind = $('#att-indietro', f); if (ind) ind.addEventListener('click', function () { raccogli(); a.tipo = ''; disegnaScelta(); });
     var rb = $('#att-rep', f);
-    if (rb) rb.addEventListener('click', function () { raccogli(); attSalva(a); chiudi(); calRegistra(attArchivio()[a.id] || a); });
+    if (rb) rb.addEventListener('click', function () {
+      if (!a.cid) { avvisoCliente(); return; }
+      raccogli(); attSalva(a); chiudi(); calRegistra(attArchivio()[a.id] || a);
+    });
     var dl = $('#att-del', f);
     if (dl) dl.addEventListener('click', function () { if (!confirm('Elimino questa attività dal calendario?')) return; attElimina(a.id); chiudi(); dopo(a.d); });
     $('#att-ok', f).addEventListener('click', function () {
-      if (!a.cid) { toast('Scegli prima il cliente'); return; }
+      if (!a.cid) { avvisoCliente(); return; }
       raccogli();
       if (!a.d) { toast('Metti il giorno'); return; }
       a.oraLibera = lib.checked ? 1 : 0; if (lib.checked) a.o = '';
@@ -1269,7 +1328,7 @@ function attForm(o) {
   }
   f.addEventListener('click', function (e) { if (e.target === f) chiudi(); });
   document.body.appendChild(f);
-  disegna();
+  if (a.tipo || !nuovo) disegna(); else disegnaScelta();
 }
 
 /* ---------- blocco «In programma» nella scheda ---------- */
