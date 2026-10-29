@@ -615,7 +615,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.13.2';
+var APP_VER = '1.14.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -995,6 +995,8 @@ var ATT_TIPI = [
   { id: 'mail', nome: 'Mail', ico: 'mail' },
   { id: 'report', nome: 'Report', ico: 'report' }
 ];
+/* quello che si può mettere in programma: un report non si pianifica, si scrive dopo */
+var ATT_PIANIFICA = ATT_TIPI.filter(function (t) { return t.id !== 'report'; });
 function attTipo(id) { for (var i = 0; i < ATT_TIPI.length; i++) if (ATT_TIPI[i].id === id) return ATT_TIPI[i]; return ATT_TIPI[3]; }
 function attIco(t) { return CAL_ICO[attTipo(t).ico]; }
 function attDaCanale(c) { return c === 'Visita' ? 'visita' : c === 'Telefono' ? 'telefonata' : (c === 'Email' || c === 'Modulo sito') ? 'mail' : ''; }
@@ -1179,13 +1181,15 @@ function disegnaCal() {
 /* toccando una riga del calendario: un «report da fare» porta direttamente al modulo del report,
    l'attività in programma si corregge, l'evento già registrato apre la scheda del cliente */
 function calApri(k, id, cid) {
-  if (k === 'cron') { apriScheda(cid); return; }
+  if (k === 'cron') { apriScheda(cid); return; }    /* già documentata: apro la scheda del cliente */
   var a = attArchivio()[id]; if (!a) return;
-  if (a.tipo === 'report' && !a.fatto) { calRegistra(a); return; }
-  attForm({ id: id });
+  if (a.fatto) { calRegistra(a); return; }           /* svolta: vado a scrivere il report */
+  attForm({ id: id });                               /* ancora da fare: è un programma, si corregge */
 }
+/* l'attività diventa svolta e si apre il modulo del report, già compilato con quello che so */
 function calRegistra(a) {
   var canale = { visita: 'Visita', telefonata: 'Telefono', mail: 'Email' }[a.tipo] || '';
+  if (!a.fatto) { attSegnaFatta(a.id, true); if (vista === 'cal') disegnaCal(); }
   apriReportCliente(a.cid, { d: a.d, o: a.o || '', c: canale, t: a.nota || '' });
 }
 function apriReportCliente(cid, pre) {
@@ -1214,14 +1218,15 @@ function attForm(o) {
     h.push('<div class="att-c"><label>Cliente</label>' + (c
       ? '<div class="att-cli"><b>' + esc(c.nome) + '</b>' + (c.prov ? ' <span>· ' + esc(c.prov) + '</span>' : '') + '<button class="btn" id="att-cambia">cambia</button></div>'
       : '<input type="search" id="att-cerca" placeholder="Nome del cliente…" autocomplete="off"><div class="att-sugg" id="att-sugg"></div>') + '</div>');
-    h.push('<div class="att-c"><label>Che cosa</label><div class="att-tipi">' + ATT_TIPI.map(function (t) {
+    h.push('<div class="att-c"><label>Che cosa</label><div class="att-tipi">' + ATT_PIANIFICA.map(function (t) {
       return '<button class="chip t-' + t.id + (a.tipo === t.id ? ' on' : '') + '" data-t="' + t.id + '">' + CAL_ICO[t.ico] + esc(t.nome) + '</button>';
     }).join('') + '</div></div>');
     h.push('<div class="due"><label>Giorno <input type="date" id="att-d" value="' + esc(a.d || '') + '"></label><label>Orario <input type="time" id="att-o" value="' + esc(a.o || '') + '"' + (a.oraLibera ? ' disabled' : '') + '></label></div>');
     h.push('<label class="ric"><input type="checkbox" id="att-lib"' + (a.oraLibera ? ' checked' : '') + '> Orario libero</label>');
     h.push('<label>Nota sull\'orario <input type="text" id="att-on" value="' + esc(a.oraNota || '') + '" placeholder="per esempio: in mattinata dopo le 11:00"></label>');
     h.push('<label>Nota <textarea id="att-n" rows="2" placeholder="Che cosa devo fare o portare…">' + esc(a.nota || '') + '</textarea></label>');
-    if (!nuovo) h.push('<label class="ric"><input type="checkbox" id="att-f"' + (a.fatto ? ' checked' : '') + '> Attività già svolta</label>');
+    if (!nuovo) h.push('<label class="ric"><input type="checkbox" id="att-f"' + (a.fatto ? ' checked' : '') + '> Attività già svolta</label>' +
+      '<button class="btn pri" id="att-rep" style="width:100%;margin-bottom:10px">' + (a.fatto ? 'Registra il report' : 'Fatta: registra il report') + '</button>');
     h.push('<div class="az">' + (nuovo ? '' : '<button class="btn peri" id="att-del">Elimina</button>') + '<button class="btn" id="att-ann">Annulla</button><button class="btn pri" id="att-ok">Salva</button></div>');
     h.push('</div>');
     f.innerHTML = h.join('');
@@ -1241,6 +1246,8 @@ function attForm(o) {
     var lib = $('#att-lib', f);
     lib.addEventListener('change', function () { raccogli(); a.oraLibera = lib.checked ? 1 : 0; if (lib.checked) a.o = ''; disegna(); });
     $('#att-ann', f).addEventListener('click', chiudi);
+    var rb = $('#att-rep', f);
+    if (rb) rb.addEventListener('click', function () { raccogli(); attSalva(a); chiudi(); calRegistra(attArchivio()[a.id] || a); });
     var dl = $('#att-del', f);
     if (dl) dl.addEventListener('click', function () { if (!confirm('Elimino questa attività dal calendario?')) return; attElimina(a.id); chiudi(); dopo(a.d); });
     $('#att-ok', f).addEventListener('click', function () {
