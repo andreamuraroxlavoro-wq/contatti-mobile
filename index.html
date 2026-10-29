@@ -372,7 +372,7 @@ summary::-webkit-details-marker{display:none}
           return new Promise(function (res, rej) {
             var timer = null;
             var tc = root.google.accounts.oauth2.initTokenClient({
-              client_id: S.meta.clientId, scope: 'https://www.googleapis.com/auth/drive.appdata',
+              client_id: S.meta.clientId, scope: 'https://www.googleapis.com/auth/drive.appdata' + (cfg.driveFile ? ' https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly' : ''),
               callback: function (r) { clearTimeout(timer); if (r && r.access_token) { S.token = r.access_token; S.tokenScad = Date.now() + (r.expires_in || 3600) * 1000; try { sessionStorage.setItem(nome + '_gtoken', JSON.stringify({ t: S.token, scad: S.tokenScad })); } catch (e) {} res(S.token); } else rej(new Error('Autorizzazione Google negata')); },
               error_callback: function (e) { clearTimeout(timer); rej(Object.assign(new Error('Autorizzazione Google: ' + (e && e.type || 'errore')), { auth: true })); }
             });
@@ -508,6 +508,10 @@ summary::-webkit-details-marker{display:none}
       S: S, nomeBackend: function () { var b = backend(); return b ? b.nome : ''; },
       carica: caricaMeta, avvia: avvia, pianifica: pianifica, sincronizza: sincronizza, salvaMeta: salvaMeta,
       imposta: function (o) { Object.assign(S.meta, o); return salvaMeta(); },
+      /* accesso diretto a Google Drive per le copie leggibili (stessa autorizzazione del motore) */
+      driveApi: function (url, opz, interattivo) { return DRIVE.api(url, opz, interattivo); },
+      driveToken: function (interattivo) { return DRIVE.token(interattivo); },
+      scordaToken: function () { S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); } catch (e) {} },
       connettiDrive: function (clientId) { if (clientId) S.meta.clientId = clientId; S.meta.tipo = 'drive'; return salvaMeta().then(function () { return DRIVE.token(true); }); },
       scegliCartella: function () { return root.showDirectoryPicker({ mode: 'readwrite' }).then(function (h) { S.dirHandle = h; S.meta.tipo = 'cartella'; return idbSet('dir', h).then(salvaMeta).then(function () { return h; }); }); },
       scollega: function () { Object.assign(S.meta, { tipo: null, ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {} }); S.dirHandle = null; S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); } catch (e) {} clearInterval(S.timer); stato('off'); return idbSet('dir', null).then(salvaMeta); },
@@ -527,7 +531,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.9.1';
+var APP_VER = '1.10.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1188,7 +1192,7 @@ function disegnaAltro() {
   h.push('<div class="opz" id="op-aspetto"><h2>Aspetto</h2><div class="riga-o"><span>Tema</span><span class="sp"></span><div class="seg"><button data-t="chiaro"' + (tema() === 'chiaro' ? ' class="on"' : '') + '>Chiaro</button><button data-t="scuro"' + (tema() === 'scuro' ? ' class="on"' : '') + '>Scuro</button><button data-t="auto"' + (tema() === 'auto' ? ' class="on"' : '') + '>Automatico</button></div></div>');
   h.push('<div class="riga-o"><span>App per navigare</span><span class="sp"></span><select id="op-nav" class="chip"><option value=""' + (navigatore() === '' ? ' selected' : '') + '>Chiedi al primo uso</option>' + NAVIGATORI.map(function (n) { return '<option value="' + n.id + '"' + (navigatore() === n.id ? ' selected' : '') + '>' + n.nome + '</option>'; }).join('') + '</select></div>');
   h.push('<div class="riga-o"><span>Dimensione testo</span><span class="sp"></span><div class="seg">' + [14, 16, 18].map(function (f) { return '<button data-fs="' + f + '"' + (fs === f ? ' class="on"' : '') + '>' + (f === 14 ? 'Piccolo' : f === 16 ? 'Normale' : 'Grande') + '</button>'; }).join('') + '</div></div></div>');
-  h.push('<div class="opz" id="op-dati"><h2>Dati</h2><div class="riga-o"><span>I contatti si modificano su GESTIONE CONTATTI (Mac). Dal telefono registri eventi, esiti, richiami, prossimi passi e stati delle pratiche: tornano al Mac alla prima sincronizzazione.</span></div><div class="az"><button class="btn peri" id="dt-azzera">Cancella i dati su questo telefono</button></div></div>');
+  h.push('<div class="opz" id="op-dati"><h2>Dati</h2><div class="riga-o"><span>I contatti si modificano su GESTIONE CONTATTI (Mac). Dal telefono registri eventi, esiti, richiami, prossimi passi e stati delle pratiche: tornano al Mac alla prima sincronizzazione.</span></div><div class="az"><button class="btn" id="dt-json">Esporta una copia (JSON)</button><button class="btn" id="dt-xls">Esporta in Excel</button><button class="btn" id="dt-imp">Importa una copia</button></div><div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>La copia JSON serve a rimettere i dati su questo o su un altro dispositivo; l\u2019Excel \u00e8 da leggere (due fogli: contatti e report, con intestazioni bloccate e filtri).</span></div><div class="az"><button class="btn peri" id="dt-azzera">Cancella i dati su questo telefono</button></div><input type="file" id="dt-file" accept=".json,application/json" style="display:none"></div>');
   h.push('<div class="opz" id="op-info"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="riga-o"><span>Aggiornamento</span><span class="sp"></span><button class="btn mini" id="agg-chk">Controlla</button></div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
   box.innerHTML = h.join('');
   $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); disegnaAltro(); }); });
@@ -1207,6 +1211,10 @@ function disegnaAltro() {
     try { localStorage.setItem('cm.kpi', JSON.stringify(l)); } catch (e) {}
     disegnaOggi();
   }); });
+  $('#dt-json').addEventListener('click', esportaJson);
+  $('#dt-xls').addEventListener('click', function () { toast('Preparo il file Excel…'); setTimeout(esportaExcel, 60); });
+  $('#dt-imp').addEventListener('click', function () { $('#dt-file').click(); });
+  $('#dt-file').addEventListener('change', function () { if (this.files && this.files[0]) importaCopia(this.files[0]); this.value = ''; });
   $('#agg-chk').addEventListener('click', function () { toast('Controllo in corso…'); controllaAggiornamenti(true); });
   $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
@@ -1249,6 +1257,111 @@ function avviaSync() {
   SY.carica().then(function () { SY.avvia(); if (vista === 'altro') disegnaAltro(); });
 }
 
+/* ---------- copia di sicurezza: esporta (JSON + Excel) e importa ---------- */
+function cmData(e) { var d = new Date(), p = function (n) { return ('0' + n).slice(-2); }; return 'contatti-mobile-copia-' + p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear() + '.' + e; }
+function scarica(nome, blob) {
+  var u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = nome; a.style.display = 'none'; document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 2000);
+}
+function esportaJson() {
+  var d = { app: 'CONTATTI MOBILE', versione: APP_VER, generato: new Date().toISOString(), dispositivo: (SY && SY.meta && SY.meta.etichetta) || '', dati: DB };
+  scarica(cmData('json'), new Blob([JSON.stringify(d)], { type: 'application/json' }));
+  toast('Copia JSON salvata');
+}
+/* --- scrittura di un file Excel senza librerie esterne (zip «store» + XML minimo) --- */
+var CRC_T = (function () { var t = [], c, n, k; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files) {
+  var u16 = function (n) { return [n & 255, (n >> 8) & 255]; };
+  var u32 = function (n) { return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; };
+  var enc = new TextEncoder(), parti = [], cen = [], off = 0, cenLen = 0;
+  files.forEach(function (f) {
+    var nome = enc.encode(f.nome), dati = f.dati, c = crc32(dati);
+    var loc = [0x50, 0x4b, 0x03, 0x04].concat(u16(20), u16(0), u16(0), u16(0), u16(0), u32(c), u32(dati.length), u32(dati.length), u16(nome.length), u16(0));
+    parti.push(new Uint8Array(loc), nome, dati);
+    var h = [0x50, 0x4b, 0x01, 0x02].concat(u16(20), u16(20), u16(0), u16(0), u16(0), u16(0), u32(c), u32(dati.length), u32(dati.length), u16(nome.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off));
+    cen.push(new Uint8Array(h), nome); cenLen += h.length + nome.length;
+    off += loc.length + nome.length + dati.length;
+  });
+  var fine = [0x50, 0x4b, 0x05, 0x06].concat(u16(0), u16(0), u16(files.length), u16(files.length), u32(cenLen), u32(off), u16(0));
+  return new Blob(parti.concat(cen, [new Uint8Array(fine)]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+function xmlEsc(s) { return String(s == null ? '' : s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function colLet(n) { var s = ''; n++; while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = (n - r - 1) / 26; } return s; }
+function foglioXml(f) {
+  var nc = f.intestazioni.length, nr = f.righe.length + 1;
+  var h = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'];
+  h.push('<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>');
+  h.push('<cols>' + f.intestazioni.map(function (t, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + (f.larghezze && f.larghezze[i] ? f.larghezze[i] : 22) + '" customWidth="1"/>'; }).join('') + '</cols>');
+  h.push('<sheetData>');
+  h.push('<row r="1">' + f.intestazioni.map(function (t, i) { return '<c r="' + colLet(i) + '1" t="inlineStr" s="1"><is><t>' + xmlEsc(t) + '</t></is></c>'; }).join('') + '</row>');
+  f.righe.forEach(function (riga, j) {
+    h.push('<row r="' + (j + 2) + '">' + riga.map(function (v, i) {
+      if (v === '' || v == null) return '';
+      if (typeof v === 'number') return '<c r="' + colLet(i) + (j + 2) + '"><v>' + v + '</v></c>';
+      return '<c r="' + colLet(i) + (j + 2) + '" t="inlineStr"><is><t>' + xmlEsc(v) + '</t></is></c>';
+    }).join('') + '</row>');
+  });
+  h.push('</sheetData><autoFilter ref="A1:' + colLet(nc - 1) + nr + '"/></worksheet>');
+  return h.join('');
+}
+function esportaExcel() {
+  var enc = new TextEncoder();
+  var fogli = cmFogli();
+  var files = [
+    { nome: '[Content_Types].xml', dati: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' + fogli.map(function (f, i) { return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join('') + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
+    { nome: '_rels/.rels', dati: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
+    { nome: 'xl/workbook.xml', dati: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + fogli.map(function (f, i) { return '<sheet name="' + xmlEsc(f.nome) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join('') + '</sheets></workbook>') },
+    { nome: 'xl/_rels/workbook.xml.rels', dati: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + fogli.map(function (f, i) { return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join('') + '<Relationship Id="rId' + (fogli.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
+    { nome: 'xl/styles.xml', dati: enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2A78D6"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>') }
+  ];
+  fogli.forEach(function (f, i) { files.push({ nome: 'xl/worksheets/sheet' + (i + 1) + '.xml', dati: enc.encode(foglioXml(f)) }); });
+  scarica(cmData('xlsx'), zipStore(files));
+  toast('Copia Excel salvata');
+}
+function cmFogli() {
+  var L = listaTutti().slice().sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); });
+  var rC = L.map(function (c) {
+    var k = sit(c.id), q = DB.pratiche[c.id], n = eventiDi(c.id).length;
+    return [c.nome, gruppi(c).map(grNome).join(' · '), c.cat || '', c.prov || '', c.sede || '', c.tel || '', c.email || '', c.sito || '', c.piva || '', c.liv || '',
+      k.esito || 'Da contattare', k.data ? dataIt(k.data) : '', k.richiamo ? dataIt(k.richiamo) : '', k.referente || '', k.passo || '',
+      q ? tipoP(q).nome : '', q ? (q.stato || 'sospesa') : '', n,
+      (c.referenti || []).map(function (r) { return [r.nome, r.ruolo, r.cell || r.tel, r.email].filter(Boolean).join(' '); }).join(' · ')];
+  });
+  var rE = [];
+  Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; })
+    .sort(function (a, b) { return ((b.d || '') + (b.o || '')).localeCompare((a.d || '') + (a.o || '')); })
+    .forEach(function (v) {
+      var c = DB.contatti[v.cid]; if (!c) return;
+      rE.push([c.nome, v.d ? dataIt(v.d) : '', v.o || '', v.c || '', v.dir === 'out' ? 'inviata' : v.dir === 'in' ? 'ricevuta' : '', v.e || '', v.t || '', (v.n || '').replace(/\s+/g, ' '), v.ref || '']);
+    });
+  return [
+    { nome: 'Contatti', intestazioni: ['Ragione sociale', 'Gruppi', 'Categoria', 'Prov.', 'Sede', 'Telefono', 'Email', 'Sito', 'P. IVA', 'Liv.', 'Esito', 'Ultimo contatto', 'Richiamo', 'Referente', 'Prossimo passo', 'Pratica', 'Stato pratica', 'N. report', 'Persone di riferimento'],
+      larghezze: [34, 16, 16, 7, 34, 16, 26, 22, 14, 6, 16, 14, 12, 20, 40, 16, 13, 10, 40], righe: rC },
+    { nome: 'Report', intestazioni: ['Contatto', 'Data', 'Ora', 'Canale', 'Direzione', 'Esito', 'Titolo', 'Nota', 'Referente'],
+      larghezze: [34, 12, 8, 14, 11, 16, 34, 90, 20], righe: rE }
+  ];
+}
+function importaCopia(file) {
+  var fr = new FileReader();
+  fr.onload = function () {
+    var j = null;
+    try { j = JSON.parse(fr.result); } catch (e) { toast('File non leggibile', 3000); return; }
+    var d = (j && j.dati && j.dati.contatti) ? j.dati : (j && j.contatti ? j : null);
+    if (!d) { toast('Non è una copia di CONTATTI MOBILE', 3500); return; }
+    var n = Object.keys(d.contatti || {}).length;
+    if (!confirm('La copia contiene ' + num(n) + ' contatti, del ' + (j.generato ? new Date(j.generato).toLocaleString('it-IT') : 'data sconosciuta') + '.\n\nSostituisce i dati che hai adesso su questo dispositivo. Procedo?')) return;
+    DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }, d);
+    cacheTx = {}; cacheNum = {}; cacheAtt = null;
+    salva(true);
+    if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(800); });
+    try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
+    disegnaGruppi(); mostraVista('cerca', true);
+    toast('Copia importata: ' + num(n) + ' contatti', 3500);
+  };
+  fr.readAsText(file);
+}
 /* ---------- aggiornamenti dell'app ---------- */
 /* l'app pubblicata puo' cambiare mentre quella installata resta in memoria: controllo la versione in rete e avviso */
 var aggUltimo = 0, aggVersione = '';
