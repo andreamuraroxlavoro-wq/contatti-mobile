@@ -180,6 +180,7 @@ summary::-webkit-details-marker{display:none}
 .pin.me{background:var(--accent);width:16px;height:16px;box-shadow:0 0 0 4px rgba(42,120,214,.3)}
 .bl{scroll-margin-top:calc(var(--hdrH,56px) + 10px)}.bl > .c{padding:0}.bl .lista{border:0;background:transparent;box-shadow:none;border-radius:0;margin:0}.bl .lista .riga:last-child{border-bottom:0}.bl .vuoto{padding:14px}.fab{position:fixed;right:14px;bottom:calc(84px + var(--sab));width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:28;opacity:0;transform:scale(.7);transition:opacity .18s ease,transform .18s ease}.fab.on{display:flex;opacity:1;transform:scale(1)}.fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}.fab.su svg{transform:rotate(180deg)}body.mappa-on .fab,body.sc-aperta .fab{display:none}
 .fab{background:var(--verde)}
+.fab.sopra{z-index:3100;bottom:calc(22px + var(--sab))}
 .fab svg{stroke-width:2.6}
 .menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .menu-velo{position:absolute;top:0;right:0;bottom:0;left:0;display:block;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
@@ -274,6 +275,7 @@ summary::-webkit-details-marker{display:none}
 .att-sugg{display:flex;flex-direction:column;margin-top:4px;max-height:200px;overflow:auto}
 .att-sugg button{text-align:left;border:0;background:transparent;color:var(--testo);padding:9px;border-radius:9px;font:inherit;font-size:calc(14px * var(--scala))}
 .att-sugg button span{color:var(--tenue);font-size:calc(12px * var(--scala))}
+.att-sugg button i{display:block;font-style:normal;font-size:calc(11px * var(--scala));color:var(--accent);font-weight:700}
 .att-tipi{display:flex;gap:6px;flex-wrap:wrap}
 .att-tipi .chip{display:inline-flex;align-items:center;gap:4px}
 .att-tipi .chip svg{width:14px;height:14px;fill:none;stroke:var(--tc,currentColor);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -625,7 +627,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.15.1';
+var APP_VER = '1.16.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1213,6 +1215,21 @@ function apriReportCliente(cid, pre) {
   }, 220);
 }
 
+/* cerca un cliente per nome dell'azienda oppure per persona di riferimento */
+function attTrova(t) {
+  t = String(t || '').trim().toLowerCase(); if (t.length < 2) return [];
+  var L = lista(), out = [], visti = {};
+  L.forEach(function (c) { if (out.length < 10 && c.nome.toLowerCase().indexOf(t) >= 0) { out.push({ c: c, via: '' }); visti[c.id] = 1; } });
+  L.forEach(function (c) {
+    if (out.length >= 10 || visti[c.id]) return;
+    var r = referentiDi(c).filter(function (x) { return [x.nome, x.ruolo, x.email, x.tel, x.cell].join(' ').toLowerCase().indexOf(t) >= 0; })[0];
+    if (r) { out.push({ c: c, via: 'referente: ' + r.nome + (r.ruolo ? ' · ' + r.ruolo : '') }); visti[c.id] = 1; return; }
+    var rf = (sit(c.id).referente || '');
+    if (rf.toLowerCase().indexOf(t) >= 0) { out.push({ c: c, via: 'referente: ' + rf }); visti[c.id] = 1; }
+  });
+  return out;
+}
+
 /* ---------- foglio «che cosa vuoi fare» ----------
    Primo passo: si sceglie l'azione. Visita, Telefonata e Mail finiscono in calendario come attività
    da fare; Report porta dritto alla scheda del cliente, nel punto dove si scrive il report.
@@ -1230,10 +1247,10 @@ function attForm(o) {
     ce.addEventListener('input', function () {
       var t = ce.value.trim().toLowerCase();
       if (t.length < 2) { $('#att-sugg', f).innerHTML = ''; return; }
-      var l = lista().filter(function (x) { return x.nome.toLowerCase().indexOf(t) >= 0; }).slice(0, 10);
+      var l = attTrova(t);
       $('#att-sugg', f).innerHTML = l.length
-        ? l.map(function (x) { return '<button data-c="' + esc(x.id) + '">' + esc(x.nome) + (x.prov ? '<span> · ' + esc(x.prov) + '</span>' : '') + '</button>'; }).join('')
-        : '<div class="vuoto">Nessun cliente con questo nome.</div>';
+        ? l.map(function (x) { return '<button data-c="' + esc(x.c.id) + '">' + esc(x.c.nome) + (x.c.prov ? '<span> · ' + esc(x.c.prov) + '</span>' : '') + (x.via ? '<i>' + esc(x.via) + '</i>' : '') + '</button>'; }).join('')
+        : '<div class="vuoto">Nessun cliente e nessun referente con questo nome.</div>';
       $$('#att-sugg button', f).forEach(function (b) { b.addEventListener('click', function () { a.cid = b.dataset.c; dopo(); }); });
     });
   }
@@ -1346,7 +1363,7 @@ function bloccoProgramma(id) {
       '<span class="eo">' + esc(dataIt(a.d)) + (a.o ? ' ' + esc(a.o) : a.oraLibera ? ' libero' : '') + '</span><span class="en">' + esc(a.nota || attTipo(a.tipo).nome) + '</span></button>' +
       '<span class="cl-n">' + esc([attTipo(a.tipo).nome, a.oraNota].filter(Boolean).join(' · ')) + '</span></div>';
   });
-  h += '<button class="btn pri" id="sc-piu">+ Metti in calendario</button>';
+
   return h + '</div></div></div>';
 }
 function agganciaProgramma(id) {
@@ -1557,7 +1574,7 @@ function apriScheda(id) {
   $('#sc-chiudi').addEventListener('click', function () { if (history.state && history.state.scheda) history.back(); else chiudiScheda(); });
   var nv = $('#sc-naviga'); if (nv) nv.addEventListener('click', function (ev) { ev.preventDefault(); naviga(c); });
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
-  document.body.classList.add('sc-aperta');
+  document.body.classList.add('sc-aperta'); aggiornaFab();
   agganciaProgramma(id);
   $('#sc-salva-sit').addEventListener('click', function () {
     salvaSituazione(id, { esito: $('#sc-esito').value, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim() });
@@ -1611,7 +1628,7 @@ function formModifica(id) {
   });
 }
 function pulisciHtml(h) { return String(h || '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*\/?>/gi, '').replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '').replace(/href\s*=\s*"javascript:[^"]*"/gi, ''); }
-function chiudiScheda() { $('#scheda').classList.remove('on'); schedaId = null; document.body.classList.remove('sc-aperta'); mostraVista(vista, true); }
+function chiudiScheda() { $('#scheda').classList.remove('on'); schedaId = null; document.body.classList.remove('sc-aperta'); aggiornaFab(); mostraVista(vista, true); }
 window.addEventListener('popstate', function () { if (schedaId) chiudiScheda(); });
 /* NAVIGAZIONE: app scelta una volta sola (menu → Aspetto la cambia) */
 var NAVIGATORI = [
@@ -1877,10 +1894,12 @@ function applicaAggiornamento() {
 /* ---------- tasto fluttuante: mette in calendario una nuova attività ---------- */
 function aggiornaFab() {
   var f = $('#fab'); if (!f) return;
-  f.classList.toggle('on', (vista === 'cal' || vista === 'oggi') && !document.body.classList.contains('sc-aperta'));
+  f.classList.add('on');
+  f.classList.toggle('sopra', document.body.classList.contains('sc-aperta'));
 }
 $('#fab').addEventListener('click', function () {
-  attForm({ d: (vista === 'cal' && CAL.sel) ? CAL.sel : oggi() });
+  var cid = document.body.classList.contains('sc-aperta') ? (schedaId || '') : '';
+  attForm({ cid: cid, d: (vista === 'cal' && CAL.sel) ? CAL.sel : oggi() });
 });
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
