@@ -509,7 +509,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.6.2';
+var APP_VER = '1.6.3';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1068,7 +1068,7 @@ function applicaRemoti(mod, del) {
     (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
   });
-  if (JSON.stringify(gruppiL()) !== primaG) { normalizzaGR(null); disegnaGruppi(); }
+  if (JSON.stringify(gruppiL()) !== primaG) { try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); } disegnaGruppi(); }
   return n;
 }
 function avviaSync() {
@@ -1090,6 +1090,9 @@ IDB.leggi('db').then(function (t) {
   if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }, j); } catch (e) {} }
   var v = 'cerca'; try { v = localStorage.getItem('cm.vista') || 'cerca'; } catch (e) {}
   if (v === 'vicino' || v === 'mappa') v = 'cerca';
+  /* i tasti dei gruppi nascono prima della lettura dei dati: ora che il settaggio c'e', li ridisegno con nome e colore giusti */
+  try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
+  disegnaGruppi();
   mostraVista(v); avviaSync();
   if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
 });
