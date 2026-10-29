@@ -263,6 +263,18 @@ summary::-webkit-details-marker{display:none}
   'use strict';
   function SyncMotore(cfg) {
     var nome = cfg.nome || 'sync', dbNome = cfg.dbNome || (nome + '_sync');
+    /* nome leggibile del dispositivo, indovinato alla prima apertura e poi modificabile dall'utente */
+    function nomeDispositivo() {
+      var u = '';
+      try { u = navigator.userAgent || ''; } catch (e) {}
+      if (/iPhone/i.test(u)) return 'iPhone';
+      if (/iPad/i.test(u)) return 'iPad';
+      if (/Android/i.test(u)) return /Mobile/i.test(u) ? 'Telefono Android' : 'Tablet Android';
+      if (/Macintosh|Mac OS X/i.test(u)) return 'Mac';
+      if (/Windows/i.test(u)) return 'PC Windows';
+      if (/Linux/i.test(u)) return 'PC Linux';
+      return 'Dispositivo';
+    }
     var COLL = cfg.collezioni || [], SING = cfg.singoli || [], RO = cfg.soloLettura || [];
     var S = { meta: null, dirHandle: null, stato: 'off', messaggio: '', log: [], inCorso: false, richiesto: false, sospendi: false, timer: null, pianTimer: null, token: null, tokenScad: 0, sporco: true };
     var RX = new RegExp('^' + nome + '-(base|d)-(\\d+)-([a-z0-9]+)\\.json(\\.gz)?$', 'i');
@@ -273,7 +285,7 @@ summary::-webkit-details-marker{display:none}
     function idbSet(k, v) { return idb().then(function (d) { return new Promise(function (ris, rej) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = function () { ris(true); }; t.onerror = function () { rej(t.error); }; }); }).catch(function () { return false; }); }
 
     function uid() { return Math.random().toString(36).slice(2, 10); }
-    function metaDefault() { return { tipo: null, clientId: cfg.clientId || '', serverUrl: '', dispositivo: uid().slice(0, 8), ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {}, ultimoSync: null, conflitti: 0, nDelta: 0 }; }
+    function metaDefault() { return { tipo: null, clientId: cfg.clientId || '', serverUrl: '', dispositivo: uid().slice(0, 8), etichetta: nomeDispositivo(), ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {}, ultimoSync: null, conflitti: 0, nDelta: 0 }; }
     function hash(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
     function norm(r) { var c = {}; for (var k in r) if (k !== '_m') c[k] = r[k]; return JSON.stringify(c); }
     function log(m) { S.log.unshift(new Date().toLocaleTimeString('it-IT') + ' ' + m); S.log = S.log.slice(0, 40); }
@@ -281,7 +293,7 @@ summary::-webkit-details-marker{display:none}
 
     /* la libreria Google viene caricata subito (se siamo su https/localhost): così il primo clic su «Connetti» apre la finestra di autorizzazione senza che il browser la blocchi */
     function precaricaGoogle() { try { if (root.google && root.google.accounts) return; if (!/^https:$/.test(location.protocol) && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return; if (document.querySelector('script[src*="accounts.google.com/gsi/client"]')) return; var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; document.head.appendChild(sc); } catch (e) {} }
-    function caricaMeta() { return idbGet('meta').then(function (m) { S.meta = Object.assign(metaDefault(), m || {}); if (!S.meta.clientId && cfg.clientId) S.meta.clientId = cfg.clientId; S.meta.mm = S.meta.mm || {}; S.meta.tomb = S.meta.tomb || {}; S.meta.hash = S.meta.hash || {}; if (S.meta.clientId) precaricaGoogle(); return idbGet('dir'); }).then(function (h) { S.dirHandle = h || null; }); }
+    function caricaMeta() { return idbGet('meta').then(function (m) { S.meta = Object.assign(metaDefault(), m || {}); if (!S.meta.clientId && cfg.clientId) S.meta.clientId = cfg.clientId; S.meta.mm = S.meta.mm || {}; S.meta.tomb = S.meta.tomb || {}; S.meta.hash = S.meta.hash || {}; if (!S.meta.etichetta) S.meta.etichetta = nomeDispositivo(); if (S.meta.clientId) precaricaGoogle(); return idbGet('dir'); }).then(function (h) { S.dirHandle = h || null; }); }
     function salvaMeta() { return idbSet('meta', JSON.parse(JSON.stringify(S.meta))); }
 
     /* ---- record locali ---- */
@@ -427,7 +439,7 @@ summary::-webkit-details-marker{display:none}
         var ricevuti = { mod: {}, del: {} }, nRic = 0;
         function accoda(fl) { Object.keys(fl.mod).forEach(function (c) { ricevuti.mod[c] = (ricevuti.mod[c] || []).concat(fl.mod[c]); }); Object.keys(fl.del).forEach(function (c) { ricevuti.del[c] = (ricevuti.del[c] || []).concat(fl.del[c]); }); nRic += fl.n; }
         /* 1. fotografia completa più recente di quella già applicata */
-        if (base && base.ts > (S.meta.baseTs || 0) && base.dev !== me) { var j = await leggiJson(base); accoda(filtraRemoti(j.dati, j.tomb)); S.meta.baseTs = base.ts; log('fotografia ' + base.dev + ' letta'); }
+        if (base && base.ts > (S.meta.baseTs || 0) && base.dev !== me) { var j = await leggiJson(base); accoda(filtraRemoti(j.dati, j.tomb)); S.meta.baseTs = base.ts; log('fotografia da ' + (j.eti || base.dev) + ' letta'); }
         else if (base && base.dev === me && base.ts > (S.meta.baseTs || 0)) S.meta.baseTs = base.ts;
         /* 2. delta non ancora applicati */
         var delta = lista.filter(function (f) { return f.tipo === 'd' && f.ts > (S.meta.ultimoTs || 0) && f.dev !== me; }).sort(function (a, b) { return a.ts - b.ts; });
@@ -438,17 +450,17 @@ summary::-webkit-details-marker{display:none}
         if (diff.n) {
           Object.keys(diff.del).forEach(function (c) { S.meta.tomb[c] = S.meta.tomb[c] || {}; diff.del[c].forEach(function (t) { S.meta.tomb[c][t.id] = t._m; }); });
           var ts = Math.max(Date.now(), (S.meta.ultimoTs || 0) + 1);
-          if (!base && !lista.length) { var c1 = await comprimi(JSON.stringify({ v: 1, ts: ts, dev: me, dati: fotografia(), tomb: tombLista() })); await be.scrivi(nome + '-base-' + ts + '-' + me + '.json' + (c1.gz ? '.gz' : ''), c1.dati); S.meta.baseTs = ts; log('prima fotografia inviata'); }
-          else { var c2 = await comprimi(JSON.stringify({ v: 1, ts: ts, dev: me, mod: diff.mod, del: diff.del })); await be.scrivi(nome + '-d-' + ts + '-' + me + '.json' + (c2.gz ? '.gz' : ''), c2.dati); log('inviati ' + diff.n + ' record'); }
+          if (!base && !lista.length) { var c1 = await comprimi(JSON.stringify({ v: 1, ts: ts, dev: me, eti: S.meta.etichetta || '', dati: fotografia(), tomb: tombLista() })); await be.scrivi(nome + '-base-' + ts + '-' + me + '.json' + (c1.gz ? '.gz' : ''), c1.dati); S.meta.baseTs = ts; log('prima fotografia inviata'); }
+          else { var c2 = await comprimi(JSON.stringify({ v: 1, ts: ts, dev: me, eti: S.meta.etichetta || '', mod: diff.mod, del: diff.del })); await be.scrivi(nome + '-d-' + ts + '-' + me + '.json' + (c2.gz ? '.gz' : ''), c2.dati); log('inviati ' + diff.n + ' record'); }
           S.meta.ultimoTs = Math.max(S.meta.ultimoTs || 0, ts); inviati = diff.n;
         } else if (!base && !lista.length && Object.keys(diff.loc).some(function (c) { return RO.indexOf(c) < 0 && Object.keys(diff.loc[c]).length; })) {
-          var ts0 = Date.now(); var c0 = await comprimi(JSON.stringify({ v: 1, ts: ts0, dev: me, dati: fotografia(), tomb: tombLista() })); await be.scrivi(nome + '-base-' + ts0 + '-' + me + '.json' + (c0.gz ? '.gz' : ''), c0.dati); S.meta.baseTs = ts0; S.meta.ultimoTs = Math.max(S.meta.ultimoTs || 0, ts0); log('prima fotografia inviata');
+          var ts0 = Date.now(); var c0 = await comprimi(JSON.stringify({ v: 1, ts: ts0, dev: me, eti: S.meta.etichetta || '', dati: fotografia(), tomb: tombLista() })); await be.scrivi(nome + '-base-' + ts0 + '-' + me + '.json' + (c0.gz ? '.gz' : ''), c0.dati); S.meta.baseTs = ts0; S.meta.ultimoTs = Math.max(S.meta.ultimoTs || 0, ts0); log('prima fotografia inviata');
         }
         /* 4. compattazione: nuova fotografia e pulizia dei file vecchi (solo il dispositivo proprietario dei dati completi, o a richiesta) */
         var nDelta = lista.filter(function (f) { return f.tipo === 'd'; }).length + (diff.n ? 1 : 0);
         if (opz.compatta || ((nDelta > 40 || basi.length > 1) && S.meta.proprietario)) {
           var tsc = Math.max(Date.now(), (S.meta.ultimoTs || 0) + 1);
-          var cc = await comprimi(JSON.stringify({ v: 1, ts: tsc, dev: me, dati: fotografia(), tomb: tombLista() })); await be.scrivi(nome + '-base-' + tsc + '-' + me + '.json' + (cc.gz ? '.gz' : ''), cc.dati);
+          var cc = await comprimi(JSON.stringify({ v: 1, ts: tsc, dev: me, eti: S.meta.etichetta || '', dati: fotografia(), tomb: tombLista() })); await be.scrivi(nome + '-base-' + tsc + '-' + me + '.json' + (cc.gz ? '.gz' : ''), cc.dati);
           S.meta.baseTs = tsc; S.meta.ultimoTs = Math.max(S.meta.ultimoTs || 0, tsc);
           lista = (await be.lista()).map(function (f) { return Object.assign(f, nomeInfo(f.nome) || {}); }).filter(function (f) { return f.tipo; });
           for (var k = 0; k < lista.length; k++) if (lista[k].ts < tsc && be.elimina) { try { await be.elimina(lista[k]); } catch (e) {} }
@@ -511,7 +523,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.7.0';
+var APP_VER = '1.7.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1027,7 +1039,8 @@ function disegnaAltro() {
   if (SY && SY.messaggio) h.push('<div class="riga-o" style="color:var(--rosso);font-size:calc(13px * var(--scala))">' + esc(SY.messaggio) + '</div>');
   h.push('<div class="riga-o"><span>Ultimo allineamento</span><span class="sp"></span>' + (m.ultimoSync ? new Date(m.ultimoSync).toLocaleString('it-IT') : '—') + '</div>');
   h.push('<div class="riga-o"><span>Contatti · eventi · pratiche</span><span class="sp"></span>' + num(conta()) + ' · ' + num(Object.keys(DB.eventi).length) + ' · ' + num(Object.keys(DB.pratiche).length) + '</div>');
-  h.push('<div class="riga-o"><span>Questo dispositivo</span><span class="sp"></span>' + esc(m.dispositivo || '') + '</div>');
+  h.push('<div class="riga-o"><span>Nome di questo dispositivo</span><span class="sp"></span><input id="sy-eti" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(m.etichetta || '') + '" placeholder="es. iPhone di Andrea"></div>');
+  h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Sigla tecnica nei file di scambio</span><span class="sp"></span>' + esc(m.dispositivo || '') + '</div>');
   if (!SY || !SY.httpsOk()) h.push('<div class="nota" style="margin:6px 0">Google Drive funziona solo da un indirizzo https (l\'app pubblicata), non da un file locale.</div>');
   h.push('<div class="az" style="margin-top:8px"><button class="btn pri" id="sy-connetti">Connetti a Google</button><button class="btn" id="sy-ora">Sincronizza ora</button><button class="btn peri" id="sy-scollega">Scollega</button></div>');
   if (SY && SY.log.length) h.push('<div class="log" style="margin-top:8px">' + esc(SY.log.slice(0, 6).join('\n')) + '</div>');
@@ -1039,6 +1052,7 @@ function disegnaAltro() {
   h.push('<div class="opz"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="riga-o"><span>Aggiornamento</span><span class="sp"></span><button class="btn mini" id="agg-chk">Controlla</button></div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
   box.innerHTML = h.join('');
   $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); disegnaAltro(); }); });
+  $('#sy-eti').addEventListener('change', function () { var v = this.value.trim() || 'Dispositivo'; if (SY) SY.imposta({ etichetta: v }).then(function () { toast('Dispositivo rinominato'); disegnaAltro(); }); });
   $('#sy-url').addEventListener('change', function () { if (SY && this.value.trim()) SY.imposta({ serverUrl: this.value.trim(), tipo: 'server' }).then(function () { SY.avvia(); disegnaAltro(); }); });
   $('#sy-connetti').addEventListener('click', function () { if (!SY) return; SY.connettiDrive(GC_CLIENT_ID).then(function () { toast('Google connesso'); return SY.avvia(); }).then(disegnaAltro, function (e) { toast('Google: ' + (e.message || e), 4000); disegnaAltro(); }); });
   $('#sy-ora').addEventListener('click', function () { if (!SY) return; SY.sincronizza({ interattivo: true }).then(disegnaAltro); });
