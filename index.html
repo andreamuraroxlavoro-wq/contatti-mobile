@@ -261,6 +261,10 @@ summary::-webkit-details-marker{display:none}
 .att-scelta button svg{width:22px;height:22px;fill:none;stroke:var(--tc);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .att-scelta button b{font-size:calc(15px * var(--scala));color:var(--tc)}
 .att-scelta button span{font-size:calc(11px * var(--scala));color:var(--tenue);line-height:1.25}
+.ev-ric{display:flex;gap:6px;align-items:center}
+.ev-ric input{flex:1}
+.ev-nota{font-size:calc(11px * var(--scala));color:var(--tenue);margin:-6px 0 10px 2px}
+.ev-nota.on{color:var(--accent);font-weight:700}
 .att-avviso{margin-top:6px;font-size:calc(12.5px * var(--scala));font-weight:700;color:var(--rosso);background:color-mix(in srgb,var(--rosso) 10%,transparent);border-radius:9px;padding:8px 10px}
 .att-f .att-c{margin-bottom:10px}
 .att-f .att-c>label{display:block;font-size:calc(12px * var(--scala));font-weight:700;color:var(--tenue);margin-bottom:4px}
@@ -621,7 +625,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.15.0';
+var APP_VER = '1.15.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1488,6 +1492,7 @@ function disegnaPratiche() {
 /* SCHEDA */
 var schedaId = null;
 function apriScheda(id) {
+  evRicTocco = false;
   var c = DB.contatti[id]; if (!c) return; if (!schedaId) scrollV[vista] = window.scrollY; schedaId = id;
   var k = sit(id), q = DB.pratiche[id], ev = eventiDi(id), S = $('#scheda'), h = [];
   var og = oggi();
@@ -1528,7 +1533,8 @@ function apriScheda(id) {
   h.push('<div class="due"><label>Data <input type="date" id="ev-d" value="' + og + '"></label><label>Ora <input type="time" id="ev-o" value="' + ora() + '"></label></div>');
   h.push('<div class="due"><label>Canale <select id="ev-c">' + CANALI().map(function (x) { return '<option' + (x === 'Telefono' ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label><label>Esito <select id="ev-e"><option value="">(invariato)</option>' + ESITI().filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option>' + esc(e) + '</option>'; }).join('') + '</select></label></div>');
   h.push('<label>Titolo <input type="text" id="ev-t" placeholder="es. Telefonata con l\'ufficio acquisti"></label><label>Nota <textarea id="ev-n"></textarea></label>');
-  h.push('<label>Richiamo il <input type="date" id="ev-r" value="' + esc(k.richiamo || '') + '"></label>');
+  h.push('<label>Richiamo il <span class="ev-ric"><input type="date" id="ev-r" value=""><button type="button" class="btn" id="ev-rx">togli</button></span></label>' +
+    '<div class="ev-nota" id="ev-rnota">' + (k.richiamo ? 'in scheda: <b>' + esc(dataIt(k.richiamo)) + '</b> · lascia vuoto per non cambiarlo' : 'vuoto: il richiamo in scheda non cambia') + '</div>');
   h.push('<div class="az"><button class="btn pri" id="ev-salva" style="background:var(--sz-cron);border-color:var(--sz-cron)">Registra</button></div></div></details>');
   if (!ev.length) h.push('<div class="vuoto" style="padding:12px">Nessun evento registrato.</div>');
   ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
@@ -1557,6 +1563,12 @@ function apriScheda(id) {
     salvaSituazione(id, { esito: $('#sc-esito').value, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim() });
   });
   $$('.stati button', S).forEach(function (b) { b.addEventListener('click', function () { var q2 = Object.assign({}, DB.pratiche[id], { stato: b.dataset.st, _m: Date.now() }); DB.pratiche[id] = q2; salva(); toast('Pratica: ' + b.dataset.st); apriScheda(id); }); });
+  (function () {
+    var ri = $('#ev-r'), rx = $('#ev-rx'), n = $('#ev-rnota');
+    function segna() { if (!n) return; n.innerHTML = (ri && ri.value) ? 'il richiamo in scheda diventa <b>' + esc(dataIt(ri.value)) + '</b>' : '<b>il richiamo viene tolto dalla scheda</b>'; n.classList.add('on'); }
+    if (ri) ri.addEventListener('input', function () { evRicTocco = true; segna(); });
+    if (rx) rx.addEventListener('click', function () { if (ri) ri.value = ''; evRicTocco = true; segna(); });
+  })();
   $('#ev-salva').addEventListener('click', function () { registraEvento(id); });
 }
 /* MODIFICA ANAGRAFICA dal telefono: le modifiche viaggiano nella raccolta «modificheContatti»; il Mac le applica alla sua
@@ -1626,11 +1638,15 @@ function salvaSituazione(id, o) {
   if ((o.esito || '') !== prima) { var vid = uid('v_'); DB.eventi[vid] = { id: vid, cid: id, d: oggi(), o: ora(), c: k.canale || '', e: o.esito || '', n: '', a: 1, _m: Date.now() }; k.data = oggi(); }
   salva(); toast('Situazione salvata'); apriScheda(id);
 }
+var evRicTocco = false; /* la data del richiamo si applica solo se l'ho toccata */
 function registraEvento(id) {
   var d = $('#ev-d').value || oggi(), o = $('#ev-o').value || ora(), c = $('#ev-c').value, e = $('#ev-e').value, t = $('#ev-t').value.trim(), n = $('#ev-n').value.trim(), r = $('#ev-r').value;
   if (!t && !n && !e) { toast('Scrivi almeno un titolo, una nota o un esito'); return; }
   var vid = uid('v_'); DB.eventi[vid] = { id: vid, cid: id, d: d, o: o, c: c, e: e || (DB.situazioni[id] || {}).esito || '', t: t, n: n, _m: Date.now() };
-  var k = Object.assign({ id: id }, DB.situazioni[id] || {}); k.data = d; k.canale = c; if (e) k.esito = e; if (r) k.richiamo = r; k._m = Date.now(); DB.situazioni[id] = k;
+  var k = Object.assign({ id: id }, DB.situazioni[id] || {}); k.data = d; k.canale = c; if (e) k.esito = e;
+  if (evRicTocco) { if (r) { k.richiamo = r; } else { delete k.richiamo; } delete k.richiamoApp; }
+  evRicTocco = false;
+  k._m = Date.now(); DB.situazioni[id] = k;
   salva(); toast('Evento registrato'); apriScheda(id);
 }
 
