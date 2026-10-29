@@ -176,7 +176,7 @@ summary::-webkit-details-marker{display:none}
 .leaflet-container{font:inherit}
 .pin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .pin.me{background:var(--accent);width:16px;height:16px;box-shadow:0 0 0 4px rgba(42,120,214,.3)}
-.menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .velo{position:absolute;inset:0;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .menu-velo{position:absolute;top:0;right:0;bottom:0;left:0;display:block;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
 .toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:#0b0b0b;color:#fff;padding:10px 16px;border-radius:12px;font-size:calc(14px * var(--scala));z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:.95}
@@ -236,7 +236,7 @@ summary::-webkit-details-marker{display:none}
 </nav>
 <div id="scheda"></div>
 <div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
-<div class="menu" id="menu"><div class="velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
+<div class="menu" id="menu"><div class="menu-velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
 <div class="toast" id="toast"></div>
 <script src="lib/leaflet.js" onerror="window.L=undefined"></script>
 <script>
@@ -525,7 +525,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.8.0';
+var APP_VER = '1.8.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -648,7 +648,12 @@ function disegnaMenu() {
   }).join('');
   $$('#menu-pan button').forEach(function (b) { b.addEventListener('click', function () { chiudiMenu(); apriImpostazioni(b.dataset.sez); }); });
 }
-function apriMenu() { disegnaMenu(); $('#menu').classList.add('on'); }
+function apriMenu() {
+  disegnaMenu();
+  var h = document.querySelector('header.top');
+  if (h) $('#menu-pan').style.top = Math.round(h.getBoundingClientRect().bottom + 6) + 'px';
+  $('#menu').classList.add('on');
+}
 function chiudiMenu() { $('#menu').classList.remove('on'); }
 function apriImpostazioni(sez) {
   mostraVista('altro');
@@ -658,6 +663,7 @@ function apriImpostazioni(sez) {
   }, 90);
 }
 $('#menu-velo').addEventListener('click', chiudiMenu);
+$('#menu').addEventListener('click', function (e) { if (!e.target.closest('#menu-pan')) chiudiMenu(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape') chiudiMenu(); });
 /* ---------- ordine dei contatti ---------- */
 var ORDINI = [
