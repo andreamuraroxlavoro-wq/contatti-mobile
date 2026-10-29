@@ -176,6 +176,7 @@ summary::-webkit-details-marker{display:none}
 .leaflet-container{font:inherit}
 .pin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .pin.me{background:var(--accent);width:16px;height:16px;box-shadow:0 0 0 4px rgba(42,120,214,.3)}
+.bl{scroll-margin-top:calc(var(--hdrH,56px) + 10px)}.bl > .c{padding:0}.bl .lista{border:0;background:transparent;box-shadow:none;border-radius:0;margin:0}.bl .lista .riga:last-child{border-bottom:0}.bl .vuoto{padding:14px}.fab{position:fixed;right:14px;bottom:calc(84px + var(--sab));width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:28;opacity:0;transform:scale(.7);transition:opacity .18s ease,transform .18s ease}.fab.on{display:flex;opacity:1;transform:scale(1)}.fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}.fab.su svg{transform:rotate(180deg)}body.mappa-on .fab,body.sc-aperta .fab{display:none}
 .menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .menu-velo{position:absolute;top:0;right:0;bottom:0;left:0;display:block;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
 .toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:#0b0b0b;color:#fff;padding:10px 16px;border-radius:12px;font-size:calc(14px * var(--scala));z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
@@ -228,7 +229,7 @@ summary::-webkit-details-marker{display:none}
 </main>
 <nav class="tab" id="tab">
   <button data-v="cerca" class="on"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><path d="M16.2 10.8A3 3 0 1 0 15 5.3"/><path d="M17.6 14.1c2 .6 3.4 2.3 3.4 4.3"/></svg>Contatti</button>
-  <button data-v="oggi"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Oggi<span class="tn" id="tn-oggi" style="display:none"></span></button>
+  <button data-v="oggi"><svg viewBox="0 0 24 24"><path d="M3 12h3.5l2.2-6.5 4 13 2.3-6.5H21"/></svg>Attività<span class="tn" id="tn-oggi" style="display:none"></span></button>
   <button data-v="mappa" id="tab-mappa"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>
   <button data-v="vicino"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Vicino a me</button>
   <button data-v="pratiche"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM8 7V5h8v2"/><path d="M4 12h16"/></svg>Pratiche<span class="tn" id="tn-prat" style="display:none"></span></button>
@@ -236,6 +237,7 @@ summary::-webkit-details-marker{display:none}
 </nav>
 <div id="scheda"></div>
 <div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
+<button class="fab" id="fab" title="Vai in fondo alla lista"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg></button>
 <div class="menu" id="menu"><div class="menu-velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
 <div class="toast" id="toast"></div>
 <script src="lib/leaflet.js" onerror="window.L=undefined"></script>
@@ -525,7 +527,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.8.1';
+var APP_VER = '1.9.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -620,7 +622,7 @@ var scrollV = {};
 function mostraVista(v, ritorno) {
   if (!ritorno) scrollV[vista] = window.scrollY;
   if (vista !== 'altro') vistaPrima = vista;
-  vista = v; $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  vista = v; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
   if (ritorno) { var y = scrollV[v] || 0; setTimeout(function () { window.scrollTo(0, y); }, 0); } else window.scrollTo(0, 0);
   if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
@@ -867,12 +869,14 @@ function disegnaOggi() {
   box.innerHTML = h.join('');
   sel.forEach(function (id) {
     var k = kpiDi(id), l = dati[id];
-    var tit = el('h1', 'tit', esc(k.nome) + ' <span class="pill">' + num(l.length) + '</span>'); tit.id = 'kpi-' + id; box.appendChild(tit);
+    var sez = el('section', 'sz bl'); sez.id = 'kpi-' + id; sez.style.setProperty('--c', k.col);
+    sez.appendChild(el('h3', '', esc(k.nome) + '<span class="pill">' + num(l.length) + '</span>'));
+    var cnt = el('div', 'c');
     var d = el('div', 'lista');
     if (!l.length) d.innerHTML = '<div class="vuoto">' + k.vuoto + '</div>';
     else if (k.ev) l.forEach(function (v) { var c = DB.contatti[v.cid]; if (!c) return; d.appendChild(rigaContatto(c, '<span class="pill">' + esc([dataIt(v.d) === dataIt(og) ? v.o : dataIt(v.d), v.c].filter(Boolean).join(' ')) + '</span>', v.t ? esc(v.t) : '')); });
     else l.forEach(function (c) { d.appendChild(rigaContatto(c)); });
-    box.appendChild(d);
+    cnt.appendChild(d); sez.appendChild(cnt); box.appendChild(sez);
   });
   $$('#v-oggi .kpi').forEach(function (b) { b.addEventListener('click', function () { var e = $('#kpi-' + b.dataset.k); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
 }
@@ -1211,7 +1215,8 @@ function setTema(t) { localStorage.setItem('cm.tema', t); applicaTema(); }
 function applicaTema() { var t = tema(); if (t === 'auto') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'scuro' : 'chiaro'; document.documentElement.setAttribute('data-theme', t); $('#tema').innerHTML = t === 'scuro' ? '&#9728;' : '&#9790;'; }
 function applicaFs() { var f = +(localStorage.getItem('cm.fs') || 16) || 16; document.documentElement.style.setProperty('--fs', f + 'px'); document.documentElement.style.setProperty('--scala', (f / 16).toFixed(4)); adattaTestata(); }
 /* se il nome dell'app non ci sta per intero (schermo stretto o testo grande) resta la sola icona, mai una parola tagliata */
-function adattaTestata() { var m = $('.marchio'), d = $('.marchio > div'); if (!m || !d) return; m.classList.remove('solo-icona'); setTimeout(function () { var b = $('b', d); var serve = b ? b.getBoundingClientRect().width : 0; if (serve > d.clientWidth + 1 || d.scrollWidth > d.clientWidth + 1) m.classList.add('solo-icona'); }, 0); }
+function misuraTestata() { var h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hdrH', Math.round(h.getBoundingClientRect().height) + 'px'); }
+function adattaTestata() { misuraTestata(); var m = $('.marchio'), d = $('.marchio > div'); if (!m || !d) return; m.classList.remove('solo-icona'); setTimeout(function () { var b = $('b', d); var serve = b ? b.getBoundingClientRect().width : 0; if (serve > d.clientWidth + 1 || d.scrollWidth > d.clientWidth + 1) m.classList.add('solo-icona'); }, 0); }
 window.addEventListener('resize', adattaTestata);
 window.addEventListener('orientationchange', function () { setTimeout(adattaTestata, 300); });
 $('#tema').addEventListener('click', function () { setTema(document.documentElement.getAttribute('data-theme') === 'scuro' ? 'chiaro' : 'scuro'); });
@@ -1270,8 +1275,27 @@ function applicaAggiornamento() {
   try { if (navigator.serviceWorker) p.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
   Promise.all(p).catch(function () {}).then(function () { location.replace(location.pathname + '?v=' + Date.now()); });
 }
+/* ---------- tasto fluttuante: in fondo o in cima alle liste lunghe ---------- */
+var fabT = null;
+function aggiornaFab() {
+  var f = $('#fab'); if (!f) return;
+  var h = document.documentElement.scrollHeight, v = window.innerHeight, y = window.scrollY || 0;
+  if (h < v * 1.8 || document.body.classList.contains('sc-aperta') || vista === 'mappa') { f.classList.remove('on'); return; }
+  f.classList.add('on');
+  var giu = y < (h - v) * 0.55;
+  f.dataset.d = giu ? 'giu' : 'su';
+  f.classList.toggle('su', !giu);
+  f.title = giu ? 'Vai in fondo alla lista' : 'Torna in cima';
+}
+window.addEventListener('scroll', function () { if (fabT) return; fabT = setTimeout(function () { fabT = null; aggiornaFab(); }, 120); }, { passive: true });
+window.addEventListener('resize', aggiornaFab);
+$('#fab').addEventListener('click', function () {
+  var giu = this.dataset.d === 'giu';
+  window.scrollTo({ top: giu ? document.documentElement.scrollHeight : 0, behavior: 'smooth' });
+  setTimeout(aggiornaFab, 700);
+});
 /* ---------- avvio ---------- */
-applicaTema(); applicaFs(); $('#versione').textContent = 'v' + APP_VER;
+applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
   if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }, j); } catch (e) {} }
   var v = 'cerca'; try { v = localStorage.getItem('cm.vista') || 'cerca'; } catch (e) {}
@@ -1279,7 +1303,7 @@ IDB.leggi('db').then(function (t) {
   /* i tasti dei gruppi nascono prima della lettura dei dati: ora che il settaggio c'e', li ridisegno con nome e colore giusti */
   try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
   disegnaGruppi();
-  mostraVista(v); avviaSync();
+  mostraVista(v); avviaSync(); setTimeout(function () { misuraTestata(); aggiornaFab(); }, 300);
   $('#agg-ora').addEventListener('click', applicaAggiornamento);
   $('#agg-no').addEventListener('click', function () { barraAgg(false); });
   controllaAggiornamenti();
