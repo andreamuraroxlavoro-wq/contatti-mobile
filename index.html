@@ -193,12 +193,14 @@ summary::-webkit-details-marker{display:none}
 .opz .riga-o > select.chip{flex:none;max-width:100%}.seg button{border:0;background:var(--carta);padding:10px 12px;font-size:calc(14px * var(--scala));color:var(--testo2);min-height:38px}.seg button.on{background:var(--accent);color:#fff}
 .benvenuto{text-align:center;padding:40px 16px;color:var(--tenue)}.benvenuto b{display:block;color:var(--testo);font-size:calc(18px * var(--scala));margin-bottom:8px}
 /* ---------- ATTIVITA E CALENDARIO (v1.12.0) ---------- */
-.t-visita{--tc:#6B4FA0}
-.t-telefonata{--tc:var(--accent)}
-.t-mail{--tc:var(--ambra)}
-.t-altro{--tc:var(--tenue)}
-.cl-e.fatto{--tc:var(--verde)}
-.cl-e.tardi{--tc:var(--rosso)}
+.t-visita{--tc:var(--rosso)}
+.t-telefonata{--tc:var(--ambra)}
+.t-mail{--tc:#9b6dd6}
+.t-report{--tc:var(--accent)}
+.cl-e.fatto{opacity:.72;background:color-mix(in srgb,var(--tc) 7%,transparent);font-weight:600}
+.cl-e.fatto .ok{color:var(--verde)}
+.cl-e.tardi{border-left-width:5px;background:color-mix(in srgb,var(--tc) 24%,transparent)}
+.cl-e .rit{margin-left:auto;background:var(--tc);color:#fff;border-radius:5px;padding:0 5px;font-size:calc(10px * var(--scala))}
 .cl-testa{position:sticky;top:0;z-index:12;background:var(--sfondo);padding:6px 0 8px;margin-bottom:6px}
 .cl-nav{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .cl-nav b{flex:1;text-align:center;font-size:calc(17px * var(--scala));font-weight:800}
@@ -223,9 +225,10 @@ summary::-webkit-details-marker{display:none}
 .cl-c .n{font-size:calc(13px * var(--scala));font-weight:700}
 .cl-c .pt{display:flex;gap:2px;height:6px;align-items:center}
 .cl-c .pt i{width:5px;height:5px;border-radius:50%;display:block}
-.cl-c .pt i.p-visita{background:#6B4FA0}.cl-c .pt i.p-telefonata{background:var(--accent)}
-.cl-c .pt i.p-mail{background:var(--ambra)}.cl-c .pt i.p-altro{background:var(--tenue)}
-.cl-c .pt i.p-f{background:var(--verde)}.cl-c .pt i.p-r{background:var(--rosso)}
+.cl-c .pt i.p-visita{background:var(--rosso)}.cl-c .pt i.p-telefonata{background:var(--ambra)}
+.cl-c .pt i.p-mail{background:#9b6dd6}.cl-c .pt i.p-report{background:var(--accent)}
+.cl-c .pt i.p-f{background:var(--verde)}
+.cl-c.tardi .n{color:var(--rosso)}
 .cl-c.fuori{opacity:.4}
 .cl-c.oggi{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .cl-c.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -241,7 +244,6 @@ summary::-webkit-details-marker{display:none}
 .cl-e .eo{font-variant-numeric:tabular-nums;opacity:.8;flex:0 0 auto}
 .cl-e .en{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .cl-e .ok{margin-left:auto;color:var(--verde)}
-.cl-e .rit{margin-left:auto;color:var(--rosso)}
 /* foglio delle attività */
 .att-f .fg{max-height:88vh;overflow:auto}
 .att-f .att-c{margin-bottom:10px}
@@ -603,7 +605,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.12.0';
+var APP_VER = '1.12.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -975,17 +977,26 @@ var CAL_ICO = {
   auto: '<svg class="ei" viewBox="0 0 24 24"><path d="M5 11l1.6-4.3A2 2 0 0 1 8.5 5.4h7a2 2 0 0 1 1.9 1.3L19 11"/><rect x="3" y="11" width="18" height="5" rx="1.2"/><circle cx="7" cy="17.6" r="1.5"/><circle cx="17" cy="17.6" r="1.5"/></svg>',
   tel: '<svg class="ei" viewBox="0 0 24 24"><path d="M5 3.5h3l1.5 4.2-2 1.3a10.5 10.5 0 0 0 5.5 5.5l1.3-2 4.2 1.5v3a2 2 0 0 1-2.2 2A16 16 0 0 1 3.5 5.7 2 2 0 0 1 5 3.5z"/></svg>',
   mail: '<svg class="ei" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.6 6.6L12 13l8.4-6.4"/></svg>',
-  altro: '<svg class="ei" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.4V12l3 2"/></svg>'
+  report: '<svg class="ei" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/></svg>'
 };
 var ATT_TIPI = [
   { id: 'visita', nome: 'Visita', ico: 'auto' },
   { id: 'telefonata', nome: 'Telefonata', ico: 'tel' },
   { id: 'mail', nome: 'Mail', ico: 'mail' },
-  { id: 'altro', nome: 'Altro', ico: 'altro' }
+  { id: 'report', nome: 'Report', ico: 'report' }
 ];
 function attTipo(id) { for (var i = 0; i < ATT_TIPI.length; i++) if (ATT_TIPI[i].id === id) return ATT_TIPI[i]; return ATT_TIPI[3]; }
 function attIco(t) { return CAL_ICO[attTipo(t).ico]; }
 function attDaCanale(c) { return c === 'Visita' ? 'visita' : c === 'Telefono' ? 'telefonata' : (c === 'Email' || c === 'Modulo sito') ? 'mail' : ''; }
+/* che tipo di attività è un evento della cronologia: il canale decide, altrimenti è un report archiviato */
+function calDaEvento(v) {
+  if (!v || !v.d) return '';
+  var ti = String(v.t || '');
+  if (/^(anagrafica|contatto creato|creato da|importato|scheda aggiornata|arricchiment|gruppo |livello |esito )/i.test(ti)) return '';
+  var t = attDaCanale(v.c);
+  if (t) return t;
+  return (ti.trim() || String(v.n || '').trim()) ? 'report' : '';
+}
 
 /* ---------- archivio ---------- */
 function attArchivio() { if (!DB.appuntamenti) DB.appuntamenti = {}; return DB.appuntamenti; }
@@ -1022,10 +1033,14 @@ function calLun(iso) { var d = calData(iso), w = (d.getDay() + 6) % 7; d.setDate
 function calFestivo(iso) { var g = calData(iso).getDay(); return g === 0 || g === 6; }
 function calGiornoIt(iso) { var d = calData(iso); return CAL_GG[(d.getDay() + 6) % 7] + ' ' + d.getDate() + ' ' + CAL_MESI[d.getMonth()]; }
 
-var CAL = { modo: 'mese', rif: '', sel: '', tipi: { visita: 1, telefonata: 1, mail: 0, altro: 1 }, fatte: 1, we: 1 };
+var CAL = { modo: 'mese', rif: '', sel: '', tipi: { visita: 1, telefonata: 1, mail: 0, report: 1 }, fatte: 1, we: 1 };
 (function () {
   try { var v = JSON.parse(localStorage.getItem('cm.cal') || 'null');
-    if (v) { CAL.modo = v.modo || CAL.modo; if (v.tipi) CAL.tipi = v.tipi; CAL.fatte = v.fatte == null ? 1 : v.fatte; CAL.we = v.we == null ? 1 : v.we; } } catch (e) {}
+    if (v) {
+      CAL.modo = v.modo || CAL.modo;
+      if (v.tipi) { CAL.tipi = v.tipi; if (CAL.tipi.report == null) CAL.tipi.report = CAL.tipi.altro == null ? 1 : CAL.tipi.altro; delete CAL.tipi.altro; }
+      CAL.fatte = v.fatte == null ? 1 : v.fatte; CAL.we = v.we == null ? 1 : v.we;
+    } } catch (e) {}
 })();
 function calRicorda() { try { localStorage.setItem('cm.cal', JSON.stringify({ modo: CAL.modo, tipi: CAL.tipi, fatte: CAL.fatte, we: CAL.we })); } catch (e) {} }
 
@@ -1034,11 +1049,11 @@ function calEventi() {
   lista().forEach(function (c) { vivi[c.id] = c; });
   attTutte().forEach(function (a) {
     var c = vivi[a.cid]; if (!c) return;
-    ev.push({ k: 'app', id: a.id, d: a.d, o: a.o || '', tipo: a.tipo || 'altro', fatto: !!a.fatto, c: c, libera: !!a.oraLibera, nota: a.nota || '', oraNota: a.oraNota || '' });
+    ev.push({ k: 'app', id: a.id, d: a.d, o: a.o || '', tipo: a.tipo === 'altro' ? 'report' : (a.tipo || 'report'), fatto: !!a.fatto, c: c, libera: !!a.oraLibera, nota: a.nota || '', oraNota: a.oraNota || '' });
   });
   Object.keys(DB.eventi).forEach(function (x) {
-    var v = DB.eventi[x]; if (!v || !v.d || !vivi[v.cid] || !eAttivita(v)) return;
-    var t = attDaCanale(v.c); if (!t) return;
+    var v = DB.eventi[x]; if (!v || !vivi[v.cid]) return;
+    var t = calDaEvento(v); if (!t) return;
     ev.push({ k: 'cron', id: v.id, d: v.d, o: v.o || '', tipo: t, fatto: true, c: vivi[v.cid], nota: v.t || v.n || '', oraNota: '' });
   });
   var cron = {}; ev.forEach(function (e) { if (e.k === 'cron') cron[e.c.id + '|' + e.d + '|' + e.tipo] = 1; });
@@ -1097,9 +1112,9 @@ function disegnaCal() {
       var d = calSomma(inizio, i);
       if (!CAL.we && calFestivo(d)) continue;
       var dd = calData(d), fuori = dd.getMonth() !== rd.getMonth(), l = per[d] || [];
-      var pal = {}; l.forEach(function (e) { pal[e.fatto ? 'f' : (e.d < og ? 'r' : e.tipo)] = 1; });
-      h.push('<button class="cl-c' + (fuori ? ' fuori' : '') + (d === og ? ' oggi' : '') + (d === CAL.sel ? ' sel' : '') + '" data-d="' + d + '"><span class="n">' + dd.getDate() + '</span><span class="pt">' +
-        ['visita', 'telefonata', 'mail', 'altro', 'r', 'f'].filter(function (x) { return pal[x]; }).slice(0, 4).map(function (x) { return '<i class="p-' + x + '"></i>'; }).join('') + '</span></button>');
+      var pal = {}; l.forEach(function (e) { pal[e.fatto ? 'f' : e.tipo] = 1; if (!e.fatto && e.d < og) pal.r = 1; });
+      h.push('<button class="cl-c' + (fuori ? ' fuori' : '') + (d === og ? ' oggi' : '') + (d === CAL.sel ? ' sel' : '') + (pal.r ? ' tardi' : '') + '" data-d="' + d + '"><span class="n">' + dd.getDate() + '</span><span class="pt">' +
+        ['visita', 'telefonata', 'mail', 'report', 'f'].filter(function (x) { return pal[x]; }).slice(0, 4).map(function (x) { return '<i class="p-' + x + '"></i>'; }).join('') + '</span></button>');
     }
     h.push('</div>');
     var lg = calOrdina(per[CAL.sel] || []);
