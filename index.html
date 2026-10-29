@@ -48,7 +48,7 @@ header.top{position:fixed;top:0;left:0;right:0;z-index:30;background:var(--capo)
 #sy-spia.sy-ok{color:var(--verde)}#sy-spia.sy-sync{color:var(--accent);animation:pulsa 1s ease-in-out infinite}#sy-spia.sy-errore{color:var(--rosso)}#sy-spia.sy-auth{color:var(--ambra);animation:pulsa 1s ease-in-out infinite}#sy-spia.sy-offline{color:var(--grigioL)}
 @keyframes pulsa{0%,100%{opacity:1}50%{opacity:.3}}
 #tema{width:34px;height:34px;border-radius:9px;border:1px solid var(--bordo);background:var(--carta);color:var(--testo);font-size:calc(16px * var(--scala))}
-.hbt{width:36px;height:36px;border-radius:9px;border:1px solid var(--bordo);background:var(--carta);color:var(--testo2);display:flex;align-items:center;justify-content:center}
+.hbt{width:36px;height:36px;border-radius:9px;border:1px solid var(--bordo);background:var(--carta);color:var(--testo2);display:flex;align-items:center;justify-content:center}#bt-menu{background:var(--accent);border-color:var(--accent);color:#fff}#bt-menu svg{stroke-width:2.2}
 .hbt svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .hbt.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .gruppi{display:flex;gap:4px;flex:none}
@@ -103,7 +103,7 @@ html[data-theme="scuro"] .pill.es{background:#1E3A2C;color:#7BD3A5}html[data-the
 h1.tit{font-size:calc(13px * var(--scala));letter-spacing:.14em;text-transform:uppercase;color:var(--tenue);font-weight:800;margin:14px 2px 8px}
 h1.tit:first-child{margin-top:2px}
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
-.kpi{background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:10px 12px;box-shadow:var(--ombra);border-left:5px solid var(--c,var(--accent))}
+.kpi{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:10px 12px;box-shadow:var(--ombra);border-left:5px solid var(--c,var(--accent))}
 .kpi .et{font-size:calc(11.5px * var(--scala));color:var(--tenue);text-transform:uppercase;letter-spacing:.06em;font-weight:700}.kpi .nm{font-size:calc(26px * var(--scala));font-weight:800;line-height:1.1}
 /* scheda */
 #scheda{position:fixed;inset:0;z-index:3000;background:var(--sfondo);overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform .22s ease;padding:0 12px calc(30px + var(--sab))}
@@ -176,6 +176,7 @@ summary::-webkit-details-marker{display:none}
 .leaflet-container{font:inherit}
 .pin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .pin.me{background:var(--accent);width:16px;height:16px;box-shadow:0 0 0 4px rgba(42,120,214,.3)}
+.menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .velo{position:absolute;inset:0;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
 .toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:#0b0b0b;color:#fff;padding:10px 16px;border-radius:12px;font-size:calc(14px * var(--scala));z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:.95}
@@ -197,7 +198,7 @@ summary::-webkit-details-marker{display:none}
   <div class="gruppi" id="gruppi" title="Gruppi di contatti: si accendono e spengono singolarmente"></div>
   <button id="sy-spia" class="sy-off" title="Sincronizzazione"><svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/></svg></button>
   <button id="tema" title="Chiaro / scuro" style="display:none">&#9790;</button>
-  <button id="bt-altro" class="hbt" title="Impostazioni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  <button id="bt-menu" class="hbt" title="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 </header>
 <main>
   <section class="vista on" id="v-cerca">
@@ -226,7 +227,7 @@ summary::-webkit-details-marker{display:none}
   <section class="vista" id="v-altro"></section>
 </main>
 <nav class="tab" id="tab">
-  <button data-v="cerca" class="on"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Cerca</button>
+  <button data-v="cerca" class="on"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><path d="M16.2 10.8A3 3 0 1 0 15 5.3"/><path d="M17.6 14.1c2 .6 3.4 2.3 3.4 4.3"/></svg>Contatti</button>
   <button data-v="oggi"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Oggi<span class="tn" id="tn-oggi" style="display:none"></span></button>
   <button data-v="mappa" id="tab-mappa"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>
   <button data-v="vicino"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Vicino a me</button>
@@ -235,6 +236,7 @@ summary::-webkit-details-marker{display:none}
 </nav>
 <div id="scheda"></div>
 <div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
+<div class="menu" id="menu"><div class="velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
 <div class="toast" id="toast"></div>
 <script src="lib/leaflet.js" onerror="window.L=undefined"></script>
 <script>
@@ -523,7 +525,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.7.1';
+var APP_VER = '1.8.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -548,7 +550,7 @@ var IDB = (function () {
   };
 })();
 var salvaT = null;
-function salva(subito) { cacheTx = {}; cacheNum = {}; clearTimeout(salvaT); var f = function () { IDB.scrivi('db', JSON.stringify(DB)); }; if (subito) f(); else salvaT = setTimeout(f, 300); if (SY) SY.pianifica(); }
+function salva(subito) { cacheTx = {}; cacheNum = {}; cacheAtt = null; clearTimeout(salvaT); var f = function () { IDB.scrivi('db', JSON.stringify(DB)); }; if (subito) f(); else salvaT = setTimeout(f, 300); if (SY) SY.pianifica(); }
 function cfg() { return DB.config.config || {}; }
 function ESITI() { return cfg().esiti || ['Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Interessato', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare']; }
 function CANALI() { return cfg().canali || ['Telefono', 'Modulo sito', 'Email', 'Visita', 'Tramite Assodimi', 'Fiera']; }
@@ -599,7 +601,7 @@ function refTrovato(c, parole) {
 }
 function eventiDi(id) { return Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; }).filter(function (v) { return v.cid === id; }).sort(function (a, b) { return ((b.d || '') + (b.o || '')).localeCompare((a.d || '') + (a.o || '')); }); }
 function listaTutti() { return Object.keys(DB.contatti).map(function (k) { return DB.contatti[k]; }); }
-function lista() { var l = listaTutti().filter(function (c) { if (tuttiAccesi()) return true; return gruppi(c).some(function (g) { return GR[g]; }); }); l.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }); return l; }
+function lista() { var l = listaTutti().filter(function (c) { if (tuttiAccesi()) return true; return gruppi(c).some(function (g) { return GR[g]; }); }); return ordinaLista(l); }
 function conta() { return Object.keys(DB.contatti).length; }
 function pillEsito(e) { return e && e !== 'Da contattare' ? '<span class="pill ' + classeEsito(e) + '">' + esc(e) + '</span>' : ''; }
 function tagPratica(c) { var q = DB.pratiche[c.id]; if (!q) return ''; var t = tipoP(q), s = q.stato || 'sospesa'; return '<span class="rq ' + s + '" title="' + esc(t.nome) + '"><i style="background:' + esc(t.colore) + '">' + esc(t.sigla || t.nome.charAt(0)) + '</i>' + s + '</span>'; }
@@ -618,7 +620,7 @@ var scrollV = {};
 function mostraVista(v, ritorno) {
   if (!ritorno) scrollV[vista] = window.scrollY;
   if (vista !== 'altro') vistaPrima = vista;
-  vista = v; $('#bt-altro').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  vista = v; $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
   if (ritorno) { var y = scrollV[v] || 0; setTimeout(function () { window.scrollTo(0, y); }, 0); } else window.scrollTo(0, 0);
   if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
@@ -626,9 +628,74 @@ function mostraVista(v, ritorno) {
   try { localStorage.setItem('cm.vista', v); } catch (e) {}
 }
 $$('nav.tab button').forEach(function (b) { b.addEventListener('click', function () { mostraVista(b.dataset.v); }); });
-$('#bt-altro').addEventListener('click', function () { mostraVista(vista === 'altro' ? (vistaPrima || 'cerca') : 'altro'); });
+$('#bt-menu').addEventListener('click', function () { if ($('#menu').classList.contains('on')) chiudiMenu(); else apriMenu(); });
 var vistaPrima = 'cerca';
 
+/* ---------- menu a icone: tutte le funzioni in un posto solo ---------- */
+var VOCI_MENU = [
+  { id: 'vista', nome: 'Visualizzazione', ico: 'ordine' },
+  { id: 'kpi', nome: 'Riquadri di Oggi', ico: 'riquadri' },
+  { id: 'aspetto', nome: 'Aspetto', ico: 'aspetto' },
+  { id: 'sync', nome: 'Sincronizzazione', ico: 'nuvola' },
+  { id: 'dati', nome: 'Dati', ico: 'dati' },
+  { id: 'info', nome: 'Informazioni', ico: 'info' },
+  { id: '', nome: 'Impostazioni', ico: 'gear' }
+];
+var ICONE = { 'gear': '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>', 'persone': '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><path d="M16.2 10.8A3 3 0 1 0 15 5.3"/><path d="M17.6 14.1c2 .6 3.4 2.3 3.4 4.3"/>', 'ordine': '<path d="M4 6h13M4 12h9M4 18h5"/><path d="M19 9v10M16.5 16.5L19 19l2.5-2.5"/>', 'riquadri': '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>', 'aspetto': '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>', 'nuvola': '<path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/><path d="M12 11v6M9.5 14.5L12 17l2.5-2.5"/>', 'dati': '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>', 'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/>', 'menu': '<path d="M4 7h16M4 12h16M4 17h16"/>' };
+function disegnaMenu() {
+  $('#menu-pan').innerHTML = VOCI_MENU.map(function (v) {
+    return '<button data-sez="' + esc(v.id) + '"><svg viewBox="0 0 24 24">' + ICONE[v.ico] + '</svg>' + esc(v.nome) + '</button>';
+  }).join('');
+  $$('#menu-pan button').forEach(function (b) { b.addEventListener('click', function () { chiudiMenu(); apriImpostazioni(b.dataset.sez); }); });
+}
+function apriMenu() { disegnaMenu(); $('#menu').classList.add('on'); }
+function chiudiMenu() { $('#menu').classList.remove('on'); }
+function apriImpostazioni(sez) {
+  mostraVista('altro');
+  setTimeout(function () {
+    var e = sez ? $('#op-' + sez) : null;
+    if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo(0, 0);
+  }, 90);
+}
+$('#menu-velo').addEventListener('click', chiudiMenu);
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') chiudiMenu(); });
+/* ---------- ordine dei contatti ---------- */
+var ORDINI = [
+  { id: 'nome', nome: 'Alfabetico (A → Z)' },
+  { id: 'attivita', nome: 'Ultima attività (prima le più recenti)' },
+  { id: 'fermi', nome: 'Fermi da più tempo (prima chi aspetta)' },
+  { id: 'richiamo', nome: 'Richiamo più vicino' },
+  { id: 'livello', nome: 'Livello (A, B, C)' },
+  { id: 'recenti', nome: 'Aggiunti per ultimi' }
+];
+function ordine() { try { return localStorage.getItem('cm.ordine') || 'nome'; } catch (e) { return 'nome'; } }
+var cacheAtt = null;
+/* ultima attività registrata per ogni contatto, calcolata una volta sola */
+function attivitaMappa() {
+  if (cacheAtt) return cacheAtt;
+  var m = {};
+  Object.keys(DB.eventi).forEach(function (k) {
+    var v = DB.eventi[k]; if (!v || !v.cid) return;
+    var s = (v.d || '') + ' ' + (v.o || '');
+    if (!m[v.cid] || s > m[v.cid]) m[v.cid] = s;
+  });
+  cacheAtt = m; return m;
+}
+function cmpNome(a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }
+function ordinaLista(l) {
+  var o = ordine();
+  if (o === 'attivita' || o === 'fermi') {
+    var m = attivitaMappa();
+    l.sort(function (a, b) { var x = m[a.id] || '', y = m[b.id] || ''; if (x === y) return cmpNome(a, b); return o === 'attivita' ? (x > y ? -1 : 1) : (x < y ? -1 : 1); });
+  } else if (o === 'richiamo') {
+    l.sort(function (a, b) { var x = sit(a.id).richiamo || '9999-99-99', y = sit(b.id).richiamo || '9999-99-99'; return x === y ? cmpNome(a, b) : (x < y ? -1 : 1); });
+  } else if (o === 'livello') {
+    l.sort(function (a, b) { var x = a.liv || 'Z', y = b.liv || 'Z'; return x === y ? cmpNome(a, b) : (x < y ? -1 : 1); });
+  } else if (o === 'recenti') {
+    l.sort(function (a, b) { var x = a.creato || '', y = b.creato || ''; return x === y ? cmpNome(a, b) : (x > y ? -1 : 1); });
+  } else l.sort(cmpNome);
+  return l;
+}
 /* CERCA */
 /* GRUPPI: come sul Mac, i due pulsanti in alto filtrano tutte le viste; attivi uno alla volta o insieme */
 var GR = {};
@@ -680,7 +747,7 @@ function disegnaCerca() {
   try { localStorage.setItem('cm.filtri', JSON.stringify(F)); } catch (e) {}
   disegnaChips();
   var L = filtra(), box = $('#lista'); box.innerHTML = '';
-  if (!conta()) { box.innerHTML = '<div class="benvenuto"><b>Nessun contatto ancora</b>Collega Google Drive da <b>Altro → Sincronizzazione</b>: i contatti arrivano da GESTIONE CONTATTI sul Mac.</div>'; $('#conta').textContent = ''; return; }
+  if (!conta()) { box.innerHTML = '<div class="benvenuto"><b>Nessun contatto ancora</b>Collega Google Drive dal <b>menu in alto a destra → Sincronizzazione</b>: i contatti arrivano da GESTIONE CONTATTI sul Mac.</div>'; $('#conta').textContent = ''; return; }
   var tot = lista().length; $('#conta').textContent = num(L.length) + (L.length === 1 ? ' contatto' : ' contatti') + (L.length !== tot ? ' su ' + num(tot) : '') + (!tuttiAccesi() ? ' · ' + gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ') : '');
   if (!L.length) { box.innerHTML = '<div class="vuoto">Nessun contatto con questi filtri.</div>'; return; }
   var frag = document.createDocumentFragment(), par = normNome(F.q).trim() ? normNome(F.q).trim().split(/\s+/) : [];
@@ -727,25 +794,81 @@ function formNuovoContatto() {
 $('#nc-apri').addEventListener('click', function () { if ($('#nc-form').style.display === 'none') formNuovoContatto(); else $('#nc-form').style.display = 'none'; });
 
 /* OGGI */
+/* ---------- riquadri della scheda Oggi ---------- */
+/* attività = quello che ho fatto io con il contatto (visita, telefonata, mail, report); non lo sono i cambi di stato né le modifiche all'anagrafica */
+function eAttivita(v) {
+  if (!v || !v.c) return false;
+  var ti = String(v.t || '');
+  if (/^(anagrafica|contatto creato|creato da|importato|scheda aggiornata|arricchiment|gruppo |livello |esito )/i.test(ti)) return false;
+  if (v.m === 1 && !v.o && !ti) return false;
+  return true;
+}
+function eventiPeriodo(da, a) {
+  return Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; })
+    .filter(function (v) { return v.d && v.d >= da && v.d <= a && eAttivita(v) && DB.contatti[v.cid]; })
+    .sort(function (x, y) { return ((y.d || '') + (y.o || '')).localeCompare((x.d || '') + (x.o || '')); });
+}
+function giorniFa(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+function praticheCon(f) {
+  return lista().filter(function (c) { var q = DB.pratiche[c.id]; return q && f(q); });
+}
+var KPI = [
+  { id: 'scaduti', nome: 'Richiami scaduti', col: 'var(--rosso)', vuoto: 'Nessun richiamo arretrato.',
+    calc: function (L, og) { return L.filter(function (c) { var r = sit(c.id).richiamo; return r && r < og; }).sort(function (a, b) { return sit(a.id).richiamo.localeCompare(sit(b.id).richiamo); }); } },
+  { id: 'oggi', nome: 'Da sentire oggi', col: 'var(--ambra)', vuoto: 'Nessun richiamo fissato per oggi.',
+    calc: function (L, og) { return L.filter(function (c) { return sit(c.id).richiamo === og; }); } },
+  { id: 'visite', nome: 'Visite da fare', col: 'var(--sz-sit)', vuoto: 'Nessun contatto con esito «Da visitare» o «Da rivisitare».',
+    calc: function (L, og) { return L.filter(function (c) { var k = sit(c.id); return (k.esito === 'Da visitare' || k.esito === 'Da rivisitare') && !(k.richiamo && k.richiamo <= og); }); } },
+  { id: 'attivita', nome: 'Attività di oggi', col: 'var(--verde)', ev: true, vuoto: 'Nessuna attività registrata oggi.',
+    calc: function (L, og) { return eventiPeriodo(og, og); } },
+  { id: 'settimana', nome: 'Attività degli ultimi 7 giorni', col: 'var(--verde)', ev: true, vuoto: 'Nessuna attività negli ultimi sette giorni.',
+    calc: function (L, og) { return eventiPeriodo(giorniFa(6), og); } },
+  { id: 'prossimi', nome: 'Prossimi richiami', col: 'var(--accent)', vuoto: 'Nessun richiamo in programma.',
+    calc: function (L, og) { return L.filter(function (c) { var r = sit(c.id).richiamo; return r && r > og; }).sort(function (a, b) { return sit(a.id).richiamo.localeCompare(sit(b.id).richiamo); }).slice(0, 40); } },
+  { id: 'caldi', nome: 'Contatti caldi', col: 'var(--verde)', vuoto: 'Nessun contatto con esito positivo.',
+    calc: function (L) { return L.filter(function (c) { return POSITIVI().indexOf(sit(c.id).esito) >= 0; }); } },
+  { id: 'daric', nome: 'Da richiamare', col: 'var(--ambra)', vuoto: 'Nessun contatto con esito «Da richiamare».',
+    calc: function (L) { return L.filter(function (c) { return sit(c.id).esito === 'Da richiamare'; }); } },
+  { id: 'mai', nome: 'Mai contattati', col: 'var(--tenue)', vuoto: 'Tutti i contatti hanno almeno un’attività.',
+    calc: function (L) { var m = attivitaMappa(); return L.filter(function (c) { var k = sit(c.id); return !m[c.id] && (!k.esito || k.esito === 'Da contattare'); }); } },
+  { id: 'sospese', nome: 'Pratiche in sospeso', col: 'var(--sz-prat)', vuoto: 'Nessuna pratica in sospeso.',
+    calc: function () { return praticheCon(function (q) { return (q.stato || 'sospesa') === 'sospesa'; }); } },
+  { id: 'offerte', nome: 'Offerte in sospeso', col: '#E8912D', vuoto: 'Nessuna offerta in sospeso.',
+    calc: function () { return praticheCon(function (q) { return (q.stato || 'sospesa') === 'sospesa' && tipoP(q).id === 'offerta'; }); } },
+  { id: 'partner', nome: 'Proposte di partnership in sospeso', col: '#6B4FA0', vuoto: 'Nessuna proposta di partnership in sospeso.',
+    calc: function () { return praticheCon(function (q) { return (q.stato || 'sospesa') === 'sospesa' && tipoP(q).id !== 'offerta'; }); } },
+  { id: 'accettate', nome: 'Pratiche accettate', col: '#1C6B4A', vuoto: 'Nessuna pratica accettata.',
+    calc: function () { return praticheCon(function (q) { return q.stato === 'accettata'; }); } },
+  { id: 'nuovi', nome: 'Contatti aggiunti questo mese', col: 'var(--accent)', vuoto: 'Nessun contatto aggiunto questo mese.',
+    calc: function (L, og) { var m = og.slice(0, 7); return L.filter(function (c) { return (c.creato || '').slice(0, 7) === m; }); } }
+];
+var KPI_BASE = ['scaduti', 'oggi', 'visite', 'attivita', 'prossimi'];
+function kpiScelti() {
+  try { var s = JSON.parse(localStorage.getItem('cm.kpi') || 'null');
+    if (Array.isArray(s)) { var l = s.filter(function (id) { return KPI.some(function (k) { return k.id === id; }); }); if (l.length) return l; } } catch (e) {}
+  return KPI_BASE.slice();
+}
+function kpiDi(id) { return KPI.filter(function (k) { return k.id === id; })[0]; }
 function disegnaOggi() {
   var og = oggi(), L = lista(), box = $('#v-oggi');
-  var scad = L.filter(function (c) { var r = sit(c.id).richiamo; return r && r < og; });
-  var oggiL = L.filter(function (c) { return sit(c.id).richiamo === og; });
-  var vis = L.filter(function (c) { var k = sit(c.id); return (k.esito === 'Da visitare' || k.esito === 'Da rivisitare') && !(k.richiamo && k.richiamo <= og); });
-  var fatti = Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; }).filter(function (v) { return v.d === og; }).sort(function (a, b) { return (b.o || '').localeCompare(a.o || ''); });
-  var prossimi = L.filter(function (c) { var r = sit(c.id).richiamo; return r && r > og; }).sort(function (a, b) { return sit(a.id).richiamo.localeCompare(sit(b.id).richiamo); }).slice(0, 30);
-  var n = scad.length + oggiL.length; var tn = $('#tn-oggi'); tn.style.display = n ? '' : 'none'; tn.textContent = n;
+  var sel = kpiScelti(), dati = {};
+  sel.concat(['scaduti', 'oggi']).forEach(function (id) { if (dati[id]) return; var k = kpiDi(id); if (k) dati[id] = k.calc(L, og) || []; });
+  var n = dati.scaduti.length + dati.oggi.length; var tn = $('#tn-oggi'); tn.style.display = n ? '' : 'none'; tn.textContent = n;
   var h = ['<h1 class="tit">' + new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) + '</h1>'];
-  h.push('<div class="kpis"><div class="kpi" style="--c:var(--rosso)"><div class="et">Richiami scaduti</div><div class="nm">' + num(scad.length) + '</div></div><div class="kpi" style="--c:var(--ambra)"><div class="et">Da sentire oggi</div><div class="nm">' + num(oggiL.length) + '</div></div><div class="kpi" style="--c:var(--sz-sit)"><div class="et">Visite da fare</div><div class="nm">' + num(vis.length) + '</div></div><div class="kpi" style="--c:var(--verde)"><div class="et">Registrati oggi</div><div class="nm">' + num(fatti.length) + '</div></div></div>');
+  h.push('<div class="kpis">' + sel.map(function (id) { var k = kpiDi(id);
+    return '<button class="kpi" data-k="' + esc(id) + '" style="--c:' + k.col + '"><div class="et">' + esc(k.nome) + '</div><div class="nm">' + num(dati[id].length) + '</div></button>';
+  }).join('') + '</div>');
   box.innerHTML = h.join('');
-  function blocco(tit, l, vuoto) { box.appendChild(el('h1', 'tit', tit + ' <span class="pill">' + num(l.length) + '</span>')); var d = el('div', 'lista'); if (!l.length) d.innerHTML = '<div class="vuoto">' + vuoto + '</div>'; else l.forEach(function (c) { d.appendChild(rigaContatto(c)); }); box.appendChild(d); }
-  blocco('Richiami scaduti', scad.sort(function (a, b) { return sit(a.id).richiamo.localeCompare(sit(b.id).richiamo); }), 'Nessun richiamo arretrato.');
-  blocco('Da sentire oggi', oggiL, 'Nessun richiamo fissato per oggi.');
-  blocco('Visite da fare', vis, 'Nessun contatto con esito «Da visitare» o «Da rivisitare».');
-  box.appendChild(el('h1', 'tit', 'Registrati oggi <span class="pill">' + num(fatti.length) + '</span>'));
-  var d2 = el('div', 'lista'); if (!fatti.length) d2.innerHTML = '<div class="vuoto">Niente ancora in cronologia oggi.</div>';
-  fatti.forEach(function (v) { var c = DB.contatti[v.cid]; if (!c) return; var r = rigaContatto(c, '<span class="pill">' + esc(v.o || '') + ' ' + esc(v.c || '') + '</span>'); d2.appendChild(r); }); box.appendChild(d2);
-  blocco('Prossimi richiami', prossimi, 'Nessun richiamo in programma.');
+  sel.forEach(function (id) {
+    var k = kpiDi(id), l = dati[id];
+    var tit = el('h1', 'tit', esc(k.nome) + ' <span class="pill">' + num(l.length) + '</span>'); tit.id = 'kpi-' + id; box.appendChild(tit);
+    var d = el('div', 'lista');
+    if (!l.length) d.innerHTML = '<div class="vuoto">' + k.vuoto + '</div>';
+    else if (k.ev) l.forEach(function (v) { var c = DB.contatti[v.cid]; if (!c) return; d.appendChild(rigaContatto(c, '<span class="pill">' + esc([dataIt(v.d) === dataIt(og) ? v.o : dataIt(v.d), v.c].filter(Boolean).join(' ')) + '</span>', v.t ? esc(v.t) : '')); });
+    else l.forEach(function (c) { d.appendChild(rigaContatto(c)); });
+    box.appendChild(d);
+  });
+  $$('#v-oggi .kpi').forEach(function (b) { b.addEventListener('click', function () { var e = $('#kpi-' + b.dataset.k); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
 }
 
 /* VICINO A ME */
@@ -995,7 +1118,7 @@ function formModifica(id) {
 function pulisciHtml(h) { return String(h || '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*\/?>/gi, '').replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '').replace(/href\s*=\s*"javascript:[^"]*"/gi, ''); }
 function chiudiScheda() { $('#scheda').classList.remove('on'); schedaId = null; document.body.classList.remove('sc-aperta'); mostraVista(vista, true); }
 window.addEventListener('popstate', function () { if (schedaId) chiudiScheda(); });
-/* NAVIGAZIONE: app scelta una volta sola (Altro → Aspetto la cambia) */
+/* NAVIGAZIONE: app scelta una volta sola (menu → Aspetto la cambia) */
 var NAVIGATORI = [
   { id: 'apple', nome: 'Apple Mappe', url: function (c) { return 'https://maps.apple.com/?' + (c.lat && c.lng ? 'daddr=' + c.lat + ',' + c.lng : 'daddr=' + encodeURIComponent(c.sede)) + '&q=' + encodeURIComponent(c.nome); } },
   { id: 'google', nome: 'Google Maps', url: function (c) { return 'https://www.google.com/maps/dir/?api=1&destination=' + (c.lat && c.lng ? c.lat + ',' + c.lng : encodeURIComponent(c.sede)) + '&travelmode=driving'; } },
@@ -1032,7 +1155,14 @@ var SY = null;
 function nomeStato(s) { return { off: 'non attiva', ok: 'sincronizzato', sync: 'in corso…', errore: 'errore', offline: 'offline', auth: 'autorizzazione necessaria' }[s] || s; }
 function disegnaAltro() {
   var box = $('#v-altro'), m = SY ? SY.meta : {}, fs = +(localStorage.getItem('cm.fs') || 16);
-  var h = ['<div class="opz"><h2>Sincronizzazione con GESTIONE CONTATTI</h2>'];
+  var sel = kpiScelti();
+  var h = ['<div class="opz" id="op-vista"><h2>Visualizzazione</h2>'];
+  h.push('<div class="riga-o"><span>Ordine dei contatti</span><span class="sp"></span><select id="op-ordine" class="chip">' + ORDINI.map(function (o) { return '<option value="' + o.id + '"' + (ordine() === o.id ? ' selected' : '') + '>' + esc(o.nome) + '</option>'; }).join('') + '</select></div>');
+  h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Vale per l’elenco Contatti e per la ricerca. «Vicino a me» resta in ordine di distanza.</span></div></div>');
+  h.push('<div class="opz" id="op-kpi"><h2>Riquadri della scheda Oggi</h2>');
+  h.push(KPI.map(function (k) { return '<label class="riga-o"><span>' + esc(k.nome) + '</span><span class="sp"></span><input type="checkbox" data-kpi="' + k.id + '"' + (sel.indexOf(k.id) >= 0 ? ' checked' : '') + '></label>'; }).join(''));
+  h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Toccando un riquadro nella scheda Oggi si va alla lista corrispondente.</span></div></div>');
+  h.push('<div class="opz" id="op-sync"><h2>Sincronizzazione con GESTIONE CONTATTI</h2>');
   h.push('<div class="riga-o"><span>Servizio</span><span class="sp"></span><select id="sy-tipo" class="chip"><option value=""' + (!m.tipo ? ' selected' : '') + '>Nessuno</option><option value="drive"' + (m.tipo === 'drive' ? ' selected' : '') + '>Google Drive</option><option value="server"' + (m.tipo === 'server' ? ' selected' : '') + '>Server personale</option></select></div>');
   h.push('<div class="riga-o" id="sy-url-r" style="display:' + (m.tipo === 'server' ? '' : 'none') + '"><input id="sy-url" type="url" class="chip" style="flex:1" value="' + esc(m.serverUrl || '') + '" placeholder="https://server:8787"></div>');
   h.push('<div class="riga-o"><span>Stato</span><span class="sp"></span><b>' + nomeStato(SY ? SY.stato : 'off') + '</b></div>');
@@ -1045,11 +1175,11 @@ function disegnaAltro() {
   h.push('<div class="az" style="margin-top:8px"><button class="btn pri" id="sy-connetti">Connetti a Google</button><button class="btn" id="sy-ora">Sincronizza ora</button><button class="btn peri" id="sy-scollega">Scollega</button></div>');
   if (SY && SY.log.length) h.push('<div class="log" style="margin-top:8px">' + esc(SY.log.slice(0, 6).join('\n')) + '</div>');
   h.push('</div>');
-  h.push('<div class="opz"><h2>Aspetto</h2><div class="riga-o"><span>Tema</span><span class="sp"></span><div class="seg"><button data-t="chiaro"' + (tema() === 'chiaro' ? ' class="on"' : '') + '>Chiaro</button><button data-t="scuro"' + (tema() === 'scuro' ? ' class="on"' : '') + '>Scuro</button><button data-t="auto"' + (tema() === 'auto' ? ' class="on"' : '') + '>Automatico</button></div></div>');
+  h.push('<div class="opz" id="op-aspetto"><h2>Aspetto</h2><div class="riga-o"><span>Tema</span><span class="sp"></span><div class="seg"><button data-t="chiaro"' + (tema() === 'chiaro' ? ' class="on"' : '') + '>Chiaro</button><button data-t="scuro"' + (tema() === 'scuro' ? ' class="on"' : '') + '>Scuro</button><button data-t="auto"' + (tema() === 'auto' ? ' class="on"' : '') + '>Automatico</button></div></div>');
   h.push('<div class="riga-o"><span>App per navigare</span><span class="sp"></span><select id="op-nav" class="chip"><option value=""' + (navigatore() === '' ? ' selected' : '') + '>Chiedi al primo uso</option>' + NAVIGATORI.map(function (n) { return '<option value="' + n.id + '"' + (navigatore() === n.id ? ' selected' : '') + '>' + n.nome + '</option>'; }).join('') + '</select></div>');
   h.push('<div class="riga-o"><span>Dimensione testo</span><span class="sp"></span><div class="seg">' + [14, 16, 18].map(function (f) { return '<button data-fs="' + f + '"' + (fs === f ? ' class="on"' : '') + '>' + (f === 14 ? 'Piccolo' : f === 16 ? 'Normale' : 'Grande') + '</button>'; }).join('') + '</div></div></div>');
-  h.push('<div class="opz"><h2>Dati</h2><div class="riga-o"><span>I contatti si modificano su GESTIONE CONTATTI (Mac). Dal telefono registri eventi, esiti, richiami, prossimi passi e stati delle pratiche: tornano al Mac alla prima sincronizzazione.</span></div><div class="az"><button class="btn peri" id="dt-azzera">Cancella i dati su questo telefono</button></div></div>');
-  h.push('<div class="opz"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="riga-o"><span>Aggiornamento</span><span class="sp"></span><button class="btn mini" id="agg-chk">Controlla</button></div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
+  h.push('<div class="opz" id="op-dati"><h2>Dati</h2><div class="riga-o"><span>I contatti si modificano su GESTIONE CONTATTI (Mac). Dal telefono registri eventi, esiti, richiami, prossimi passi e stati delle pratiche: tornano al Mac alla prima sincronizzazione.</span></div><div class="az"><button class="btn peri" id="dt-azzera">Cancella i dati su questo telefono</button></div></div>');
+  h.push('<div class="opz" id="op-info"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="riga-o"><span>Aggiornamento</span><span class="sp"></span><button class="btn mini" id="agg-chk">Controlla</button></div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
   box.innerHTML = h.join('');
   $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); disegnaAltro(); }); });
   $('#sy-eti').addEventListener('change', function () { var v = this.value.trim() || 'Dispositivo'; if (SY) SY.imposta({ etichetta: v }).then(function () { toast('Dispositivo rinominato'); disegnaAltro(); }); });
@@ -1060,6 +1190,13 @@ function disegnaAltro() {
   $('#op-nav').addEventListener('change', function () { try { if (this.value) localStorage.setItem('cm.nav', this.value); else localStorage.removeItem('cm.nav'); } catch (e) {} toast('App di navigazione: ' + (this.options[this.selectedIndex].text)); });
   $$('.seg [data-t]', box).forEach(function (b) { b.addEventListener('click', function () { setTema(b.dataset.t); disegnaAltro(); }); });
   $$('.seg [data-fs]', box).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('cm.fs', b.dataset.fs); applicaFs(); disegnaAltro(); }); });
+  $('#op-ordine').addEventListener('change', function () { try { localStorage.setItem('cm.ordine', this.value); } catch (e) {} toast('Ordine: ' + this.options[this.selectedIndex].text); if (vista === 'cerca') mostraVista('cerca', true); });
+  $$('[data-kpi]', box).forEach(function (ck) { ck.addEventListener('change', function () {
+    var l = KPI.map(function (k) { return k.id; }).filter(function (id) { var e = $('[data-kpi="' + id + '"]', box); return e && e.checked; });
+    if (!l.length) { ck.checked = true; toast('Almeno un riquadro deve restare acceso'); return; }
+    try { localStorage.setItem('cm.kpi', JSON.stringify(l)); } catch (e) {}
+    disegnaOggi();
+  }); });
   $('#agg-chk').addEventListener('click', function () { toast('Controllo in corso…'); controllaAggiornamenti(true); });
   $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
@@ -1079,7 +1216,7 @@ function spia(s, msg) { var sp = $('#sy-spia'); sp.className = 'sy-' + s; sp.tit
 /* ---------- sincronizzazione: applica i record ricevuti ---------- */
 function applicaRemoti(mod, del) {
   var n = 0;
-  cacheTx = {}; cacheNum = {};
+  cacheTx = {}; cacheNum = {}; cacheAtt = null;
   var primaG = JSON.stringify(gruppiL());
   ['contatti', 'situazioni', 'eventi', 'pratiche', 'config'].forEach(function (c) {
     (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
