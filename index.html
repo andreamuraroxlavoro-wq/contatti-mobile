@@ -416,6 +416,16 @@ body.cal-trascino .cl-celle{touch-action:none}
 .att-tipi .chip svg{width:14px;height:14px;fill:none;stroke:var(--tc,currentColor);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .att-tipi .chip.on{background:color-mix(in srgb,var(--tc) 14%,transparent);border-color:var(--tc);color:var(--tc)}
 .att-f .az{margin-top:12px}
+/* MODIFICA DI UN REPORT: foglio a pieno schermo, il testo riempie quello che resta */
+.me-f{align-items:stretch}
+.me-f .fg{max-width:none;width:100%;height:100%;max-height:100%;border-radius:0;display:flex;flex-direction:column;
+  padding:calc(10px + var(--sat)) 14px calc(14px + var(--sab));overflow:auto}
+.me-f .fg > label:last-of-type{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+.me-f #me-n{flex:1 1 auto;min-height:38vh;resize:none}
+.me-f .az{position:sticky;bottom:0;background:var(--carta);padding-top:10px;margin-top:12px}
+.btn.elim{background:var(--rosso);border-color:var(--rosso);color:#fff;font-weight:700}
+.me-f .az .btn.elim{flex:0 0 auto;min-width:96px}
+body.me-aperto{overflow:hidden}
 .att-f .az .btn{flex:1}
 .sz-prog .cl-el{gap:8px}
 
@@ -768,7 +778,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.37.0';
+var APP_VER = '1.38.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2582,18 +2592,23 @@ function testoAHtml(t) {
 /* modifica del testo di un evento già registrato (titolo e nota del report) */
 function modificaEvento(cid, vid) {
   var v = DB.eventi[vid]; if (!v) { toast('Evento non trovato'); return; }
-  var f = el('div', 'foglio att-f');
-  function chiudi() { f.remove(); }
+  var f = el('div', 'foglio att-f me-f');   /* me-f: pieno schermo, c'è un testo lungo da leggere */
+  function chiudi() { f.remove(); document.body.classList.remove('me-aperto'); }
   var mail = evMail(v);
   f.innerHTML = '<div class="fg"><h4>' + (mail ? 'Modifica la voce' : 'Modifica il report') + '</h4>' +
     (mail ? '<div class="nota" style="margin-bottom:10px">Questa è una <b>mail archiviata</b>: il testo della mail resta com\'è arrivato. Qui correggi il titolo, la nota e la data.</div>' : '') +
     '<div class="due"><label>Giorno <input type="date" id="me-d" value="' + esc(v.d || '') + '"></label><label>Ora <input type="time" id="me-o" value="' + esc(v.o || '') + '"></label></div>' +
     '<label>Titolo <input type="text" id="me-t" value="' + esc(v.t || '') + '" placeholder="es. Visita in sede"></label>' +
     '<label>' + (mail ? 'Nota' : 'Testo del report') + ' <textarea id="me-n" rows="9">' + esc(mail ? (v.n || '') : (v.n || htmlATesto(v.h))) + '</textarea></label>' +
-    '<div class="az"><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
-  f.addEventListener('click', function (e) { if (e.target === f) chiudi(); });
-  document.body.appendChild(f);
+    '<div class="az"><button class="btn elim" id="me-del">Elimina</button><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
   $('#me-ann', f).addEventListener('click', chiudi);
+  /* eliminare è definitivo: prima si chiede, dicendo di quale voce si tratta */
+  $('#me-del', f).addEventListener('click', function () {
+    var che = (v.t || '').trim() || (mail ? 'questa mail archiviata' : 'questo report');
+    if (!confirm('Elimino «' + che + '» del ' + dataIt(v.d) + (v.o ? ' alle ' + v.o : '') + ' dalla cronologia?\n\nL\'operazione non si può annullare: la voce sparisce anche da GESTIONE CONTATTI sul Mac alla prossima sincronizzazione.')) return;
+    delete DB.eventi[vid]; salva(); chiudi(); toast('Voce eliminata'); apriScheda(cid);
+  });
   $('#me-ok', f).addEventListener('click', function () {
     var t = $('#me-t', f).value.trim(), n = $('#me-n', f).value.trim();
     var d = $('#me-d', f).value || v.d, o = $('#me-o', f).value;
