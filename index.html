@@ -246,11 +246,17 @@ body.mappa-on .fab{z-index:1200}
 .fab.mirato{box-shadow:0 0 0 3px color-mix(in srgb,var(--verde) 35%,transparent),0 8px 22px rgba(0,0,0,.28)}
 .fab svg{stroke-width:2.6}
 /* il tasto «indietro»: sta sotto al «+», si accende solo se c'è davvero dove tornare */
-.fab-ind{background:var(--carta);color:var(--accent);border:1px solid var(--bordo);bottom:calc(142px + var(--sab))}
+.fab{touch-action:none}   /* il tasto si lascia spostare: il gesto non deve diventare uno scorrimento */
+.fab-ind{background:var(--accent);color:#fff;bottom:calc(142px + var(--sab))}
+.fab-ind.trascina{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 26px rgba(0,0,0,.32)}
 .fab-ind.sopra{z-index:3100;bottom:calc(80px + var(--sab))}
 body.mappa-on .fab-ind{z-index:1200}
 /* mentre lo si sposta: si allarga e pulsa, così si vede che è in mano */
-.fab.trascina{transform:scale(1.18);box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 26px rgba(0,0,0,.32);transition:none;cursor:grabbing}
+.fab.trascina{transform:scale(1.18);box-shadow:0 0 0 10px color-mix(in srgb,var(--verde) 22%,transparent),0 10px 26px rgba(0,0,0,.32);transition:none;cursor:grabbing}
+/* la riga da cui ero partito, riaccesa al ritorno */
+@keyframes tornato-p{0%,100%{box-shadow:0 0 0 2px var(--accent),0 0 0 0 color-mix(in srgb,var(--accent) 40%,transparent)}50%{box-shadow:0 0 0 3px var(--accent),0 0 18px 7px color-mix(in srgb,var(--accent) 30%,transparent)}}
+.tornato{animation:tornato-p 1.15s ease-in-out infinite;border-radius:12px;position:relative;z-index:3;background:color-mix(in srgb,var(--accent) 9%,transparent)}
+@media (prefers-reduced-motion:reduce){.tornato{animation:none;box-shadow:0 0 0 3px var(--accent)}}
 .fab.trascina svg{transform:none}
 @media (prefers-reduced-motion:reduce){.fab.trascina{transform:none}}
 .menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .menu-velo{position:absolute;top:0;right:0;bottom:0;left:0;display:block;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
@@ -787,7 +793,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.39.0';
+var APP_VER = '1.40.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2908,14 +2914,36 @@ function clienteContesto() {
    Si tengono gli ultimi 15 passi: abbastanza per tornare sui propri passi in un giro
    di lavoro, senza che l'app debba ricordare mezza giornata.
    ============================================================ */
-var STORIA = [], STORIA_MAX = 15, inRitorno = false;
+var STORIA = [], STORIA_MAX = 50, inRitorno = false;
+/* l'ultima riga toccata prima di cambiare pagina: al ritorno la riaccendo, così si
+   riconosce subito da dove si era partiti. Si segna in fase di cattura, cioè prima
+   che il tocco faccia il suo lavoro, e vale solo per il salto che parte da lì. */
+var SEGNI = '.riga, .cg-v, .tu-r, .cr-k, .kpi, .cl-e, .ev, .opz, .carta';
+var ultimoTocco = null;
+document.addEventListener('click', function (e) {
+  ultimoTocco = null;
+  var t = e.target.closest ? e.target.closest(SEGNI) : null; if (!t) return;
+  var cls = (t.className || '').split(/\s+/).filter(function (c) { return SEGNI.indexOf('.' + c) >= 0; })[0];
+  if (!cls) return;
+  var pari = Array.prototype.slice.call(document.querySelectorAll('.' + cls));
+  ultimoTocco = { cls: cls, i: pari.indexOf(t) };
+}, true);
+function riaccendiSegno(sg) {
+  if (!sg || sg.i < 0) return;
+  var l = document.querySelectorAll('.' + sg.cls), e = l[sg.i]; if (!e) return;
+  $$('.tornato').forEach(function (x) { x.classList.remove('tornato'); });
+  e.classList.add('tornato');
+  function spegni() { e.classList.remove('tornato'); document.removeEventListener('pointerdown', spegni, true); }
+  setTimeout(function () { document.addEventListener('pointerdown', spegni, true); }, 600);
+  setTimeout(spegni, 6000);
+}
 function statoOra() {
-  return { vista: vista, scheda: schedaId || '', y: schedaId ? ($('#scheda') ? $('#scheda').scrollTop : 0) : window.scrollY };
+  return { vista: vista, scheda: schedaId || '', y: schedaId ? ($('#scheda') ? $('#scheda').scrollTop : 0) : window.scrollY, sel: ultimoTocco };
 }
 function storiaSegna() {
   if (inRitorno) return;
   var s0 = statoOra(), u = STORIA[STORIA.length - 1];
-  if (u && u.vista === s0.vista && u.scheda === s0.scheda) { u.y = s0.y; return; }  /* stesso posto: aggiorno solo l'altezza */
+  if (u && u.vista === s0.vista && u.scheda === s0.scheda) { u.y = s0.y; u.sel = s0.sel; return; }  /* stesso posto: aggiorno solo l'altezza */
   STORIA.push(s0);
   if (STORIA.length > STORIA_MAX) STORIA.shift();
   aggiornaInd();
@@ -2925,6 +2953,7 @@ function aggiornaInd() {
   b.classList.toggle('on', STORIA.length > 0);
   b.classList.toggle('sopra', document.body.classList.contains('sc-aperta'));
   b.title = STORIA.length ? 'Torna indietro (' + STORIA.length + (STORIA.length === 1 ? ' passo' : ' passi') + ')' : '';
+  b.setAttribute('aria-label', b.title);
 }
 function tornaIndietro() {
   var s0 = STORIA.pop(); if (!s0) return;
@@ -2932,10 +2961,10 @@ function tornaIndietro() {
   function applica() {
     if (s0.scheda && DB.contatti[s0.scheda]) {
       apriScheda(s0.scheda);
-      setTimeout(function () { var S = $('#scheda'); if (S) S.scrollTop = s0.y || 0; inRitorno = false; aggiornaInd(); }, 90);
+      setTimeout(function () { var S = $('#scheda'); if (S) S.scrollTop = s0.y || 0; riaccendiSegno(s0.sel); inRitorno = false; aggiornaInd(); }, 90);
     } else {
       mostraVista(s0.vista, true);
-      setTimeout(function () { window.scrollTo(0, s0.y || 0); inRitorno = false; aggiornaInd(); }, 90);
+      setTimeout(function () { window.scrollTo(0, s0.y || 0); riaccendiSegno(s0.sel); inRitorno = false; aggiornaInd(); }, 90);
     }
   }
   if (schedaId && s0.scheda !== schedaId) {
@@ -2959,20 +2988,22 @@ function fabPosApplica(b) {
   b.style.right = 'auto'; b.style.bottom = 'auto';
 }
 function fabSpostabile(b) {
-  var premuto = null, muovendo = false, dx = 0, dy = 0;
+  /* il dito si segue sul documento: ascoltando solo il tasto, appena il dito ne usciva
+     di un paio di millimetri gli eventi smettevano di arrivare e lo spostamento si piantava. */
+  var premuto = null, muovendo = false, dx = 0, dy = 0, x0 = 0, y0 = 0;
   b.addEventListener('pointerdown', function (e) {
-    var r = b.getBoundingClientRect(); dx = e.clientX - r.left; dy = e.clientY - r.top;
+    var r = b.getBoundingClientRect(); dx = e.clientX - r.left; dy = e.clientY - r.top; x0 = e.clientX; y0 = e.clientY;
+    document.addEventListener('pointermove', muovi, { passive: false });
+    document.addEventListener('pointerup', finito); document.addEventListener('pointercancel', finito);
     premuto = setTimeout(function () {
       premuto = null; muovendo = true;
       b.classList.add('trascina');
       try { if (navigator.vibrate) navigator.vibrate(35); } catch (x) {}
-      try { b.setPointerCapture(e.pointerId); } catch (x) {}
     }, 500);
   });
-  b.addEventListener('pointermove', function (e) {
+  function muovi(e) {
     if (premuto) { /* se il dito scappa prima della vibrazione, non è una pressione prolungata */
-      var r0 = b.getBoundingClientRect();
-      if (Math.abs(e.clientX - r0.left - dx) > 8 || Math.abs(e.clientY - r0.top - dy) > 8) { clearTimeout(premuto); premuto = null; }
+      if (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10) { clearTimeout(premuto); premuto = null; stacca(); }
       return;
     }
     if (!muovendo) return;
@@ -2981,8 +3012,12 @@ function fabSpostabile(b) {
     var x = Math.max(6, Math.min(window.innerWidth - w - 6, e.clientX - dx));
     var y = Math.max(6, Math.min(window.innerHeight - h - 6, e.clientY - dy));
     b.style.left = Math.round(x) + 'px'; b.style.top = Math.round(y) + 'px'; b.style.right = 'auto'; b.style.bottom = 'auto';
-  });
+  }
+  function stacca() {
+    document.removeEventListener('pointermove', muovi); document.removeEventListener('pointerup', finito); document.removeEventListener('pointercancel', finito);
+  }
   function finito() {
+    stacca();
     if (premuto) { clearTimeout(premuto); premuto = null; }
     if (!muovendo) return;
     muovendo = false; b.classList.remove('trascina');
@@ -2997,8 +3032,6 @@ function fabSpostabile(b) {
     b.dataset.spostato = '1';
     setTimeout(function () { delete b.dataset.spostato; }, 60);   /* il rilascio non deve valere come tocco */
   }
-  b.addEventListener('pointerup', finito);
-  b.addEventListener('pointercancel', finito);
   b.addEventListener('click', function (e) { if (b.dataset.spostato) { e.preventDefault(); e.stopPropagation(); } }, true);
   b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   fabPosApplica(b);
