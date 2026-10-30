@@ -689,7 +689,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.30.0';
+var APP_VER = '1.31.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1926,7 +1926,7 @@ function apriScheda(id) {
     '<div class="ev-nota" id="ev-rnota">' + (k.richiamo ? 'in scheda: <b>' + esc(dataIt(k.richiamo)) + '</b> · lascia vuoto per non cambiarlo' : 'vuoto: il richiamo in scheda non cambia') + '</div>');
   h.push('<div class="az"><button class="btn pri" id="ev-salva" style="background:var(--sz-cron);border-color:var(--sz-cron)">Registra</button></div></div></details>');
   if (!ev.length) h.push('<div class="vuoto" style="padding:12px">Nessun evento registrato.</div>');
-  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + (evMail(v) ? '' : '<button class="ev-mod" data-ev="' + esc(v.id) + '" title="Modifica il testo">&#9998; modifica</button>') + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
+  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + '<button class="ev-mod" data-ev="' + esc(v.id) + '" title="Modifica">&#9998; modifica</button>' + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
   h.push('</div></div>');
   /* classificazione */
   h.push('<div class="sz sz-clas"><h3>Classificazione</h3><div class="c"><dl class="rg">');
@@ -2068,10 +2068,12 @@ function modificaEvento(cid, vid) {
   var v = DB.eventi[vid]; if (!v) { toast('Evento non trovato'); return; }
   var f = el('div', 'foglio att-f');
   function chiudi() { f.remove(); }
-  f.innerHTML = '<div class="fg"><h4>Modifica il report</h4>' +
+  var mail = evMail(v);
+  f.innerHTML = '<div class="fg"><h4>' + (mail ? 'Modifica la voce' : 'Modifica il report') + '</h4>' +
+    (mail ? '<div class="nota" style="margin-bottom:10px">Questa è una <b>mail archiviata</b>: il testo della mail resta com\'è arrivato. Qui correggi il titolo, la nota e la data.</div>' : '') +
     '<div class="due"><label>Giorno <input type="date" id="me-d" value="' + esc(v.d || '') + '"></label><label>Ora <input type="time" id="me-o" value="' + esc(v.o || '') + '"></label></div>' +
     '<label>Titolo <input type="text" id="me-t" value="' + esc(v.t || '') + '" placeholder="es. Visita in sede"></label>' +
-    '<label>Testo del report <textarea id="me-n" rows="9">' + esc(v.n || htmlATesto(v.h)) + '</textarea></label>' +
+    '<label>' + (mail ? 'Nota' : 'Testo del report') + ' <textarea id="me-n" rows="9">' + esc(mail ? (v.n || '') : (v.n || htmlATesto(v.h))) + '</textarea></label>' +
     '<div class="az"><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
   f.addEventListener('click', function (e) { if (e.target === f) chiudi(); });
   document.body.appendChild(f);
@@ -2081,7 +2083,9 @@ function modificaEvento(cid, vid) {
     var d = $('#me-d', f).value || v.d, o = $('#me-o', f).value;
     var v2 = Object.assign({}, v); v2.d = d; v2.o = o; v2._m = Date.now();
     if (t) v2.t = t; else delete v2.t;
-    if (n) { v2.n = n; if (v.h) v2.h = testoAHtml(n); } else { delete v2.n; delete v2.h; }
+    if (mail) { if (n) v2.n = n; else delete v2.n; }          /* la mail tiene il suo corpo */
+    else if (n) { v2.n = n; if (v.h) v2.h = testoAHtml(n); }
+    else { delete v2.n; delete v2.h; }
     DB.eventi[vid] = v2; salva(); chiudi(); toast('Report aggiornato'); apriScheda(cid);
   });
   setTimeout(function () { var n0 = $('#me-n', f); if (n0) n0.focus(); }, 120);
