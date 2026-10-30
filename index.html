@@ -637,7 +637,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.21.0';
+var APP_VER = '1.22.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1467,8 +1467,35 @@ function disegnaPin() {
   MP.ridisegna = false;
   var L_ = window.L, b = MP.mappa.getBounds().pad(0.3), tutti = filtratiMappa(), dentro = tutti.filter(function (c) { return b.contains([+c.lat, +c.lng]); });
   MP.tot = tutti.length; MP.vis = dentro.length;
-  var MAX = 1200, taglio = dentro.length > MAX;
-  if (taglio) { /* troppi per l'area: tengo quelli con esito, pratica o livello alto, poi i primi */ dentro.sort(function (x, y) { return peso(y) - peso(x); }); dentro = dentro.slice(0, MAX); }
+  /* troppi segnaposti per l'area: ne disegno al massimo MAX, ma la quota viene divisa fra i gruppi accesi,
+     così accendendo un secondo gruppo i contatti del primo non spariscono dalla mappa */
+  var MAX = 1500, taglio = dentro.length > MAX;
+  MP.quote = null;
+  if (taglio) {
+    dentro.sort(function (x, y) { return peso(y) - peso(x); });
+    var att = gruppiL().filter(function (g) { return tuttiAccesi() || GR[g.id]; }).map(function (g) { return g.id; });
+    var perG = {};
+    dentro.forEach(function (c) {
+      var gg = gruppi(c).filter(function (g) { return att.indexOf(g) >= 0; });
+      var k = gg.length ? gg[0] : (att[0] || '-');
+      (perG[k] = perG[k] || []).push(c);
+    });
+    var chiavi = Object.keys(perG), quota = {}, resta = MAX, vivi = chiavi.slice();
+    chiavi.forEach(function (k) { quota[k] = 0; });
+    for (var giro = 0; giro < 8 && vivi.length && resta > 0; giro++) {
+      var q = Math.floor(resta / vivi.length); if (q < 1) break;
+      var ancora = [];
+      vivi.forEach(function (k) {
+        var liberi = perG[k].length - quota[k], d = Math.min(q, liberi);
+        quota[k] += d; resta -= d; if (liberi > d) ancora.push(k);
+      });
+      vivi = ancora;
+    }
+    var presi = [];
+    chiavi.forEach(function (k) { presi = presi.concat(perG[k].slice(0, quota[k])); });
+    MP.quote = chiavi.map(function (k) { var g = grp(k); return (g && g.nome ? g.nome : k) + ' ' + num(quota[k]); });
+    dentro = presi;
+  }
   function peso(c) { var k = sit(c.id); return (DB.pratiche[c.id] ? 8 : 0) + (k.esito && k.esito !== 'Da contattare' ? 4 : 0) + (c.liv === 'A' ? 3 : c.liv === 'B' ? 2 : c.liv === 'C' ? 1 : 0) + (c.fonte !== 'assodimi' ? 2 : 0); }
   MP.pins.clearLayers();
   /* contatti sullo stesso punto: li apro a spirale come sul Mac */
@@ -1477,7 +1504,7 @@ function disegnaPin() {
     m.on('popupopen', function () { pinSel = c.id; aggiornaFab(); });
     m.on('popupclose', function () { if (pinSel === c.id) { pinSel = ''; aggiornaFab(); } });
     MP.pins.addLayer(m); }); });
-  $('#mp-conta').textContent = num(MP.vis) + (taglio ? ' (mostrati ' + num(MAX) + ': ingrandisci)' : '') + ' in vista · ' + num(MP.tot) + ' sulla mappa' + (!tuttiAccesi() ? ' · ' + gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ') : '');
+  $('#mp-conta').textContent = num(MP.vis) + (taglio ? ' (mostrati ' + num(dentro.length) + (MP.quote && MP.quote.length > 1 ? ': ' + MP.quote.join(' \u00b7 ') + ', ingrandisci' : ': ingrandisci') + ')' : '') + ' in vista · ' + num(MP.tot) + ' sulla mappa' + (!tuttiAccesi() ? ' · ' + gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ') : '');
   disegnaLegenda();
 }
 function disegnaLegenda() {
