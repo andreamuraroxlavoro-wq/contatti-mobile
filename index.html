@@ -245,6 +245,14 @@ summary::-webkit-details-marker{display:none}
 body.mappa-on .fab{z-index:1200}
 .fab.mirato{box-shadow:0 0 0 3px color-mix(in srgb,var(--verde) 35%,transparent),0 8px 22px rgba(0,0,0,.28)}
 .fab svg{stroke-width:2.6}
+/* il tasto «indietro»: sta sotto al «+», si accende solo se c'è davvero dove tornare */
+.fab-ind{background:var(--carta);color:var(--accent);border:1px solid var(--bordo);bottom:calc(142px + var(--sab))}
+.fab-ind.sopra{z-index:3100;bottom:calc(80px + var(--sab))}
+body.mappa-on .fab-ind{z-index:1200}
+/* mentre lo si sposta: si allarga e pulsa, così si vede che è in mano */
+.fab.trascina{transform:scale(1.18);box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 26px rgba(0,0,0,.32);transition:none;cursor:grabbing}
+.fab.trascina svg{transform:none}
+@media (prefers-reduced-motion:reduce){.fab.trascina{transform:none}}
 .menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .menu-velo{position:absolute;top:0;right:0;bottom:0;left:0;display:block;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
 .toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:#0b0b0b;color:#fff;padding:10px 16px;border-radius:12px;font-size:calc(14px * var(--scala));z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
@@ -484,6 +492,7 @@ body.me-aperto{overflow:hidden}
 </nav>
 <div id="scheda"></div>
 <div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
+<button class="fab fab-ind" id="fab-ind" title="Torna al punto da cui sei arrivato"><svg viewBox="0 0 24 24"><path d="M20 12H4"/><path d="M10.5 5.5L4 12l6.5 6.5"/></svg></button>
 <button class="fab" id="fab" title="Visita, telefonata o mail da programmare, oppure il report di una cosa già fatta"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 <div class="menu" id="menu"><div class="menu-velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
 <div class="toast" id="toast"></div>
@@ -778,7 +787,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.38.0';
+var APP_VER = '1.39.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -902,7 +911,7 @@ function rigaContatto(c, extra, sopra) {
 var vista = 'cerca';
 var scrollV = {};
 function mostraVista(v, ritorno) {
-  if (!ritorno) scrollV[vista] = window.scrollY;
+  if (!ritorno) { scrollV[vista] = window.scrollY; if (v !== vista || schedaId) storiaSegna(); }
   if (vista !== 'altro') vistaPrima = vista;
   vista = v; if (v !== 'cerca' && v !== 'vicino') inVista = []; if (v !== 'mappa' && v !== 'vicino') pinSel = ''; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
@@ -2403,7 +2412,9 @@ function disegnaPratiche() {
 var schedaId = null;
 function apriScheda(id) {
   evRicTocco = false;
-  var c = DB.contatti[id]; if (!c) return; if (!schedaId) scrollV[vista] = window.scrollY; schedaId = id;
+  var c = DB.contatti[id]; if (!c) return;
+  if (schedaId !== id) storiaSegna();          /* da dove sono arrivato a questo cliente */
+  if (!schedaId) scrollV[vista] = window.scrollY; schedaId = id;
   var k = sit(id), q = DB.pratiche[id], ev = eventiDi(id), S = $('#scheda'), h = [];
   var og = oggi();
   h.push('<div class="sc-top"><button class="ind" id="sc-chiudi" title="Indietro">&#8249;</button><div class="tt"><b>' + esc(c.nome) + '</b><span>' + [c.prov, c.cat, c.fonte === 'assodimi' ? 'Socio Assodimi' : ''].filter(Boolean).map(esc).join(' · ') + '</span></div><button class="ind" id="sc-mod" title="Modifica anagrafica"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' + barre(c) + '</div>');
@@ -2473,7 +2484,7 @@ function apriScheda(id) {
   $('#sc-chiudi').addEventListener('click', function () { if (history.state && history.state.scheda) history.back(); else chiudiScheda(); });
   var nv = $('#sc-naviga'); if (nv) nv.addEventListener('click', function (ev) { ev.preventDefault(); naviga(c); });
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
-  document.body.classList.add('sc-aperta'); aggiornaFab();
+  document.body.classList.add('sc-aperta'); aggiornaFab(); aggiornaInd();
   agganciaProgramma(id);
   var scEs = $('#sc-esito');
   if (scEs) scEs.addEventListener('change', function () {
@@ -2557,7 +2568,7 @@ function formModifica(id) {
   });
 }
 function pulisciHtml(h) { return String(h || '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '').replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*\/?>/gi, '').replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '').replace(/href\s*=\s*"javascript:[^"]*"/gi, ''); }
-function chiudiScheda() { $('#scheda').classList.remove('on'); schedaId = null; document.body.classList.remove('sc-aperta'); aggiornaFab(); mostraVista(vista, true); }
+function chiudiScheda() { $('#scheda').classList.remove('on'); schedaId = null; document.body.classList.remove('sc-aperta'); aggiornaFab(); aggiornaInd(); mostraVista(vista, true); }
 window.addEventListener('popstate', function () { if (schedaId) chiudiScheda(); });
 /* NAVIGAZIONE: app scelta una volta sola (menu → Aspetto la cambia) */
 var NAVIGATORI = [
@@ -2889,6 +2900,109 @@ function clienteContesto() {
   if ((vista === 'cerca' || vista === 'vicino') && inVista.length === 1) return inVista[0].id;
   return '';
 }
+/* ============================================================
+   INDIETRO — l'app si ricorda da dove sei arrivato.
+   Ogni volta che cambi scheda o apri un cliente mette da parte dov'eri: quale pagina,
+   quale cliente e a che altezza stavi leggendo. Il tasto con la freccia ti riporta
+   esattamente lì, e premendolo ancora risale un altro passo.
+   Si tengono gli ultimi 15 passi: abbastanza per tornare sui propri passi in un giro
+   di lavoro, senza che l'app debba ricordare mezza giornata.
+   ============================================================ */
+var STORIA = [], STORIA_MAX = 15, inRitorno = false;
+function statoOra() {
+  return { vista: vista, scheda: schedaId || '', y: schedaId ? ($('#scheda') ? $('#scheda').scrollTop : 0) : window.scrollY };
+}
+function storiaSegna() {
+  if (inRitorno) return;
+  var s0 = statoOra(), u = STORIA[STORIA.length - 1];
+  if (u && u.vista === s0.vista && u.scheda === s0.scheda) { u.y = s0.y; return; }  /* stesso posto: aggiorno solo l'altezza */
+  STORIA.push(s0);
+  if (STORIA.length > STORIA_MAX) STORIA.shift();
+  aggiornaInd();
+}
+function aggiornaInd() {
+  var b = $('#fab-ind'); if (!b) return;
+  b.classList.toggle('on', STORIA.length > 0);
+  b.classList.toggle('sopra', document.body.classList.contains('sc-aperta'));
+  b.title = STORIA.length ? 'Torna indietro (' + STORIA.length + (STORIA.length === 1 ? ' passo' : ' passi') + ')' : '';
+}
+function tornaIndietro() {
+  var s0 = STORIA.pop(); if (!s0) return;
+  inRitorno = true;
+  function applica() {
+    if (s0.scheda && DB.contatti[s0.scheda]) {
+      apriScheda(s0.scheda);
+      setTimeout(function () { var S = $('#scheda'); if (S) S.scrollTop = s0.y || 0; inRitorno = false; aggiornaInd(); }, 90);
+    } else {
+      mostraVista(s0.vista, true);
+      setTimeout(function () { window.scrollTo(0, s0.y || 0); inRitorno = false; aggiornaInd(); }, 90);
+    }
+  }
+  if (schedaId && s0.scheda !== schedaId) {
+    /* esco dalla scheda aperta passando dalla cronologia del browser, come fa il tasto «‹» */
+    if (history.state && history.state.scheda) { history.back(); setTimeout(applica, 170); }
+    else { chiudiScheda(); setTimeout(applica, 60); }
+  } else applica();
+}
+/* ============================================================
+   I TASTI FLUTTUANTI SI SPOSTANO — si tiene premuto finché il tasto non vibra e si allarga,
+   poi lo si porta dove si vuole. Il posto scelto si ricorda su questo telefono e resta
+   buono anche girando lo schermo, perché è salvato in proporzione, non in pixel.
+   ============================================================ */
+function fabPosLeggi(id) { try { return JSON.parse(localStorage.getItem('cm.fab.' + id) || 'null'); } catch (e) { return null; } }
+function fabPosApplica(b) {
+  var p = fabPosLeggi(b.id); if (!p) return;
+  var w = b.offsetWidth || 48, h = b.offsetHeight || 48;
+  var x = Math.max(6, Math.min(window.innerWidth - w - 6, p.fx * (window.innerWidth - w)));
+  var y = Math.max(6, Math.min(window.innerHeight - h - 6, p.fy * (window.innerHeight - h)));
+  b.style.left = Math.round(x) + 'px'; b.style.top = Math.round(y) + 'px';
+  b.style.right = 'auto'; b.style.bottom = 'auto';
+}
+function fabSpostabile(b) {
+  var premuto = null, muovendo = false, dx = 0, dy = 0;
+  b.addEventListener('pointerdown', function (e) {
+    var r = b.getBoundingClientRect(); dx = e.clientX - r.left; dy = e.clientY - r.top;
+    premuto = setTimeout(function () {
+      premuto = null; muovendo = true;
+      b.classList.add('trascina');
+      try { if (navigator.vibrate) navigator.vibrate(35); } catch (x) {}
+      try { b.setPointerCapture(e.pointerId); } catch (x) {}
+    }, 500);
+  });
+  b.addEventListener('pointermove', function (e) {
+    if (premuto) { /* se il dito scappa prima della vibrazione, non è una pressione prolungata */
+      var r0 = b.getBoundingClientRect();
+      if (Math.abs(e.clientX - r0.left - dx) > 8 || Math.abs(e.clientY - r0.top - dy) > 8) { clearTimeout(premuto); premuto = null; }
+      return;
+    }
+    if (!muovendo) return;
+    e.preventDefault();
+    var w = b.offsetWidth, h = b.offsetHeight;
+    var x = Math.max(6, Math.min(window.innerWidth - w - 6, e.clientX - dx));
+    var y = Math.max(6, Math.min(window.innerHeight - h - 6, e.clientY - dy));
+    b.style.left = Math.round(x) + 'px'; b.style.top = Math.round(y) + 'px'; b.style.right = 'auto'; b.style.bottom = 'auto';
+  });
+  function finito() {
+    if (premuto) { clearTimeout(premuto); premuto = null; }
+    if (!muovendo) return;
+    muovendo = false; b.classList.remove('trascina');
+    /* misuro il posto scritto, non il rettangolo: mentre si rimpicciolisce falserebbe di qualche pixel */
+    var lx = parseFloat(b.style.left) || 0, ly = parseFloat(b.style.top) || 0;
+    try {
+      localStorage.setItem('cm.fab.' + b.id, JSON.stringify({
+        fx: (window.innerWidth - b.offsetWidth) ? lx / (window.innerWidth - b.offsetWidth) : 0,
+        fy: (window.innerHeight - b.offsetHeight) ? ly / (window.innerHeight - b.offsetHeight) : 0
+      }));
+    } catch (x) {}
+    b.dataset.spostato = '1';
+    setTimeout(function () { delete b.dataset.spostato; }, 60);   /* il rilascio non deve valere come tocco */
+  }
+  b.addEventListener('pointerup', finito);
+  b.addEventListener('pointercancel', finito);
+  b.addEventListener('click', function (e) { if (b.dataset.spostato) { e.preventDefault(); e.stopPropagation(); } }, true);
+  b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  fabPosApplica(b);
+}
 function aggiornaFab() {
   var f = $('#fab'); if (!f) return;
   f.classList.add('on');
@@ -2898,8 +3012,12 @@ function aggiornaFab() {
   f.classList.toggle('mirato', !!c);
 }
 $('#fab').addEventListener('click', function () {
+  if (this.dataset.spostato) return;
   attForm({ cid: clienteContesto(), d: (vista === 'cal' && CAL.sel) ? CAL.sel : oggi() });
 });
+$('#fab-ind').addEventListener('click', function () { if (this.dataset.spostato) return; tornaIndietro(); });
+fabSpostabile($('#fab')); fabSpostabile($('#fab-ind'));
+window.addEventListener('resize', function () { fabPosApplica($('#fab')); fabPosApplica($('#fab-ind')); });
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
