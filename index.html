@@ -663,7 +663,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.25.1';
+var APP_VER = '1.26.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -690,7 +690,8 @@ var IDB = (function () {
 var salvaT = null;
 function salva(subito) { cacheTx = {}; cacheNum = {}; cacheAtt = null; clearTimeout(salvaT); var f = function () { IDB.scrivi('db', JSON.stringify(DB)); }; if (subito) f(); else salvaT = setTimeout(f, 300); if (SY) SY.pianifica(); }
 function cfg() { return DB.config.config || {}; }
-function ESITI() { return (cfg().esiti || ['Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare', 'Visita confermata']).filter(function (e) { return ESITI_VECCHI().indexOf(e) < 0; }); }
+var SENZA_AZIONE = 'Nessuna azione';
+function ESITI() { return (cfg().esiti || ['Nessuna azione', 'Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare', 'Visita confermata']).filter(function (e) { return ESITI_VECCHI().indexOf(e) < 0; }); }
 function CANALI() { return cfg().canali || ['Telefono', 'Modulo sito', 'Email', 'Visita', 'Tramite Assodimi', 'Fiera']; }
 function POSITIVI() { return cfg().positivi || ['Visita confermata', 'Demo fissata', 'Offerta inviata']; }
 /* voci che erano esiti e dalla 1.24.0 sono Tipi di Cliente: restano visibili dove ci sono ancora */
@@ -700,9 +701,20 @@ function esitiPer(v) { return esitoVecchio(v) ? ESITI().concat([v]) : ESITI(); }
 function etichettaEsito(e) { return esitoVecchio(e) ? e + ' — ora è un Tipo di Cliente' : e; }
 function TIPI() { return cfg().tipiPratica || [{ id: 'offerta', nome: 'Offerta', sigla: 'O', colore: '#E8912D' }, { id: 'partner', nome: 'Proposta di partnership', sigla: 'P', colore: '#6B4FA0' }]; }
 function tipoP(q) { var id = (q && q.tipo) || 'offerta', t = TIPI(); return t.filter(function (x) { return x.id === id; })[0] || t[0]; }
-function classeEsito(e) { if (!e || e === 'Da contattare') return ''; if (POSITIVI().indexOf(e) >= 0) return 'es'; if (e === 'Non interessato') return 'no'; return 'at'; }
+function classeEsito(e) { if (!e || e === SENZA_AZIONE || e === 'Da contattare') return ''; if (POSITIVI().indexOf(e) >= 0) return 'es'; if (e === 'Non interessato') return 'no'; return 'at'; }
 function colEsito(e) { var k = classeEsito(e); return k === 'es' ? '#1C6B4A' : k === 'no' ? '#C00000' : k === 'at' ? '#B08A2E' : '#9A9A9A'; }
 function sit(id) { return DB.situazioni[id] || {}; }
+/* una volta sola: «Da contattare» era lo stato di partenza, adesso lo è «Nessuna azione» (campo vuoto) */
+function migraNessunaAzione() {
+  try { if (localStorage.getItem('cm.nessunaazione')) return; } catch (e) { return; }
+  var n = 0;
+  Object.keys(DB.situazioni || {}).forEach(function (id) {
+    var k = DB.situazioni[id];
+    if (k && k.esito === 'Da contattare') { delete k.esito; k._m = Date.now(); n++; }
+  });
+  try { localStorage.setItem('cm.nessunaazione', '1'); } catch (e) {}
+  if (n) salva();
+}
 /* ---------- stato del Cliente ----------
    Che cliente e' in questo momento: solo una classificazione per ordinare e filtrare.
    Cambiarlo NON registra eventi e non crea attivita'. */
@@ -760,7 +772,7 @@ function eventiDi(id) { return Object.keys(DB.eventi).map(function (k) { return 
 function listaTutti() { return Object.keys(DB.contatti).map(function (k) { return DB.contatti[k]; }); }
 function lista() { var l = listaTutti().filter(function (c) { if (tuttiAccesi()) return true; return gruppi(c).some(function (g) { return GR[g]; }); }); return ordinaLista(l); }
 function conta() { return Object.keys(DB.contatti).length; }
-function pillEsito(e) { return e && e !== 'Da contattare' ? '<span class="pill ' + classeEsito(e) + '">' + esc(e) + '</span>' : ''; }
+function pillEsito(e) { return e && e !== SENZA_AZIONE && e !== 'Da contattare' ? '<span class="pill ' + classeEsito(e) + '">' + esc(e) + '</span>' : ''; }
 function tagPratica(c) { var q = DB.pratiche[c.id]; if (!q) return ''; var t = tipoP(q), s = q.stato || 'sospesa'; return '<span class="rq ' + s + '" title="' + esc(t.nome) + '"><i style="background:' + esc(t.colore) + '">' + esc(t.sigla || t.nome.charAt(0)) + '</i>' + s + '</span>'; }
 function rigaContatto(c, extra, sopra) {
   var k = sit(c.id), og = oggi();
@@ -1703,7 +1715,7 @@ function apriScheda(id) {
   h.push('<div class="sz sz-sit"><h3>Situazione' + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + '</h3><div class="c form">');
   h.push('<label>Tipo di Cliente <select id="sc-tipo" class="tcli-sel ' + TIPI_CLI_CLS[tipoCli(id)] + '">' + TIPI_CLI.map(function (t) { return '<option' + (tipoCli(id) === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select><i class="ds" style="font-style:normal;color:var(--tenue);font-size:calc(11.5px * var(--scala))">che cliente è: non entra in cronologia</i></label>');
   if (esitoVecchio(k.esito)) h.push('<div class="nota sist">«' + esc(k.esito) + '» adesso è un <b>Tipo di Cliente</b>, non un Tipo Azione. <button class="btn pri" id="sc-sposta">Sposta in Tipo di Cliente</button></div>');
-  h.push('<div class="due"><label>Tipo Azione <select id="sc-esito"><option value="">Da contattare</option>' + esitiPer(k.esito).filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option value="' + esc(e) + '"' + (k.esito === e ? ' selected' : '') + '>' + esc(etichettaEsito(e)) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
+  h.push('<div class="due"><label>Tipo Azione <select id="sc-esito"><option value="">' + esc(SENZA_AZIONE) + '</option>' + esitiPer(k.esito).filter(function (e) { return e !== SENZA_AZIONE; }).map(function (e) { return '<option value="' + esc(e) + '"' + (k.esito === e ? ' selected' : '') + '>' + esc(etichettaEsito(e)) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
   h.push('<label>Referente <input type="text" id="sc-ref" value="' + esc(k.referente || '') + '" placeholder="Persona con cui parli"></label>');
   h.push('<label style="color:var(--sz-prom)">Prossimo passo <textarea id="sc-passo" style="background:var(--giallo)">' + esc(k.passo || '') + '</textarea></label>');
   h.push('<div class="ds" style="font-size:calc(12px * var(--scala));color:var(--tenue)">' + (k.data ? 'Ultimo contatto ' + dataIt(k.data) + (k.canale ? ' · ' + esc(k.canale) : '') : 'Mai contattato') + '</div>');
@@ -1762,11 +1774,26 @@ function apriScheda(id) {
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
   document.body.classList.add('sc-aperta'); aggiornaFab();
   agganciaProgramma(id);
+  var scEs = $('#sc-esito');
+  if (scEs) scEs.addEventListener('change', function () {
+    /* il Tipo Azione si salva da solo: se cambia davvero resta anche la riga in cronologia */
+    var k3 = Object.assign({}, DB.situazioni[id] || { id: id }), prima = k3.esito || '';
+    var v = scEs.value === SENZA_AZIONE ? '' : scEs.value;
+    if (v) k3.esito = v; else delete k3.esito;
+    k3.id = id; k3._m = Date.now(); DB.situazioni[id] = k3;
+    if (v && v !== prima) {
+      var vid = uid('v_');
+      DB.eventi[vid] = { id: vid, cid: id, d: oggi(), o: ora(), c: k3.canale || '', e: v, n: '', a: 1, _m: Date.now() };
+      k3.data = oggi();
+    }
+    salva(); toast('Tipo Azione: ' + (v || SENZA_AZIONE));
+    if (vista === 'cerca') disegnaCerca();
+  });
   var scSp = $('#sc-sposta');
   if (scSp) scSp.addEventListener('click', function () {
     var vecchio = sit(id).esito, nuovo = VECCHIO_A_TIPO[vecchio]; if (!nuovo) return;
     var k2 = Object.assign({}, DB.situazioni[id] || { id: id });
-    k2.tipoCli = nuovo; k2.esito = 'Da contattare'; k2.id = id; k2._m = Date.now();
+    k2.tipoCli = nuovo; delete k2.esito; k2.id = id; k2._m = Date.now();
     DB.situazioni[id] = k2; salva();
     toast('«' + vecchio + '» spostato in Tipo di Cliente', 3500); apriScheda(id);
   });
@@ -1777,7 +1804,8 @@ function apriScheda(id) {
     if (vista === 'cerca') disegnaCerca();
   });
   $('#sc-salva-sit').addEventListener('click', function () {
-    salvaSituazione(id, { esito: $('#sc-esito').value, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim() });
+    var vEs = $('#sc-esito').value; if (vEs === SENZA_AZIONE) vEs = '';
+    salvaSituazione(id, { esito: vEs, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim() });
   });
   $$('.stati button', S).forEach(function (b) { b.addEventListener('click', function () { var q2 = Object.assign({}, DB.pratiche[id], { stato: b.dataset.st, _m: Date.now() }); DB.pratiche[id] = q2; salva(); toast('Pratica: ' + b.dataset.st); apriScheda(id); }); });
   (function () {
@@ -2023,7 +2051,7 @@ function cmFogli() {
   var rC = L.map(function (c) {
     var k = sit(c.id), q = DB.pratiche[c.id], n = eventiDi(c.id).length;
     return [c.nome, gruppi(c).map(grNome).join(' · '), c.cat || '', c.prov || '', c.sede || '', c.tel || '', c.email || '', c.sito || '', c.piva || '', c.liv || '',
-      k.esito || 'Da contattare', k.data ? dataIt(k.data) : '', k.richiamo ? dataIt(k.richiamo) : '', k.referente || '', k.passo || '',
+      k.esito || SENZA_AZIONE, k.data ? dataIt(k.data) : '', k.richiamo ? dataIt(k.richiamo) : '', k.referente || '', k.passo || '',
       q ? tipoP(q).nome : '', q ? (q.stato || 'sospesa') : '', n,
       (c.referenti || []).map(function (r) { return [r.nome, r.ruolo, r.cell || r.tel, r.email].filter(Boolean).join(' '); }).join(' · ')];
   });
@@ -2113,6 +2141,7 @@ IDB.leggi('db').then(function (t) {
   if (v === 'vicino' || v === 'mappa') v = 'cerca';
   /* i tasti dei gruppi nascono prima della lettura dei dati: ora che il settaggio c'e', li ridisegno con nome e colore giusti */
   try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
+  migraNessunaAzione();
   disegnaGruppi();
   mostraVista(v); avviaSync(); setTimeout(function () { misuraTestata(); aggiornaFab(); }, 300);
   $('#agg-ora').addEventListener('click', applicaAggiornamento);
