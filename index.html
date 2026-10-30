@@ -560,7 +560,7 @@ body.me-aperto{overflow:hidden}
     function idbSet(k, v) { return idb().then(function (d) { return new Promise(function (ris, rej) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = function () { ris(true); }; t.onerror = function () { rej(t.error); }; }); }).catch(function () { return false; }); }
 
     function uid() { return Math.random().toString(36).slice(2, 10); }
-    function metaDefault() { return { tipo: null, clientId: cfg.clientId || '', serverUrl: '', dispositivo: uid().slice(0, 8), etichetta: nomeDispositivo(), ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {}, ultimoSync: null, conflitti: 0, nDelta: 0 }; }
+    function metaDefault() { return { tipo: null, clientId: cfg.clientId || '', serverUrl: '', dispositivo: uid().slice(0, 8), etichetta: nomeDispositivo(), ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {}, ultimoSync: null, conflitti: 0, nDelta: 0, gaccount: '' }; }
     function hash(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
     function norm(r) { var c = {}; for (var k in r) if (k !== '_m') c[k] = r[k]; return JSON.stringify(c); }
     function log(m) { S.log.unshift(new Date().toLocaleTimeString('it-IT') + ' ' + m); S.log = S.log.slice(0, 40); }
@@ -632,23 +632,50 @@ body.me-aperto{overflow:hidden}
     function nomeInfo(n) { var m = String(n).match(RX); return m ? { tipo: m[1], ts: +m[2], dev: m[3], gz: !!m[4] } : null; }
 
     /* ---- backend Google Drive (spazio riservato all'app: appDataFolder) ---- */
+    /* di quale account Google si tratta: lo si chiede una volta sola e lo si tiene da parte,
+       così i rinnovi successivi vanno diritti su quello senza far scegliere niente a nessuno. */
+    function ricordaAccount() {
+      if (S.meta.gaccount || !S.token) return;
+      fetch('https://www.googleapis.com/drive/v3/about?fields=user', { headers: { Authorization: 'Bearer ' + S.token } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j && j.user && j.user.emailAddress) { S.meta.gaccount = j.user.emailAddress; salvaMeta(); } })
+        .catch(function () {});
+    }
     var DRIVE = {
       nome: 'Google Drive',
       token: function (interattivo) {
         if (S.token && Date.now() < S.tokenScad - 60000) return Promise.resolve(S.token);
-        try { var s = JSON.parse(sessionStorage.getItem(nome + '_gtoken') || 'null'); if (s && Date.now() < s.scad - 60000) { S.token = s.t; S.tokenScad = s.scad; return Promise.resolve(s.t); } } catch (e) {}
+        /* il permesso vale un'ora: tenerlo solo per la sessione voleva dire richiederlo a ogni
+           riapertura dell'app. Ora resta su questo dispositivo finché non scade davvero. */
+        try {
+          var s = JSON.parse(localStorage.getItem(nome + '_gtoken') || sessionStorage.getItem(nome + '_gtoken') || 'null');
+          if (s && Date.now() < s.scad - 60000) { S.token = s.t; S.tokenScad = s.scad; return Promise.resolve(s.t); }
+        } catch (e) {}
         if (!S.meta.clientId) return Promise.reject(new Error('Manca il Client ID di Google'));
         var carica = (root.google && root.google.accounts) ? Promise.resolve() : new Promise(function (res, rej) { var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.onload = res; sc.onerror = function () { rej(new Error('Impossibile caricare la libreria Google (offline?)')); }; document.head.appendChild(sc); });
         return carica.then(function () {
           return new Promise(function (res, rej) {
             var timer = null;
+            var tcScope = 'https://www.googleapis.com/auth/drive.appdata' + (cfg.driveFile ? ' https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly' : '');
             var tc = root.google.accounts.oauth2.initTokenClient({
-              client_id: S.meta.clientId, scope: 'https://www.googleapis.com/auth/drive.appdata' + (cfg.driveFile ? ' https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly' : ''),
-              callback: function (r) { clearTimeout(timer); if (r && r.access_token) { S.token = r.access_token; S.tokenScad = Date.now() + (r.expires_in || 3600) * 1000; try { sessionStorage.setItem(nome + '_gtoken', JSON.stringify({ t: S.token, scad: S.tokenScad })); } catch (e) {} res(S.token); } else rej(new Error('Autorizzazione Google negata')); },
+              client_id: S.meta.clientId, scope: tcScope,
+              callback: function (r) { clearTimeout(timer); if (r && r.access_token) { S.token = r.access_token; S.tokenScad = Date.now() + (r.expires_in || 3600) * 1000; try { localStorage.setItem(nome + '_gtoken', JSON.stringify({ t: S.token, scad: S.tokenScad })); } catch (e) {} ricordaAccount(); res(S.token); } else rej(new Error('Autorizzazione Google negata')); },
               error_callback: function (e) { clearTimeout(timer); rej(Object.assign(new Error('Autorizzazione Google: ' + (e && e.type || 'errore')), { auth: true })); }
             });
-            if (interattivo) tc.requestAccessToken({ prompt: 'consent' });
-            else { timer = setTimeout(function () { rej(Object.assign(new Error('Serve una nuova autorizzazione Google'), { auth: true })); }, 8000); tc.requestAccessToken({ prompt: '' }); }
+            /* «hint» dice a Google con quale account rinnovare: senza, chi ha più account
+               si vede chiedere ogni volta quale usare. L'account è quello scelto la prima volta. */
+            var chiedi = { prompt: interattivo && !S.meta.gaccount ? 'consent' : '' };
+            if (S.meta.gaccount) chiedi.hint = S.meta.gaccount;
+            if (interattivo && S.meta.gaccount) {
+              /* già collegato: prima provo in silenzio, e solo se non basta ripropongo la scelta */
+              var tc2 = root.google.accounts.oauth2.initTokenClient({
+                client_id: S.meta.clientId, scope: tcScope,
+                callback: function (r) { clearTimeout(timer); if (r && r.access_token) { S.token = r.access_token; S.tokenScad = Date.now() + (r.expires_in || 3600) * 1000; try { localStorage.setItem(nome + '_gtoken', JSON.stringify({ t: S.token, scad: S.tokenScad })); } catch (e) {} ricordaAccount(); res(S.token); } else tc.requestAccessToken({ prompt: 'consent', hint: S.meta.gaccount }); },
+                error_callback: function () { clearTimeout(timer); tc.requestAccessToken({ prompt: 'consent', hint: S.meta.gaccount }); }
+              });
+              tc2.requestAccessToken(chiedi);
+            } else if (interattivo) tc.requestAccessToken(chiedi);
+            else { timer = setTimeout(function () { rej(Object.assign(new Error('Serve una nuova autorizzazione Google'), { auth: true })); }, 8000); tc.requestAccessToken(chiedi); }
           });
         });
       },
@@ -657,7 +684,7 @@ body.me-aperto{overflow:hidden}
         return this.token(interattivo).then(function (t) {
           return fetch(url, Object.assign({}, opz, { headers: Object.assign({ Authorization: 'Bearer ' + t }, opz.headers || {}) }));
         }).then(function (r) {
-          if (r.status === 401) { S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); } catch (e) {} throw Object.assign(new Error('Autorizzazione Google scaduta'), { auth: true }); }
+          if (r.status === 401) { S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); localStorage.removeItem(nome + '_gtoken'); } catch (e) {} throw Object.assign(new Error('Autorizzazione Google scaduta'), { auth: true }); }
           if (!r.ok) return r.text().then(function (t) { throw new Error('Google Drive: ' + r.status + ' ' + t.slice(0, 120)); });
           return r;
         });
@@ -782,10 +809,10 @@ body.me-aperto{overflow:hidden}
       /* accesso diretto a Google Drive per le copie leggibili (stessa autorizzazione del motore) */
       driveApi: function (url, opz, interattivo) { return DRIVE.api(url, opz, interattivo); },
       driveToken: function (interattivo) { return DRIVE.token(interattivo); },
-      scordaToken: function () { S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); } catch (e) {} },
+      scordaToken: function () { S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); localStorage.removeItem(nome + '_gtoken'); } catch (e) {} },
       connettiDrive: function (clientId) { if (clientId) S.meta.clientId = clientId; S.meta.tipo = 'drive'; return salvaMeta().then(function () { return DRIVE.token(true); }); },
       scegliCartella: function () { return root.showDirectoryPicker({ mode: 'readwrite' }).then(function (h) { S.dirHandle = h; S.meta.tipo = 'cartella'; return idbSet('dir', h).then(salvaMeta).then(function () { return h; }); }); },
-      scollega: function () { Object.assign(S.meta, { tipo: null, ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {} }); S.dirHandle = null; S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); } catch (e) {} clearInterval(S.timer); stato('off'); return idbSet('dir', null).then(salvaMeta); },
+      scollega: function () { Object.assign(S.meta, { tipo: null, ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {}, gaccount: '' }); S.dirHandle = null; S.token = null; try { sessionStorage.removeItem(nome + '_gtoken'); localStorage.removeItem(nome + '_gtoken'); } catch (e) {} clearInterval(S.timer); stato('off'); return idbSet('dir', null).then(salvaMeta); },
       azzeraMemoria: function () { Object.assign(S.meta, { ultimoTs: 0, baseTs: 0, hash: {}, mm: {}, tomb: {} }); return salvaMeta(); },
       httpsOk: function () { return location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1'; }
     };
@@ -802,7 +829,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.44.0';
+var APP_VER = '1.45.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
