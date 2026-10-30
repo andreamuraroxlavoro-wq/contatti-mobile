@@ -241,16 +241,25 @@ summary::-webkit-details-marker{display:none}
 .pin.me{background:var(--accent);width:16px;height:16px;box-shadow:0 0 0 4px rgba(42,120,214,.3)}
 .bl{scroll-margin-top:calc(var(--hdrH,56px) + 10px)}.bl > .c{padding:0}.bl .lista{border:0;background:transparent;box-shadow:none;border-radius:0;margin:0}.bl .lista .riga:last-child{border-bottom:0}.bl .vuoto{padding:14px}.fab{position:fixed;right:14px;bottom:calc(84px + var(--sab));width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:28;opacity:0;transform:scale(.7);transition:opacity .18s ease,transform .18s ease}.fab.on{display:flex;opacity:1;transform:scale(1)}.fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}.fab.su svg{transform:rotate(180deg)}/* il tasto «+» resta visibile dappertutto, mappa e scheda comprese */
 .fab{background:var(--verde)}
-.fab.sopra{z-index:3100;bottom:calc(22px + var(--sab))}
-body.mappa-on .fab{z-index:1200}
+.fab.sopra{bottom:calc(22px + var(--sab))}
 .fab.mirato{box-shadow:0 0 0 3px color-mix(in srgb,var(--verde) 35%,transparent),0 8px 22px rgba(0,0,0,.28)}
 .fab svg{stroke-width:2.6}
 /* il tasto «indietro»: sta sotto al «+», si accende solo se c'è davvero dove tornare */
 .fab{touch-action:none}   /* il tasto si lascia spostare: il gesto non deve diventare uno scorrimento */
 .fab-ind{background:var(--accent);color:#fff;bottom:calc(142px + var(--sab))}
 .fab-ind.trascina{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 26px rgba(0,0,0,.32)}
-.fab-ind.sopra{z-index:3100;bottom:calc(80px + var(--sab))}
-body.mappa-on .fab-ind{z-index:1200}
+.fab-ind.sopra{bottom:calc(80px + var(--sab))}
+/* ============================================================
+   DOVE STANNO I TASTI FLUTTUANTI NELLA PILA DEGLI STRATI
+   Una riga per ogni situazione, tutte con lo stesso peso e in ordine di priorità:
+   l'ultima che vale è quella che comanda. Così non può più succedere che una regola
+   di una vista (la mappa) copra quella di una finestra che si apre sopra (la scheda).
+     mappa aperta        → sopra alla mappa (1200) ma sotto ai suoi comandi
+     scheda del cliente  → sopra alla scheda (3000)
+     menu o foglio aperti→ sotto al menu (3200) e al foglio (3500): lì non servono
+   ============================================================ */
+body.mappa-on .fab{z-index:1200}
+body.sc-aperta .fab{z-index:3100}
 /* mentre lo si sposta: si allarga e pulsa, così si vede che è in mano */
 .fab.trascina{transform:scale(1.18);box-shadow:0 0 0 10px color-mix(in srgb,var(--verde) 22%,transparent),0 10px 26px rgba(0,0,0,.32);transition:none;cursor:grabbing}
 /* la riga da cui ero partito, riaccesa al ritorno */
@@ -793,7 +802,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.41.0';
+var APP_VER = '1.42.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
