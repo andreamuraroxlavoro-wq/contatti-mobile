@@ -117,6 +117,10 @@ h1.tit:first-child{margin-top:2px}
 .sz>h3{margin:0;padding:9px 14px;border-bottom:1px solid var(--bordo);text-transform:uppercase;letter-spacing:.12em;font-size:calc(12px * var(--scala));font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 10%,var(--carta));display:flex;align-items:center;gap:6px}
 .sz>h3::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--c)}
 .sz>h3 .pill{margin-left:auto;text-transform:none;letter-spacing:0}
+@keyframes sz-pulsa{0%,100%{box-shadow:0 0 0 2px var(--c),0 0 0 0 color-mix(in srgb,var(--c) 40%,transparent)}50%{box-shadow:0 0 0 4px var(--c),0 0 24px 10px color-mix(in srgb,var(--c) 32%,transparent)}}
+.sz.lampeggia{animation:sz-pulsa 1.15s ease-in-out infinite;border-color:var(--c);position:relative;z-index:3}
+.sz.lampeggia>h3{background:color-mix(in srgb,var(--c) 22%,var(--carta));border-bottom:2px solid var(--c)}
+@media (prefers-reduced-motion:reduce){.sz.lampeggia{animation:none;box-shadow:0 0 0 4px var(--c)}}
 .sz>.c{padding:12px 14px}
 .sz-clas{--c:var(--sz-clas)}.sz-rec{--c:var(--sz-rec)}.sz-ref{--c:var(--sz-ref)}.sz-dim{--c:var(--sz-dim)}.sz-prof{--c:var(--sz-prof)}.sz-sit{--c:var(--sz-sit)}.sz-prom{--c:var(--sz-prom)}.sz-file{--c:var(--sz-file)}.sz-cron{--c:var(--sz-cron)}.sz-prat{--c:var(--sz-prat)}
 dl.rg{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:calc(14.5px * var(--scala))}
@@ -659,7 +663,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.24.0';
+var APP_VER = '1.25.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -983,7 +987,7 @@ var KPI = [
     calc: function (L, og) { return L.filter(function (c) { var r = sit(c.id).richiamo; return r && r < og; }).sort(function (a, b) { return sit(a.id).richiamo.localeCompare(sit(b.id).richiamo); }); } },
   { id: 'oggi', nome: 'Da sentire oggi', col: 'var(--ambra)', vuoto: 'Nessun richiamo fissato per oggi.',
     calc: function (L, og) { return L.filter(function (c) { return sit(c.id).richiamo === og; }); } },
-  { id: 'visite', nome: 'Visite da fare', col: 'var(--sz-sit)', vuoto: 'Nessun contatto con esito «Da visitare» o «Da rivisitare».',
+  { id: 'visite', nome: 'Visite da fare', col: 'var(--sz-sit)', vuoto: 'Nessun contatto con Tipo Azione «Da visitare» o «Da rivisitare».',
     calc: function (L, og) { return L.filter(function (c) { var k = sit(c.id); return (k.esito === 'Da visitare' || k.esito === 'Da rivisitare') && !(k.richiamo && k.richiamo <= og); }); } },
   { id: 'confermate', nome: 'Visite confermate', col: '#6B4FA0', vuoto: 'Nessuna visita in calendario. Mettila in programma dal Calendario o dalla scheda del cliente.',
     calc: function (L, og) {
@@ -997,9 +1001,9 @@ var KPI = [
     calc: function (L, og) { return eventiPeriodo(giorniFa(6), og); } },
   { id: 'prossimi', nome: 'Prossimi richiami', col: 'var(--accent)', vuoto: 'Nessun richiamo in programma.',
     calc: function (L, og) { return L.filter(function (c) { var r = sit(c.id).richiamo; return r && r > og; }).sort(function (a, b) { return sit(a.id).richiamo.localeCompare(sit(b.id).richiamo); }).slice(0, 40); } },
-  { id: 'caldi', nome: 'Contatti caldi', col: 'var(--verde)', vuoto: 'Nessun contatto con esito positivo.',
+  { id: 'caldi', nome: 'Contatti caldi', col: 'var(--verde)', vuoto: 'Nessun contatto con un Tipo Azione positivo.',
     calc: function (L) { return L.filter(function (c) { return POSITIVI().indexOf(sit(c.id).esito) >= 0; }); } },
-  { id: 'daric', nome: 'Da richiamare', col: 'var(--ambra)', vuoto: 'Nessun contatto con esito «Da richiamare».',
+  { id: 'daric', nome: 'Da richiamare', col: 'var(--ambra)', vuoto: 'Nessun contatto con Tipo Azione «Da richiamare».',
     calc: function (L) { return L.filter(function (c) { return sit(c.id).esito === 'Da richiamare'; }); } },
   { id: 'mai', nome: 'Mai contattati', col: 'var(--tenue)', vuoto: 'Tutti i contatti hanno almeno un’attività.',
     calc: function (L) { var m = attivitaMappa(); return L.filter(function (c) { var k = sit(c.id); return !m[c.id] && (!k.esito || k.esito === 'Da contattare'); }); } },
@@ -1026,6 +1030,27 @@ function kpiScelti() {
 }
 function kpiDi(id) { return KPI.filter(function (k) { return k.id === id; })[0]; }
 /* ordine completo: prima i riquadri scelti nell'ordine salvato, poi gli altri */
+/* evidenzia il blocco a cui sono appena saltato: bordo acceso e pulsazione,
+   finché non tocco da qualche parte o non scorro la lista */
+function evidenziaSez(e) {
+  if (!e) return;
+  $$('.sz.lampeggia').forEach(function (x) { x.classList.remove('lampeggia'); });
+  e.classList.add('lampeggia');
+  var y0 = 0, armato = false;
+  function spegni() {
+    e.classList.remove('lampeggia');
+    document.removeEventListener('pointerdown', spegni, true);
+    document.removeEventListener('keydown', spegni, true);
+    window.removeEventListener('scroll', suScroll, true);
+  }
+  function suScroll() { if (!armato) return; if (Math.abs(window.scrollY - y0) > 40) spegni(); }
+  setTimeout(function () {
+    y0 = window.scrollY; armato = true;
+    document.addEventListener('pointerdown', spegni, true);
+    document.addEventListener('keydown', spegni, true);
+    window.addEventListener('scroll', suScroll, true);
+  }, 900);
+}
 function kpiOrdine() { var l = kpiScelti().slice(); KPI.forEach(function (k) { if (l.indexOf(k.id) < 0) l.push(k.id); }); return l; }
 /* elenco dei riquadri: spunta per accenderli, maniglia per trascinarli (funziona a dito e con il mouse) */
 function disegnaKpiOrd() {
@@ -1092,7 +1117,7 @@ function disegnaOggi() {
     else l.forEach(function (c) { d.appendChild(rigaContatto(c)); });
     cnt.appendChild(d); sez.appendChild(cnt); box.appendChild(sez);
   });
-  $$('#v-oggi .kpi').forEach(function (b) { b.addEventListener('click', function () { var e = $('#kpi-' + b.dataset.k); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
+  $$('#v-oggi .kpi').forEach(function (b) { b.addEventListener('click', function () { var e = $('#kpi-' + b.dataset.k); if (e) { e.scrollIntoView({ behavior: 'smooth', block: 'start' }); evidenziaSez(e); } }); });
 }
 
 /* ---------- ATTIVITÀ E CALENDARIO (v1.12.0) ----------
