@@ -178,9 +178,10 @@ summary::-webkit-details-marker{display:none}
 .leaflet-container{font:inherit}
 .pin{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .pin.me{background:var(--accent);width:16px;height:16px;box-shadow:0 0 0 4px rgba(42,120,214,.3)}
-.bl{scroll-margin-top:calc(var(--hdrH,56px) + 10px)}.bl > .c{padding:0}.bl .lista{border:0;background:transparent;box-shadow:none;border-radius:0;margin:0}.bl .lista .riga:last-child{border-bottom:0}.bl .vuoto{padding:14px}.fab{position:fixed;right:14px;bottom:calc(84px + var(--sab));width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:28;opacity:0;transform:scale(.7);transition:opacity .18s ease,transform .18s ease}.fab.on{display:flex;opacity:1;transform:scale(1)}.fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}.fab.su svg{transform:rotate(180deg)}body.mappa-on .fab,body.sc-aperta .fab{display:none}
+.bl{scroll-margin-top:calc(var(--hdrH,56px) + 10px)}.bl > .c{padding:0}.bl .lista{border:0;background:transparent;box-shadow:none;border-radius:0;margin:0}.bl .lista .riga:last-child{border-bottom:0}.bl .vuoto{padding:14px}.fab{position:fixed;right:14px;bottom:calc(84px + var(--sab));width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.28);display:none;align-items:center;justify-content:center;z-index:28;opacity:0;transform:scale(.7);transition:opacity .18s ease,transform .18s ease}.fab.on{display:flex;opacity:1;transform:scale(1)}.fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}.fab.su svg{transform:rotate(180deg)}/* il tasto «+» resta visibile dappertutto, mappa e scheda comprese */
 .fab{background:var(--verde)}
 .fab.sopra{z-index:3100;bottom:calc(22px + var(--sab))}
+body.mappa-on .fab{z-index:1200}
 .fab.mirato{box-shadow:0 0 0 3px color-mix(in srgb,var(--verde) 35%,transparent),0 8px 22px rgba(0,0,0,.28)}
 .fab svg{stroke-width:2.6}
 .menu{position:fixed;inset:0;z-index:4200;display:none}.menu.on{display:block}.menu .menu-velo{position:absolute;top:0;right:0;bottom:0;left:0;display:block;background:rgba(0,0,0,.28)}.menu .pan{position:absolute;right:8px;top:calc(10px + var(--sat));background:var(--carta);border:1px solid var(--bordo);border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:min(330px,92vw)}.menu .pan button{background:transparent;border:0;border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--accent);font-size:calc(12px * var(--scala));font-weight:700;line-height:1.15;text-align:center}.menu .pan button svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.menu .pan button:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
@@ -628,7 +629,7 @@ summary::-webkit-details-marker{display:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.17.0';
+var APP_VER = '1.18.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -723,7 +724,7 @@ var scrollV = {};
 function mostraVista(v, ritorno) {
   if (!ritorno) scrollV[vista] = window.scrollY;
   if (vista !== 'altro') vistaPrima = vista;
-  vista = v; if (v !== 'cerca' && v !== 'vicino') inVista = []; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  vista = v; if (v !== 'cerca' && v !== 'vicino') inVista = []; if (v !== 'mappa' && v !== 'vicino') pinSel = ''; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
   if (ritorno) { var y = scrollV[v] || 0; setTimeout(function () { window.scrollTo(0, y); }, 0); } else window.scrollTo(0, 0);
   if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'vicino') disegnaVicino(); if (v === 'cal') disegnaCal(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
@@ -853,6 +854,7 @@ function disegnaChips() {
   $$('select.chip', box).forEach(function (s) { s.addEventListener('change', function () { F[s.dataset.f] = s.value; mostraN = 150; disegnaCerca(); }); });
 }
 var inVista = []; /* contatti attualmente mostrati: se è uno solo, il tasto «+» lo compila da solo */
+var pinSel = '';  /* segnaposto aperto sulla mappa: il tasto «+» lavora su quel cliente */
 function disegnaCerca() {
   try { localStorage.setItem('cm.filtri', JSON.stringify(F)); } catch (e) {}
   disegnaChips();
@@ -1396,7 +1398,10 @@ function disegnaVicino() {
     if (!mappa) { mappa = window.L.map('mappa', { zoomControl: false }); window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(mappa); livelloPin = window.L.layerGroup().addTo(mappa); }
     livelloPin.clearLayers();
     window.L.marker([posMe.lat, posMe.lng], { icon: window.L.divIcon({ className: '', html: '<div class="pin me"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(livelloPin).bindPopup('Tu sei qui');
-    L.slice(0, 300).forEach(function (x) { var c = x.c, k = sit(c.id); var m = window.L.marker([+c.lat, +c.lng], { icon: window.L.divIcon({ className: '', html: '<div class="pin" style="background:' + colEsito(k.esito) + '"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }) }).addTo(livelloPin); m.bindPopup('<b>' + esc(c.nome) + '</b><br>' + esc(c.sede || c.prov || '') + '<br>' + kmIt(x.km) + ' km · <a href="#" data-apri="' + esc(c.id) + '">Apri scheda</a>'); });
+    L.slice(0, 300).forEach(function (x) { var c = x.c, k = sit(c.id); var m = window.L.marker([+c.lat, +c.lng], { icon: window.L.divIcon({ className: '', html: '<div class="pin" style="background:' + colEsito(k.esito) + '"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }) }).addTo(livelloPin); m.bindPopup('<b>' + esc(c.nome) + '</b><br>' + esc(c.sede || c.prov || '') + '<br>' + kmIt(x.km) + ' km · <a href="#" data-apri="' + esc(c.id) + '">Apri scheda</a>');
+      m.on('popupopen', function () { pinSel = c.id; aggiornaFab(); });
+      m.on('popupclose', function () { if (pinSel === c.id) { pinSel = ''; aggiornaFab(); } });
+    });
     var b = window.L.latLng(posMe.lat, posMe.lng).toBounds(Math.min(raggio, 50) * 1000); mappa.fitBounds(b);
     setTimeout(function () { mappa.invalidateSize(); }, 200);
     mappa.off('popupopen'); mappa.on('popupopen', function (e) { var a = e.popup.getElement().querySelector('[data-apri]'); if (a) a.addEventListener('click', function (ev) { ev.preventDefault(); apriScheda(a.dataset.apri); }); });
@@ -1452,7 +1457,10 @@ function disegnaPin() {
   MP.pins.clearLayers();
   /* contatti sullo stesso punto: li apro a spirale come sul Mac */
   var perPunto = {}; dentro.forEach(function (c) { var key = (+c.lat).toFixed(4) + ',' + (+c.lng).toFixed(4); (perPunto[key] = perPunto[key] || []).push(c); });
-  Object.keys(perPunto).forEach(function (key) { perPunto[key].forEach(function (c, i) { var ox = 0, oy = 0; if (i > 0) { var rr = 7 * Math.sqrt(i), ang = i * 2.39996; ox = Math.cos(ang) * rr; oy = Math.sin(ang) * rr; } var m = L_.marker([+c.lat, +c.lng], { icon: iconaPin(c, ox, oy), riseOnHover: true }); m.bindPopup(function () { return popupPin(c); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] }); /* niente apri/chiudi a tocchi alterni: un tocco apre sempre (su alcuni telefoni il tocco arriva doppio) */ m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); }); MP.pins.addLayer(m); }); });
+  Object.keys(perPunto).forEach(function (key) { perPunto[key].forEach(function (c, i) { var ox = 0, oy = 0; if (i > 0) { var rr = 7 * Math.sqrt(i), ang = i * 2.39996; ox = Math.cos(ang) * rr; oy = Math.sin(ang) * rr; } var m = L_.marker([+c.lat, +c.lng], { icon: iconaPin(c, ox, oy), riseOnHover: true }); m.bindPopup(function () { return popupPin(c); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] }); /* niente apri/chiudi a tocchi alterni: un tocco apre sempre (su alcuni telefoni il tocco arriva doppio) */ m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); });
+    m.on('popupopen', function () { pinSel = c.id; aggiornaFab(); });
+    m.on('popupclose', function () { if (pinSel === c.id) { pinSel = ''; aggiornaFab(); } });
+    MP.pins.addLayer(m); }); });
   $('#mp-conta').textContent = num(MP.vis) + (taglio ? ' (mostrati ' + num(MAX) + ': ingrandisci)' : '') + ' in vista · ' + num(MP.tot) + ' sulla mappa' + (!tuttiAccesi() ? ' · ' + gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ') : '');
   disegnaLegenda();
 }
@@ -1899,6 +1907,7 @@ function applicaAggiornamento() {
 /* il cliente che si capisce da solo: la scheda aperta, oppure l'unico contatto rimasto in elenco */
 function clienteContesto() {
   if (document.body.classList.contains('sc-aperta') && schedaId) return schedaId;
+  if (pinSel && (vista === 'mappa' || vista === 'vicino') && DB.contatti[pinSel]) return pinSel;
   if ((vista === 'cerca' || vista === 'vicino') && inVista.length === 1) return inVista[0].id;
   return '';
 }
