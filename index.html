@@ -205,7 +205,12 @@ body.mappa-on .fab{z-index:1200}
 .tcli.nt{background:color-mix(in srgb,#7A4FD6 16%,transparent);color:#6A3FC6;border-color:color-mix(in srgb,#7A4FD6 45%,transparent)}
 .tcli.nu{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .tcli.pc{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent)}
+.tcli.in{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
+.tcli.co{background:color-mix(in srgb,var(--verde) 22%,transparent);color:var(--verde);border-color:color-mix(in srgb,var(--verde) 55%,transparent)}
+.tcli.ps{background:var(--verde);color:#fff;border-color:var(--verde)}
+.nota.sist{border-left:4px solid var(--ambra);display:flex;flex-direction:column;gap:8px;margin:8px 0}
 .tcli-sel{font-weight:800;letter-spacing:.3px}
+.tcli-sel.in{color:var(--accent)} .tcli-sel.co,.tcli-sel.ps{color:var(--verde)}
 .tcli-sel.at{color:var(--verde)} .tcli-sel.na{color:var(--ambra)} .tcli-sel.ip{color:#C2600F} .tcli-sel.pe{color:var(--rosso)}
 .tcli-sel.nt{color:#6A3FC6} .tcli-sel.nu,.tcli-sel.pc{color:var(--accent)}
 .kpi-ord{display:flex;flex-direction:column;gap:6px;padding:6px 0}
@@ -654,7 +659,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.23.0';
+var APP_VER = '1.24.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -681,9 +686,14 @@ var IDB = (function () {
 var salvaT = null;
 function salva(subito) { cacheTx = {}; cacheNum = {}; cacheAtt = null; clearTimeout(salvaT); var f = function () { IDB.scrivi('db', JSON.stringify(DB)); }; if (subito) f(); else salvaT = setTimeout(f, 300); if (SY) SY.pianifica(); }
 function cfg() { return DB.config.config || {}; }
-function ESITI() { return cfg().esiti || ['Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Interessato', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare', 'Visita confermata']; }
+function ESITI() { return (cfg().esiti || ['Da contattare', 'Contattato', 'Proposta da inviare', 'Proposta inviata', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico', 'Non interessato', 'Da richiamare', 'Da visitare', 'Da rivisitare', 'Visita confermata']).filter(function (e) { return ESITI_VECCHI().indexOf(e) < 0; }); }
 function CANALI() { return cfg().canali || ['Telefono', 'Modulo sito', 'Email', 'Visita', 'Tramite Assodimi', 'Fiera']; }
-function POSITIVI() { return cfg().positivi || ['Interessato', 'Visita confermata', 'Demo fissata', 'Offerta inviata', 'Concessionario', 'Partner Strategico']; }
+function POSITIVI() { return cfg().positivi || ['Visita confermata', 'Demo fissata', 'Offerta inviata']; }
+/* voci che erano esiti e dalla 1.24.0 sono Tipi di Cliente: restano visibili dove ci sono ancora */
+function ESITI_VECCHI() { return cfg().esitiVecchi || ['Interessato', 'Concessionario', 'Partner Strategico']; }
+function esitoVecchio(e) { return ESITI_VECCHI().indexOf(e) >= 0; }
+function esitiPer(v) { return esitoVecchio(v) ? ESITI().concat([v]) : ESITI(); }
+function etichettaEsito(e) { return esitoVecchio(e) ? e + ' — ora è un Tipo di Cliente' : e; }
 function TIPI() { return cfg().tipiPratica || [{ id: 'offerta', nome: 'Offerta', sigla: 'O', colore: '#E8912D' }, { id: 'partner', nome: 'Proposta di partnership', sigla: 'P', colore: '#6B4FA0' }]; }
 function tipoP(q) { var id = (q && q.tipo) || 'offerta', t = TIPI(); return t.filter(function (x) { return x.id === id; })[0] || t[0]; }
 function classeEsito(e) { if (!e || e === 'Da contattare') return ''; if (POSITIVI().indexOf(e) >= 0) return 'es'; if (e === 'Non interessato') return 'no'; return 'at'; }
@@ -692,8 +702,9 @@ function sit(id) { return DB.situazioni[id] || {}; }
 /* ---------- stato del Cliente ----------
    Che cliente e' in questo momento: solo una classificazione per ordinare e filtrare.
    Cambiarlo NON registra eventi e non crea attivita'. */
-var TIPI_CLI = ['NON CLASSIFICATO', 'ATTIVO', 'NON ATTIVO', 'IN PERDITA', 'PERSO', 'TRASCURABILE', 'NON TOCCARE', 'NUOVO', 'PRIMO CONTATTO'];
-var TIPI_CLI_CLS = { 'NON CLASSIFICATO': 'nc', 'ATTIVO': 'at', 'NON ATTIVO': 'na', 'IN PERDITA': 'ip', 'PERSO': 'pe', 'TRASCURABILE': 'tr', 'NON TOCCARE': 'nt', 'NUOVO': 'nu', 'PRIMO CONTATTO': 'pc' };
+var TIPI_CLI = ['NON CLASSIFICATO', 'PRIMO CONTATTO', 'NUOVO', 'INTERESSATO', 'ATTIVO', 'CONCESSIONARIO', 'PARTNER STRATEGICO', 'NON ATTIVO', 'IN PERDITA', 'PERSO', 'TRASCURABILE', 'NON TOCCARE'];
+var TIPI_CLI_CLS = { 'NON CLASSIFICATO': 'nc', 'PRIMO CONTATTO': 'pc', 'NUOVO': 'nu', 'INTERESSATO': 'in', 'ATTIVO': 'at', 'CONCESSIONARIO': 'co', 'PARTNER STRATEGICO': 'ps', 'NON ATTIVO': 'na', 'IN PERDITA': 'ip', 'PERSO': 'pe', 'TRASCURABILE': 'tr', 'NON TOCCARE': 'nt' };
+var VECCHIO_A_TIPO = { 'Interessato': 'INTERESSATO', 'Concessionario': 'CONCESSIONARIO', 'Partner Strategico': 'PARTNER STRATEGICO' };
 function tipoCli(id) { var v = sit(id).tipoCli; return TIPI_CLI.indexOf(v) >= 0 ? v : TIPI_CLI[0]; }
 function pillTipo(v) { v = TIPI_CLI.indexOf(v) >= 0 ? v : TIPI_CLI[0]; return v === TIPI_CLI[0] ? '' : '<span class="tcli ' + TIPI_CLI_CLS[v] + '">' + esc(v) + '</span>'; }
 function salvaTipoCli(id, v) {
@@ -872,7 +883,9 @@ function filtra() {
     if (F.liv && c.liv !== F.liv) return false;
     if (F.tipo && tipoCli(c.id) !== F.tipo) return false;
     var k = sit(c.id);
-    if (F.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; } else if (F.esito && k.esito !== F.esito) return false;
+    if (F.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; }
+    else if (F.esito === '(vecchi)') { if (!esitoVecchio(k.esito)) return false; }
+    else if (F.esito && k.esito !== F.esito) return false;
     if (F.pr === 'rich' && !k.richiamo) return false;
     if (F.pr === 'prat' && !DB.pratiche[c.id]) return false;
     if (parole.length && !combacia(c, parole)) return false;
@@ -883,9 +896,9 @@ function disegnaChips() {
   var province = {}; lista().forEach(function (c) { if (c.prov) province[c.prov] = (province[c.prov] || 0) + 1; });
   var h = [];
   h.push('<select class="chip' + (F.prov ? ' on' : '') + '" data-f="prov"><option value="">Provincia</option>' + Object.keys(province).sort().map(function (p) { return '<option value="' + p + '"' + (F.prov === p ? ' selected' : '') + '>' + p + ' (' + num(province[p]) + ')</option>'; }).join('') + '</select>');
-  h.push('<select class="chip' + (F.esito ? ' on' : '') + '" data-f="esito"><option value="">Esito</option><option value="(nessuno)"' + (F.esito === '(nessuno)' ? ' selected' : '') + '>Mai contattati</option>' + ESITI().map(function (e) { return '<option' + (F.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>');
+  h.push('<select class="chip' + (F.esito ? ' on' : '') + '" data-f="esito"><option value="">Tipo Azione</option><option value="(vecchi)"' + (F.esito === '(vecchi)' ? ' selected' : '') + '>Da sistemare</option><option value="(nessuno)"' + (F.esito === '(nessuno)' ? ' selected' : '') + '>Mai contattati</option>' + ESITI().map(function (e) { return '<option' + (F.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>');
   h.push('<select class="chip' + (F.liv ? ' on' : '') + '" data-f="liv"><option value="">Livello</option>' + ['A', 'B', 'C', 'D'].map(function (l) { return '<option' + (F.liv === l ? ' selected' : '') + '>' + l + '</option>'; }).join('') + '</select>');
-  h.push('<select class="chip' + (F.tipo ? ' on' : '') + '" data-f="tipo"><option value="">Stato cliente</option>' + TIPI_CLI.map(function (t) { return '<option' + (F.tipo === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>');
+  h.push('<select class="chip' + (F.tipo ? ' on' : '') + '" data-f="tipo"><option value="">Tipo di Cliente</option>' + TIPI_CLI.map(function (t) { return '<option' + (F.tipo === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>');
   h.push('<button class="chip' + (F.pr === 'rich' ? ' on' : '') + '" data-f="pr" data-val="rich">Con richiamo</button>');
   h.push('<button class="chip' + (F.pr === 'prat' ? ' on' : '') + '" data-f="pr" data-val="prat">Con pratica</button>');
   if (F.prov || F.esito || F.liv || F.pr || F.tipo || F.q) h.push('<button class="chip" data-f="azzera" style="color:var(--rosso)">&#10005; Annulla</button>');
@@ -1529,7 +1542,9 @@ function filtratiMappa() {
     if (f.orig === 'asso' && c.fonte !== 'assodimi') return false;
     if (f.orig === 'nuovo' && c.fonte === 'assodimi') return false;
     var k = sit(c.id);
-    if (f.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; } else if (f.esito && k.esito !== f.esito) return false;
+    if (f.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; }
+    else if (f.esito === '(vecchi)') { if (!esitoVecchio(k.esito)) return false; }
+    else if (f.esito && k.esito !== f.esito) return false;
     var q2 = DB.pratiche[c.id]; if (f.prat === 'si' && !q2) return false; if (f.prat && f.prat !== 'si' && !(q2 && (q2.stato || 'sospesa') === f.prat)) return false;
     if (parole.length && !combacia(c, parole)) return false;
     return true;
@@ -1632,7 +1647,7 @@ function pannelloMappa() {
   var p = $('#mp-pannello'), f = MP.f, province = {}, cats = {};
   lista().forEach(function (c) { if (c.prov) province[c.prov] = 1; if (c.cat) cats[c.cat] = 1; });
   function sel(id, et, opts, val) { return '<label>' + et + ' <select data-mf="' + id + '"><option value="">Tutt' + (/esito|livello|stato/i.test(et) ? 'i' : 'e') + '</option>' + opts.map(function (o) { var v = Array.isArray(o) ? o[0] : o, n = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(v) + '"' + (val === v ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></label>'; }
-  p.innerHTML = '<div class="form">' + sel('tipo', 'Stato cliente', TIPI_CLI, f.tipo) + '<div class="due">' + sel('prov', 'Provincia', Object.keys(province).sort(), f.prov) + sel('liv', 'Livello', ['A', 'B', 'C', 'D'], f.liv) + '</div><div class="due">' + sel('esito', 'Esito', [['(nessuno)', 'Mai contattati']].concat(ESITI().filter(function (e) { return e !== 'Da contattare'; })), f.esito) + sel('cat', 'Categoria', Object.keys(cats).sort(), f.cat) + '</div><div class="due">' + sel('orig', 'Origine', [['asso', 'Soci Assodimi'], ['nuovo', 'Aggiunti a mano e Clienti']], f.orig) + sel('prat', 'Pratiche', [['si', 'Con pratica'], ['sospesa', 'In sospeso'], ['accettata', 'Accettate'], ['rifiutata', 'Rifiutate']], f.prat) + '</div><div class="az"><button class="btn" id="mp-azzera">Annulla filtri</button><button class="btn pri" id="mp-chiudi">Applica</button></div></div>';
+  p.innerHTML = '<div class="form">' + sel('tipo', 'Tipo di Cliente', TIPI_CLI, f.tipo) + '<div class="due">' + sel('prov', 'Provincia', Object.keys(province).sort(), f.prov) + sel('liv', 'Livello', ['A', 'B', 'C', 'D'], f.liv) + '</div><div class="due">' + sel('esito', 'Tipo Azione', [['(nessuno)', 'Mai contattati'], ['(vecchi)', 'Da sistemare']].concat(ESITI().filter(function (e) { return e !== 'Da contattare'; })), f.esito) + sel('cat', 'Categoria', Object.keys(cats).sort(), f.cat) + '</div><div class="due">' + sel('orig', 'Origine', [['asso', 'Soci Assodimi'], ['nuovo', 'Aggiunti a mano e Clienti']], f.orig) + sel('prat', 'Pratiche', [['si', 'Con pratica'], ['sospesa', 'In sospeso'], ['accettata', 'Accettate'], ['rifiutata', 'Rifiutate']], f.prat) + '</div><div class="az"><button class="btn" id="mp-azzera">Annulla filtri</button><button class="btn pri" id="mp-chiudi">Applica</button></div></div>';
   $$('select[data-mf]', p).forEach(function (s) { s.addEventListener('change', function () { MP.f[s.dataset.mf] = s.value; salvaFiltriMappa(); disegnaPin(); }); });
   $('#mp-azzera').addEventListener('click', function () { MP.f = { q: '', prov: '', esito: '', liv: '', cat: '', orig: '', prat: '', tipo: '' }; $('#mp-q').value = ''; salvaFiltriMappa(); pannelloMappa(); disegnaPin(); });
   $('#mp-chiudi').addEventListener('click', function () { p.style.display = 'none'; });
@@ -1661,8 +1676,9 @@ function apriScheda(id) {
   if (DB.modificheContatti[id]) h.push('<div class="nota" style="margin-bottom:10px;border-left:4px solid var(--ambra)">Modifiche fatte dal telefono in attesa di arrivare al Mac.</div>');
   /* situazione (modificabile) */
   h.push('<div class="sz sz-sit"><h3>Situazione' + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + '</h3><div class="c form">');
-  h.push('<div class="due"><label>Esito <select id="sc-esito"><option value="">Da contattare</option>' + ESITI().filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option' + (k.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
-  h.push('<label>Stato del cliente <select id="sc-tipo" class="tcli-sel ' + TIPI_CLI_CLS[tipoCli(id)] + '">' + TIPI_CLI.map(function (t) { return '<option' + (tipoCli(id) === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select><i class="ds" style="font-style:normal;color:var(--tenue);font-size:calc(11.5px * var(--scala))">classificazione: non entra in cronologia</i></label>');
+  h.push('<div class="due"><label>Tipo Azione <select id="sc-esito"><option value="">Da contattare</option>' + esitiPer(k.esito).filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option value="' + esc(e) + '"' + (k.esito === e ? ' selected' : '') + '>' + esc(etichettaEsito(e)) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
+  h.push('<label>Tipo di Cliente <select id="sc-tipo" class="tcli-sel ' + TIPI_CLI_CLS[tipoCli(id)] + '">' + TIPI_CLI.map(function (t) { return '<option' + (tipoCli(id) === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select><i class="ds" style="font-style:normal;color:var(--tenue);font-size:calc(11.5px * var(--scala))">che cliente è: non entra in cronologia</i></label>');
+  if (esitoVecchio(k.esito)) h.push('<div class="nota sist">«' + esc(k.esito) + '» adesso è un <b>Tipo di Cliente</b>, non un Tipo Azione. <button class="btn pri" id="sc-sposta">Sposta in Tipo di Cliente</button></div>');
   h.push('<label>Referente <input type="text" id="sc-ref" value="' + esc(k.referente || '') + '" placeholder="Persona con cui parli"></label>');
   h.push('<label style="color:var(--sz-prom)">Prossimo passo <textarea id="sc-passo" style="background:var(--giallo)">' + esc(k.passo || '') + '</textarea></label>');
   h.push('<div class="ds" style="font-size:calc(12px * var(--scala));color:var(--tenue)">' + (k.data ? 'Ultimo contatto ' + dataIt(k.data) + (k.canale ? ' · ' + esc(k.canale) : '') : 'Mai contattato') + '</div>');
@@ -1721,6 +1737,14 @@ function apriScheda(id) {
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
   document.body.classList.add('sc-aperta'); aggiornaFab();
   agganciaProgramma(id);
+  var scSp = $('#sc-sposta');
+  if (scSp) scSp.addEventListener('click', function () {
+    var vecchio = sit(id).esito, nuovo = VECCHIO_A_TIPO[vecchio]; if (!nuovo) return;
+    var k2 = Object.assign({}, DB.situazioni[id] || { id: id });
+    k2.tipoCli = nuovo; k2.esito = 'Da contattare'; k2.id = id; k2._m = Date.now();
+    DB.situazioni[id] = k2; salva();
+    toast('«' + vecchio + '» spostato in Tipo di Cliente', 3500); apriScheda(id);
+  });
   var scT = $('#sc-tipo');
   if (scT) scT.addEventListener('change', function () {
     salvaTipoCli(id, scT.value);
