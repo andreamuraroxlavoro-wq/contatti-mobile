@@ -663,7 +663,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.25.0';
+var APP_VER = '1.25.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1701,9 +1701,9 @@ function apriScheda(id) {
   if (DB.modificheContatti[id]) h.push('<div class="nota" style="margin-bottom:10px;border-left:4px solid var(--ambra)">Modifiche fatte dal telefono in attesa di arrivare al Mac.</div>');
   /* situazione (modificabile) */
   h.push('<div class="sz sz-sit"><h3>Situazione' + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + '</h3><div class="c form">');
-  h.push('<div class="due"><label>Tipo Azione <select id="sc-esito"><option value="">Da contattare</option>' + esitiPer(k.esito).filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option value="' + esc(e) + '"' + (k.esito === e ? ' selected' : '') + '>' + esc(etichettaEsito(e)) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
   h.push('<label>Tipo di Cliente <select id="sc-tipo" class="tcli-sel ' + TIPI_CLI_CLS[tipoCli(id)] + '">' + TIPI_CLI.map(function (t) { return '<option' + (tipoCli(id) === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select><i class="ds" style="font-style:normal;color:var(--tenue);font-size:calc(11.5px * var(--scala))">che cliente è: non entra in cronologia</i></label>');
   if (esitoVecchio(k.esito)) h.push('<div class="nota sist">«' + esc(k.esito) + '» adesso è un <b>Tipo di Cliente</b>, non un Tipo Azione. <button class="btn pri" id="sc-sposta">Sposta in Tipo di Cliente</button></div>');
+  h.push('<div class="due"><label>Tipo Azione <select id="sc-esito"><option value="">Da contattare</option>' + esitiPer(k.esito).filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option value="' + esc(e) + '"' + (k.esito === e ? ' selected' : '') + '>' + esc(etichettaEsito(e)) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
   h.push('<label>Referente <input type="text" id="sc-ref" value="' + esc(k.referente || '') + '" placeholder="Persona con cui parli"></label>');
   h.push('<label style="color:var(--sz-prom)">Prossimo passo <textarea id="sc-passo" style="background:var(--giallo)">' + esc(k.passo || '') + '</textarea></label>');
   h.push('<div class="ds" style="font-size:calc(12px * var(--scala));color:var(--tenue)">' + (k.data ? 'Ultimo contatto ' + dataIt(k.data) + (k.canale ? ' · ' + esc(k.canale) : '') : 'Mai contattato') + '</div>');
