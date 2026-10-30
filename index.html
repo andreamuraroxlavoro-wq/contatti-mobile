@@ -275,6 +275,16 @@ body.mappa-on .fab{z-index:1200}
 
 .cl-c.oggi{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
 .cl-c.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cl-c.insel{background:color-mix(in srgb,var(--accent) 30%,var(--carta));border-color:var(--accent);color:var(--testo)}
+.cl-c.insel .n{color:var(--accent)}
+.cl-c.pressato{animation:cl-batti .55s ease-in-out infinite}
+@keyframes cl-batti{0%,100%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}50%{transform:scale(1.12);box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 22%,transparent)}}
+body.cal-trascino{user-select:none}
+body.cal-trascino .cl-celle{touch-action:none}
+.cl-sug{padding:10px 12px;font-size:calc(12.5px * var(--scala));color:var(--tenue);border-top:1px solid var(--bordo)}
+.cl-int h3{gap:6px}
+.cl-int h3 .pill{text-transform:none;letter-spacing:0;flex:0 0 auto;white-space:nowrap}
+.cl-int h3 .pill:nth-of-type(1){margin-left:auto}
 .cl-c.sel .pt i{background:#fff}
 .cl-el{display:flex;flex-direction:column;gap:9px}
 .cl-ag{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
@@ -663,7 +673,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.26.0';
+var APP_VER = '1.27.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1264,6 +1274,78 @@ function calRiga(e, og) {
     (e.fatto ? '<span class="ok">&#10003;</span>' : (e.d < og ? '<span class="rit">!</span>' : '')) + '</button>';
 }
 
+/* ---------- scelta di più giorni con il dito ----------
+   Tocco semplice: un giorno solo, come sempre. Tocco prolungato (circa mezzo secondo): il giorno
+   pulsa, il telefono vibra e, trascinando, si scelgono più giorni di fila; alzato il dito, sotto
+   compare l'elenco delle attività di tutti i giorni scelti. Un tocco su un giorno qualsiasi torna
+   alla vista di un giorno solo. */
+var calPremuto = null, calInTrasc = false, calPartenza = '';
+function calCellaIn(x, y) {
+  var e = document.elementFromPoint(x, y);
+  var c = e && e.closest ? e.closest('.cl-c') : null;
+  return c && c.dataset && c.dataset.d ? c : null;
+}
+function calSegnaIntervallo() {
+  $$('#v-cal .cl-c').forEach(function (c) {
+    var d = c.dataset.d;
+    c.classList.toggle('insel', !!(CAL.da && d >= CAL.da && d <= CAL.a));
+    if (CAL.da) c.classList.remove('sel');
+  });
+}
+function calFineTrasc() {
+  clearTimeout(calPremuto); calPremuto = null;
+  document.body.classList.remove('cal-trascino');
+  $$('#v-cal .cl-c.pressato').forEach(function (x) { x.classList.remove('pressato'); });
+}
+function calManoCelle() {
+  $$('#v-cal .cl-c').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (calInTrasc) return;
+      CAL.da = ''; CAL.a = ''; CAL.sel = b.dataset.d; disegnaCal();
+    });
+    b.addEventListener('pointerdown', function (ev) {
+      if (ev.button && ev.button !== 0) return;
+      var x0 = ev.clientX, y0 = ev.clientY;
+      calInTrasc = false;
+      clearTimeout(calPremuto);
+      calPremuto = setTimeout(function () {
+        calInTrasc = true; calPartenza = b.dataset.d;
+        CAL.da = calPartenza; CAL.a = calPartenza; CAL.sel = calPartenza;
+        try { if (navigator.vibrate) navigator.vibrate(35); } catch (e) {}
+        b.classList.add('pressato');
+        document.body.classList.add('cal-trascino');
+        calSegnaIntervallo();
+      }, 480);
+      function muovi(e2) {
+        if (!calInTrasc) {
+          /* se il dito si sposta prima del tempo è uno scorrimento della pagina: niente scelta */
+          if (Math.abs(e2.clientX - x0) > 10 || Math.abs(e2.clientY - y0) > 10) { clearTimeout(calPremuto); calPremuto = null; }
+          return;
+        }
+        var c2 = calCellaIn(e2.clientX, e2.clientY);
+        if (!c2) return;
+        var d2 = c2.dataset.d;
+        CAL.da = calPartenza <= d2 ? calPartenza : d2;
+        CAL.a = calPartenza <= d2 ? d2 : calPartenza;
+        calSegnaIntervallo();
+      }
+      function molla() {
+        document.removeEventListener('pointermove', muovi);
+        document.removeEventListener('pointerup', molla);
+        document.removeEventListener('pointercancel', molla);
+        var era = calInTrasc;
+        calFineTrasc();
+        if (era) { disegnaCal(); setTimeout(function () { calInTrasc = false; }, 60); }
+      }
+      document.addEventListener('pointermove', muovi);
+      document.addEventListener('pointerup', molla);
+      document.addEventListener('pointercancel', molla);
+    });
+  });
+}
+/* mentre si sceglie con il dito la pagina non deve scorrere */
+document.addEventListener('touchmove', function (e) { if (calInTrasc) e.preventDefault(); }, { passive: false });
+
 function disegnaCal() {
   var og = oggi(), box = $('#v-cal');
   if (!CAL.rif) { CAL.rif = og; CAL.sel = og; }
@@ -1298,16 +1380,33 @@ function disegnaCal() {
       var d = calSomma(inizio, i);
       var dd = calData(d), fuori = dd.getMonth() !== rd.getMonth(), l = per[d] || [];
       var pal = {}; l.forEach(function (e) { pal[e.fatto ? 'f' : e.tipo] = 1; if (!e.fatto && e.d < og) pal.r = 1; });
-      h.push('<button class="cl-c' + (fuori ? ' fuori' : '') + (calRosso(d) ? ' we' : '') + (d === og ? ' oggi' : '') + (d === CAL.sel ? ' sel' : '') + (pal.r ? ' tardi' : '') + '" data-d="' + d + '"' + (calFesta(d) ? ' title="' + esc(calFesta(d)) + '"' : '') + '><span class="n">' + dd.getDate() + '</span><span class="pt">' +
+      var inInt = CAL.da && d >= CAL.da && d <= CAL.a;
+      h.push('<button class="cl-c' + (fuori ? ' fuori' : '') + (calRosso(d) ? ' we' : '') + (d === og ? ' oggi' : '') + ((!CAL.da && d === CAL.sel) ? ' sel' : '') + (inInt ? ' insel' : '') + (pal.r ? ' tardi' : '') + '" data-d="' + d + '"' + (calFesta(d) ? ' title="' + esc(calFesta(d)) + '"' : '') + '><span class="n">' + dd.getDate() + '</span><span class="pt">' +
         ['visita', 'telefonata', 'mail', 'report', 'f'].filter(function (x) { return pal[x]; }).slice(0, 4).map(function (x) { return '<i class="p-' + x + '"></i>'; }).join('') + '</span></button>');
     }
     h.push('</div>');
-    var lg = calOrdina(per[CAL.sel] || []);
-    h.push('<section class="sz bl" style="--c:var(--accent)"><h3>' + esc(calGiornoIt(CAL.sel).charAt(0).toUpperCase() + calGiornoIt(CAL.sel).slice(1)) + (calFesta(CAL.sel) ? '<span class="pill fs">' + esc(calFesta(CAL.sel)) + '</span>' : '') + '<span class="pill">' + num(lg.length) + '</span></h3><div class="c"><div class="cl-el">');
-    if (!lg.length) h.push('<div class="vuoto">Niente in programma in questo giorno.</div>');
-    lg.forEach(function (e) { h.push('<div class="cl-r">' + calRiga(e, og) + '<span class="cl-n">' + esc([calStatoTxt(e), calOraTxt(e), e.oraNota, e.nota, e.c.prov].filter(Boolean).join(' · ')) + '</span></div>'); });
-    h.push('<button class="btn" id="cl-piu-g">+ Aggiungi attività in questo giorno</button>');
-    h.push('</div></div></section>');
+    if (CAL.da && CAL.a && CAL.da !== CAL.a) {
+      /* più giorni scelti con il dito: elenco di tutti, giorno per giorno */
+      var li = [], gg = 0;
+      for (var dz = CAL.da; dz <= CAL.a; dz = calSomma(dz, 1)) { gg++; li = li.concat(per[dz] || []); }
+      li = calOrdina(li);
+      h.push('<section class="sz bl cl-int" style="--c:var(--accent)"><h3>' + esc(dataIt(CAL.da).slice(0, 5)) + ' &rarr; ' + esc(dataIt(CAL.a)) + '<span class="pill">' + num(gg) + ' gg</span><span class="pill">' + num(li.length) + '</span></h3><div class="c"><div class="cl-el">');
+      if (!li.length) h.push('<div class="vuoto">Niente in programma nei giorni scelti.</div>');
+      var ugi = '';
+      li.forEach(function (e) {
+        if (e.d !== ugi) { ugi = e.d; h.push('<div class="cl-gd' + (e.d === og ? ' oggi' : '') + (calRosso(e.d) ? ' we' : '') + '">' + esc(calGiornoIt(e.d)) + (calFesta(e.d) ? ' <i>' + esc(calFesta(e.d)) + '</i>' : '') + '</div>'); }
+        h.push('<div class="cl-r">' + calRiga(e, og) + '<span class="cl-n">' + esc([calStatoTxt(e), calOraTxt(e), e.oraNota, e.nota, e.c.prov].filter(Boolean).join(' · ')) + '</span></div>');
+      });
+      h.push('<div class="cl-sug">Tocca un giorno per tornare alla vista di un giorno solo.</div>');
+      h.push('</div></div></section>');
+    } else {
+      var lg = calOrdina(per[CAL.sel] || []);
+      h.push('<section class="sz bl" style="--c:var(--accent)"><h3>' + esc(calGiornoIt(CAL.sel).charAt(0).toUpperCase() + calGiornoIt(CAL.sel).slice(1)) + (calFesta(CAL.sel) ? '<span class="pill fs">' + esc(calFesta(CAL.sel)) + '</span>' : '') + '<span class="pill">' + num(lg.length) + '</span></h3><div class="c"><div class="cl-el">');
+      if (!lg.length) h.push('<div class="vuoto">Niente in programma in questo giorno.</div>');
+      lg.forEach(function (e) { h.push('<div class="cl-r">' + calRiga(e, og) + '<span class="cl-n">' + esc([calStatoTxt(e), calOraTxt(e), e.oraNota, e.nota, e.c.prov].filter(Boolean).join(' · ')) + '</span></div>'); });
+      h.push('<button class="btn" id="cl-piu-g">+ Aggiungi attività in questo giorno</button>');
+      h.push('</div></div></section>');
+    }
   } else {
     var la = calOrdina(inPer), ug = '';
     h.push('<div class="cl-ag">');
@@ -1326,7 +1425,7 @@ function disegnaCal() {
   $$('#v-cal .cl-seg button[data-m]').forEach(function (b) { b.addEventListener('click', function () { CAL.modo = b.dataset.m; calRicorda(); disegnaCal(); }); });
   $$('#v-cal .cl-fil .chip[data-t]').forEach(function (b) { b.addEventListener('click', function () { CAL.tipi[b.dataset.t] = CAL.tipi[b.dataset.t] ? 0 : 1; calRicorda(); disegnaCal(); }); });
   $$('#v-cal .cl-fil .chip[data-f]').forEach(function (b) { b.addEventListener('click', function () { CAL[b.dataset.f] = CAL[b.dataset.f] ? 0 : 1; calRicorda(); disegnaCal(); }); });
-  $$('#v-cal .cl-c').forEach(function (b) { b.addEventListener('click', function () { CAL.sel = b.dataset.d; disegnaCal(); }); });
+  calManoCelle();
   $$('#v-cal .cl-e').forEach(function (b) { b.addEventListener('click', function () { calApri(b.dataset.k, b.dataset.id, b.dataset.c); }); });
   setTimeout(aggiornaFab, 60);
 }
