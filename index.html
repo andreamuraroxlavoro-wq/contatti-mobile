@@ -171,7 +171,14 @@ summary::-webkit-details-marker{display:none}
 .lpin.prov .corpo{stroke-dasharray:2.2 1.4;fill-opacity:.8}.lpin.prov .occhio{fill:none;stroke:#0F1620;stroke-width:1.2}
 .rq-lampo-pin{animation:rq-lampeggia .9s steps(1,end) infinite}@keyframes rq-lampeggia{0%,49%{opacity:1}50%,100%{opacity:.25}}
 .lpin .rq-badge{transform-origin:5.2px -15.2px}
-.qui-punto{width:16px;height:16px;border-radius:50%;background:#1A73E8;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 0 0 8px rgba(26,115,232,.18);transform:translate(-50%,-50%);position:absolute;left:0;top:0}
+/* «Tu sei qui»: punto pieno con tre anelli che si allargano e sfumano, per vederlo subito in mezzo ai segnaposti */
+.qui-punto{width:20px;height:20px;border-radius:50%;background:#1A73E8;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 14px 4px rgba(26,115,232,.55);transform:translate(-50%,-50%);position:absolute;left:0;top:0;z-index:1200;animation:qui-cuore 2.4s ease-in-out infinite}
+.qui-punto i{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:radial-gradient(circle,rgba(26,115,232,.45) 0%,rgba(26,115,232,.28) 55%,rgba(26,115,232,0) 72%);border:2px solid rgba(26,115,232,.55);opacity:0;animation:qui-onda 2.4s cubic-bezier(.22,.7,.3,1) infinite;pointer-events:none}
+.qui-punto i:nth-child(2){animation-delay:.8s}
+.qui-punto i:nth-child(3){animation-delay:1.6s}
+@keyframes qui-onda{0%{transform:scale(1);opacity:.85}70%{opacity:.25}100%{transform:scale(6.5);opacity:0}}
+@keyframes qui-cuore{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.18)}}
+@media (prefers-reduced-motion:reduce){.qui-punto,.qui-punto i{animation:none}.qui-punto i{opacity:.35;transform:scale(3)}}
 .pop{min-width:200px}.pop b{display:block;font-size:calc(15px * var(--scala));margin-bottom:2px}.pop .ds{font-size:calc(12px * var(--scala));color:var(--tenue)}.pop .az{margin-top:8px}.pop .az a,.pop .az button{--c:var(--accent);min-width:28%;padding:8px 6px;font-size:calc(13px * var(--scala))}
 .leaflet-popup-content{margin:10px 12px;font:inherit}.leaflet-popup-content-wrapper{border-radius:12px;background:var(--carta);color:var(--testo)}.leaflet-popup-tip{background:var(--carta)}
 #mappa{height:42vh;border-radius:14px;border:1px solid var(--bordo);margin-bottom:10px;background:var(--carta2)}
@@ -630,7 +637,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.20.0';
+var APP_VER = '1.21.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1398,7 +1405,7 @@ function disegnaVicino() {
   if (window.L) {
     if (!mappa) { mappa = window.L.map('mappa', { zoomControl: false }); window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(mappa); livelloPin = window.L.layerGroup().addTo(mappa); }
     livelloPin.clearLayers();
-    window.L.marker([posMe.lat, posMe.lng], { icon: window.L.divIcon({ className: '', html: '<div class="pin me"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(livelloPin).bindPopup('Tu sei qui');
+    window.L.marker([posMe.lat, posMe.lng], { zIndexOffset: 2000, icon: window.L.divIcon({ className: 'lp-wrap', iconSize: [0, 0], html: '<div class="qui-punto"><i></i><i></i><i></i></div>' }) }).addTo(livelloPin).bindPopup('Tu sei qui');
     /* stessi segnaposto e stessi fumetti della scheda Mappa: un solo modo di disegnare i contatti */
     L.slice(0, 300).forEach(function (x) {
       var c = x.c, m = window.L.marker([+c.lat, +c.lng], { icon: iconaPin(c, 0, 0), riseOnHover: true }).addTo(livelloPin);
@@ -1500,7 +1507,7 @@ function disegnaMappa() {
     $('#mp-colore').addEventListener('click', function () { MP.colore = MP.colore === 'liv' ? 'esito' : 'liv'; try { localStorage.setItem('cm.mappa.col', MP.colore); } catch (e) {} toast(MP.colore === 'liv' ? 'Colore per livello' : 'Colore per esito'); disegnaPin(); });
     $('#mp-leg').addEventListener('click', function () { MP.leg = !MP.leg; disegnaLegenda(); });
     $('#mp-tutto').addEventListener('click', function () { var l = filtratiMappa(); if (l.length) MP.mappa.fitBounds(l.map(function (c) { return [+c.lat, +c.lng]; }), { padding: [30, 30] }); else MP.mappa.setView([42.5, 12.5], 5); });
-    $('#mp-qui').addEventListener('click', function () { if (!navigator.geolocation) { toast('Posizione non disponibile'); return; } toast('Cerco la tua posizione…'); navigator.geolocation.getCurrentPosition(function (p) { MP.posMe = { lat: p.coords.latitude, lng: p.coords.longitude }; if (MP.qui) MP.qui.remove(); MP.qui = L_.marker([MP.posMe.lat, MP.posMe.lng], { interactive: false, icon: L_.divIcon({ className: 'lp-wrap', iconSize: [0, 0], html: '<div class="qui-punto"></div>' }) }).addTo(MP.mappa); MP.mappa.setView([MP.posMe.lat, MP.posMe.lng], Math.max(MP.mappa.getZoom(), 11)); }, function (e) { toast('Posizione non concessa: ' + e.message, 3500); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }); });
+    $('#mp-qui').addEventListener('click', function () { if (!navigator.geolocation) { toast('Posizione non disponibile'); return; } toast('Cerco la tua posizione…'); navigator.geolocation.getCurrentPosition(function (p) { MP.posMe = { lat: p.coords.latitude, lng: p.coords.longitude }; if (MP.qui) MP.qui.remove(); MP.qui = L_.marker([MP.posMe.lat, MP.posMe.lng], { interactive: false, icon: L_.divIcon({ className: 'lp-wrap', iconSize: [0, 0], html: '<div class="qui-punto"><i></i><i></i><i></i></div>' }), zIndexOffset: 2000 }).addTo(MP.mappa); MP.mappa.setView([MP.posMe.lat, MP.posMe.lng], Math.max(MP.mappa.getZoom(), 11)); }, function (e) { toast('Posizione non concessa: ' + e.message, 3500); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }); });
   }
   setTimeout(function () {
     MP.mappa.invalidateSize();
