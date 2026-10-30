@@ -829,7 +829,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.45.0';
+var APP_VER = '1.46.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1004,8 +1004,25 @@ function disegnaMenu() {
    le schede si spostano tenendo premuto e trascinando, e il tocco non cambia vista.
    ============================================================ */
 var CHIAVE_BARRA = 'cm.ordine.barra', disponiOn = false;
-var DISPONI_SEL = '#tab button[data-v], #v-oggi .kpis .kpi';
+var DISPONI_SEL = '#tab button[data-v], #v-oggi .kpis .kpi, #v-cruscotto .kpis .kpi';
 /* l'ordine dei riquadri letto dalle carte, dopo averle trascinate */
+/* ordine dei riquadri del Cruscotto: una lista per ogni gruppo di numeri,
+   così «L'elenco», «Il lavoro fatto», «Richiami» e gli altri restano separati. */
+var CHIAVE_CRU = 'cm.ordine.cruscotto';
+function cruOrdineLetto() { try { return JSON.parse(localStorage.getItem(CHIAVE_CRU) || '{}') || {}; } catch (e) { return {}; } }
+function cruOrdineSalva(g) {
+  if (!g || !g.dataset || !g.dataset.cru) return;
+  var tutti = cruOrdineLetto();
+  tutti[g.dataset.cru] = $$('.kpi', g).map(function (c) { return c.dataset.k || ''; }).filter(Boolean);
+  try { localStorage.setItem(CHIAVE_CRU, JSON.stringify(tutti)); } catch (e) {}
+}
+function cruOrdineApplica() {
+  var tutti = cruOrdineLetto();
+  $$('#v-cruscotto .kpis[data-cru]').forEach(function (g) {
+    var l = tutti[g.dataset.cru]; if (!Array.isArray(l) || !l.length) return;
+    l.forEach(function (k) { var c = g.querySelector('.kpi[data-k="' + k.replace(/"/g, '') + '"]'); if (c) g.appendChild(c); });
+  });
+}
 function kpiOrdineDaCarte() {
   var l = $$('#v-oggi .kpis .kpi').map(function (c) { return c.dataset.k; }).filter(Boolean);
   if (!l.length) return;
@@ -1160,7 +1177,9 @@ document.addEventListener('click', function (e) {
       posa();
       if (preso) {
         preso.classList.remove('trascino'); preso = null;
-        if (dove && dove.classList.contains('kpis')) kpiOrdineDaCarte(); else barraOrdineSalva();
+        if (dove && dove.dataset && dove.dataset.cru) cruOrdineSalva(dove);
+        else if (dove && dove.classList.contains('kpis')) kpiOrdineDaCarte();
+        else barraOrdineSalva();
       }
     }
     document.addEventListener('pointermove', muovi);
@@ -1279,12 +1298,18 @@ function disegnaChips() {
   h.push('<select class="chip' + (F.esito ? ' on' : '') + '" data-f="esito"><option value="">Tipo Azione</option><option value="(vecchi)"' + (F.esito === '(vecchi)' ? ' selected' : '') + '>Da sistemare</option><option value="(nessuno)"' + (F.esito === '(nessuno)' ? ' selected' : '') + '>Mai contattati</option>' + ESITI().map(function (e) { return '<option' + (F.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>');
   h.push('<select class="chip' + (F.liv ? ' on' : '') + '" data-f="liv"><option value="">Livello</option>' + ['A', 'B', 'C', 'D'].map(function (l) { return '<option' + (F.liv === l ? ' selected' : '') + '>' + l + '</option>'; }).join('') + '</select>');
   h.push('<select class="chip' + (F.tipo ? ' on' : '') + '" data-f="tipo"><option value="">Tipo di Cliente</option>' + TIPI_CLI.map(function (t) { return '<option' + (F.tipo === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>');
+  /* l'ordine dell'elenco si cambia al volo da qui, senza passare dalle impostazioni:
+     vale anche per gli elenchi che si aprono toccando un numero del Cruscotto. */
+  h.push('<select class="chip ord" data-f="ordine"><option value="">Ordina: ' + esc((ORDINI.filter(function (o) { return o.id === ordine(); })[0] || ORDINI[0]).nome) + '</option>' +
+    ORDINI.map(function (o) { return '<option value="' + esc(o.id) + '"' + (ordine() === o.id ? ' selected' : '') + '>' + esc(o.nome) + '</option>'; }).join('') + '</select>');
   h.push('<button class="chip' + (F.pr === 'rich' ? ' on' : '') + '" data-f="pr" data-val="rich">Con richiamo</button>');
   h.push('<button class="chip' + (F.pr === 'prat' ? ' on' : '') + '" data-f="pr" data-val="prat">Con pratica</button>');
   if (F.prov || F.esito || F.liv || F.pr || F.tipo || F.q) h.push('<button class="chip" data-f="azzera" style="color:var(--rosso)">&#10005; Annulla</button>');
   var box = $('#chips'); box.innerHTML = h.join('');
   $$('button.chip', box).forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.f === 'azzera') { F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '', tipo: '' }; $('#q').value = ''; } else F[b.dataset.f] = F[b.dataset.f] === b.dataset.val ? '' : b.dataset.val; mostraN = 150; disegnaCerca(); }); });
-  $$('select.chip', box).forEach(function (s) { s.addEventListener('change', function () { F[s.dataset.f] = s.value; mostraN = 150; disegnaCerca(); }); });
+  $$('select.chip', box).forEach(function (s) { s.addEventListener('change', function () {
+    if (s.dataset.f === 'ordine') { if (!s.value) return; try { localStorage.setItem('cm.ordine', s.value); } catch (e) {} cacheAtt = null; mostraN = 150; disegnaCerca(); toast('Ordine: ' + s.options[s.selectedIndex].text); return; }
+    F[s.dataset.f] = s.value; mostraN = 150; disegnaCerca(); }); });
 }
 var inVista = []; /* contatti attualmente mostrati: se è uno solo, il tasto «+» lo compila da solo */
 var pinSel = '';  /* segnaposto aperto sulla mappa: il tasto «+» lavora su quel cliente */
@@ -2331,7 +2356,7 @@ function vaiAContatti(f) {
   mostraN = 150; mostraVista('cerca');
 }
 function crRiquadro(et, n, ds, col, f) {
-  return '<button class="kpi cr-k" style="--c:' + col + '" data-f="' + esc(JSON.stringify(f || {})) + '">' +
+  return '<button class="kpi cr-k" style="--c:' + col + '" data-k="' + esc(String(et).replace(/<[^>]*>/g, '')) + '" data-f="' + esc(JSON.stringify(f || {})) + '">' +
     '<div class="et">' + et + '</div><div class="nm">' + num(n) + '</div>' + (ds ? '<div class="ds">' + esc(ds) + '</div>' : '') + '</button>';
 }
 function disegnaCruscotto() {
@@ -2351,43 +2376,45 @@ function disegnaCruscotto() {
   var conPratica = T.filter(function (c) { return !!DB.pratiche[c.id]; }).length;
   h.push('<div class="cr-nota">Ogni riquadro è un tasto: toccalo e si apre la scheda <b>Contatti</b> con quel filtro già messo.' + (tuttiAccesi() ? '' : ' Stai guardando ' + esc(gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ')) + '.') + '</div>');
   /* l'elenco */
-  h.push('<section class="sz" style="--c:var(--sz-clas)"><h3>L\'elenco<span class="pill">' + num(T.length) + '</span></h3><div class="c"><div class="kpis">' +
+  h.push('<section class="sz" style="--c:var(--sz-clas)"><h3>L\'elenco<span class="pill">' + num(T.length) + '</span></h3><div class="c"><div class="kpis" data-cru="elenco">' +
     crRiquadro('Contatti in elenco', T.length, 'tutti quelli che vedi ora', 'var(--sz-clas)', {}) +
     crRiquadro('Con recapiti', recap, 'telefono o email', 'var(--sz-rec)', { pr: 'recapiti' }) +
     crRiquadro('Aggiunti a mano', nuovi, 'non soci Assodimi', 'var(--accent)', {}) +
     crRiquadro('Con pratica', conPratica, 'offerta o proposta aperta', 'var(--sz-prat)', { pr: 'prat' }) +
     '</div></div></section>');
   /* il lavoro fatto */
-  h.push('<section class="sz" style="--c:var(--sz-sit)"><h3>Il lavoro fatto</h3><div class="c"><div class="kpis">' +
+  h.push('<section class="sz" style="--c:var(--sz-sit)"><h3>Il lavoro fatto</h3><div class="c"><div class="kpis" data-cru="lavoro">' +
     crRiquadro('Con un Tipo Azione', fatti, (T.length ? Math.round(fatti / T.length * 100) : 0) + '% dell\'elenco', 'var(--sz-sit)', { pr: 'fatti' }) +
     crRiquadro('Azioni positive', positivi, 'visita confermata, demo, offerta', 'var(--verde)', { pr: 'positivi' }) +
     crRiquadro('Mai contattati', T.length - fatti, 'nessun Tipo Azione', 'var(--grigioL)', { esito: '(nessuno)' }) +
     crRiquadro('Aziende tutelate', tutelati, 'seguite da un Partner', 'var(--ambra)', { pr: 'tutelati' }) +
     '</div></div></section>');
   /* i richiami */
-  h.push('<section class="sz" style="--c:var(--rosso)"><h3>Richiami</h3><div class="c"><div class="kpis">' +
+  h.push('<section class="sz" style="--c:var(--rosso)"><h3>Richiami</h3><div class="c"><div class="kpis" data-cru="richiami">' +
     crRiquadro('Scaduti', scad, 'data passata', 'var(--rosso)', { pr: 'scaduti' }) +
     crRiquadro('Da sentire oggi', oggiN, dataIt(og), 'var(--ambra)', { pr: 'oggi' }) +
     crRiquadro('Prossimi 7 giorni', pross, 'fino al ' + dataIt(sett), 'var(--accent)', { pr: 'sette' }) +
     crRiquadro('Con un richiamo', T.filter(function (c) { return !!sit(c.id).richiamo; }).length, 'una data in agenda', 'var(--sz-prom)', { pr: 'rich' }) +
     '</div></div></section>');
   /* per livello */
-  h.push('<section class="sz" style="--c:var(--sz-dim)"><h3>Per livello</h3><div class="c"><div class="kpis">' +
+  h.push('<section class="sz" style="--c:var(--sz-dim)"><h3>Per livello</h3><div class="c"><div class="kpis" data-cru="livelli">' +
     ['A', 'B', 'C', 'D'].map(function (l) {
       var g = T.filter(function (c) { return c.liv === l; });
       var f2 = g.filter(function (c) { var k = sit(c.id); return k.esito && k.esito !== 'Da contattare'; }).length;
       return crRiquadro('Livello ' + l, g.length, g.length ? num(f2) + ' con un\'azione · ' + Math.round(f2 / g.length * 100) + '%' : 'nessun contatto', 'var(--sz-dim)', { liv: l });
     }).join('') + '</div></div></section>');
   /* tipo di cliente */
-  h.push('<section class="sz" style="--c:var(--sz-prof)"><h3>Tipo di Cliente</h3><div class="c"><div class="kpis">' +
+  h.push('<section class="sz" style="--c:var(--sz-prof)"><h3>Tipo di Cliente</h3><div class="c"><div class="kpis" data-cru="tipicli">' +
     TIPI_CLI.map(function (t) { return crRiquadro(esc(t), T.filter(function (c) { return tipoCli(c.id) === t; }).length, '', 'var(--sz-prof)', { tipo: t }); }).join('') +
     '</div></div></section>');
   /* tipo azione */
-  h.push('<section class="sz" style="--c:var(--sz-prom)"><h3>Tipo Azione</h3><div class="c"><div class="kpis">' +
+  h.push('<section class="sz" style="--c:var(--sz-prom)"><h3>Tipo Azione</h3><div class="c"><div class="kpis" data-cru="azioni">' +
     ESITI().filter(function (e) { return e !== SENZA_AZIONE; }).map(function (e) { return crRiquadro(esc(e), T.filter(function (c) { return sit(c.id).esito === e; }).length, '', 'var(--sz-prom)', { esito: e }); }).join('') +
     '</div></div></section>');
   box.innerHTML = h.join('');
-  $$('.cr-k', box).forEach(function (b) { b.addEventListener('click', function () { var f = {}; try { f = JSON.parse(b.dataset.f); } catch (e) {} vaiAContatti(f); }); });
+  cruOrdineApplica();
+  $$('.cr-k', box).forEach(function (b) { b.draggable = false; b.addEventListener('click', function () { var f = {}; try { f = JSON.parse(b.dataset.f); } catch (e) {} vaiAContatti(f); }); });
+  if (disponiOn) disponiAccendi(true);   /* se «Disponi» è acceso i riquadri nuovi nascono già trascinabili */
 }
 
 /* ============================================================
