@@ -802,7 +802,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.43.0';
+var APP_VER = '1.44.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2022,6 +2022,7 @@ function disegnaVicino() {
     /* stessi segnaposto e stessi fumetti della scheda Mappa: un solo modo di disegnare i contatti */
     L.slice(0, 300).forEach(function (x) {
       var c = x.c, m = window.L.marker([+c.lat, +c.lng], { icon: iconaPin(c, 0, 0), riseOnHover: true }).addTo(livelloPin);
+      m._cmId = c.id;
       m.bindPopup(function () { return popupPin(c).replace('</div></div>', '</div><div class="pop-km">' + kmIt(x.km) + ' km da qui</div></div>'); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] });
       m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); });
       m.on('popupopen', function () { pinSel = c.id; aggiornaFab(); });
@@ -2031,7 +2032,7 @@ function disegnaVicino() {
     setTimeout(function () { mappa.invalidateSize(); }, 200);
     mappa.off('popupopen'); mappa.on('popupopen', function (e) {
       var el_ = e.popup.getElement();
-      var a = el_.querySelector('[data-apri]'); if (a) a.addEventListener('click', function (ev) { ev.preventDefault(); mappa.closePopup(); apriScheda(a.dataset.apri); });
+      var a = el_.querySelector('[data-apri]'); if (a) a.addEventListener('click', function (ev) { ev.preventDefault(); MP.ultimoPin = a.dataset.apri; mappa.closePopup(); apriScheda(a.dataset.apri); setTimeout(function () { MP.ultimoPin = ''; }, 0); });
       var nv = el_.querySelector('[data-nav]'); if (nv) nv.addEventListener('click', function () { naviga(DB.contatti[nv.dataset.nav]); });
     });
   }
@@ -2116,7 +2117,7 @@ function disegnaPin() {
   MP.pins.clearLayers();
   /* contatti sullo stesso punto: li apro a spirale come sul Mac */
   var perPunto = {}; dentro.forEach(function (c) { var key = (+c.lat).toFixed(4) + ',' + (+c.lng).toFixed(4); (perPunto[key] = perPunto[key] || []).push(c); });
-  Object.keys(perPunto).forEach(function (key) { perPunto[key].forEach(function (c, i) { var ox = 0, oy = 0; if (i > 0) { var rr = 7 * Math.sqrt(i), ang = i * 2.39996; ox = Math.cos(ang) * rr; oy = Math.sin(ang) * rr; } var m = L_.marker([+c.lat, +c.lng], { icon: iconaPin(c, ox, oy), riseOnHover: true }); m.bindPopup(function () { return popupPin(c); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] }); /* niente apri/chiudi a tocchi alterni: un tocco apre sempre (su alcuni telefoni il tocco arriva doppio) */ m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); });
+  Object.keys(perPunto).forEach(function (key) { perPunto[key].forEach(function (c, i) { var ox = 0, oy = 0; if (i > 0) { var rr = 7 * Math.sqrt(i), ang = i * 2.39996; ox = Math.cos(ang) * rr; oy = Math.sin(ang) * rr; } var m = L_.marker([+c.lat, +c.lng], { icon: iconaPin(c, ox, oy), riseOnHover: true }); m._cmId = c.id; m.bindPopup(function () { return popupPin(c); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] }); /* niente apri/chiudi a tocchi alterni: un tocco apre sempre (su alcuni telefoni il tocco arriva doppio) */ m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); });
     m.on('popupopen', function () { pinSel = c.id; aggiornaFab(); });
     m.on('popupclose', function () { if (pinSel === c.id) { pinSel = ''; aggiornaFab(); } });
     MP.pins.addLayer(m); }); });
@@ -2143,7 +2144,7 @@ function disegnaMappa() {
     MP.primaVolta = true;
     var tm = null; MP.mappa.on('moveend zoomend', function () { clearTimeout(tm); tm = setTimeout(function () { disegnaPin(); try { var c = MP.mappa.getCenter(); localStorage.setItem('cm.mappa.v', JSON.stringify({ lat: c.lat, lng: c.lng, z: MP.mappa.getZoom() })); } catch (e) {} }, 120); });
     MP.mappa.on('popupclose', function () { if (MP.ridisegna) setTimeout(disegnaPin, 50); });
-    MP.mappa.on('popupopen', function (e) { var el_ = e.popup.getElement(); var a = el_.querySelector('[data-apri]'); if (a) a.addEventListener('click', function () { MP.mappa.closePopup(); apriScheda(a.dataset.apri); }); var nv = el_.querySelector('[data-nav]'); if (nv) nv.addEventListener('click', function () { naviga(DB.contatti[nv.dataset.nav]); }); });
+    MP.mappa.on('popupopen', function (e) { var el_ = e.popup.getElement(); var a = el_.querySelector('[data-apri]'); if (a) a.addEventListener('click', function () { MP.ultimoPin = a.dataset.apri; MP.mappa.closePopup(); apriScheda(a.dataset.apri); setTimeout(function () { MP.ultimoPin = ''; }, 0); }); var nv = el_.querySelector('[data-nav]'); if (nv) nv.addEventListener('click', function () { naviga(DB.contatti[nv.dataset.nav]); }); });
     $('#mp-q').value = MP.f.q || '';
     var qt = null; $('#mp-q').addEventListener('input', function () { clearTimeout(qt); var v = this.value; qt = setTimeout(function () { MP.f.q = v; salvaFiltriMappa(); disegnaPin(); if (v.trim()) { var l = filtratiMappa(); if (l.length && l.length <= 50) { MP.mappa.fitBounds(l.map(function (c) { return [+c.lat, +c.lng]; }), { padding: [40, 40], maxZoom: 13 }); } } }, 250); });
     $('#mp-filtri').addEventListener('click', function () { var p = $('#mp-pannello'); if (p.style.display === 'none') { pannelloMappa(); p.style.display = ''; } else p.style.display = 'none'; });
@@ -2951,7 +2952,38 @@ function riaccendiSegno(sg) {
   setTimeout(spegni, 6000);
 }
 function statoOra() {
-  return { vista: vista, scheda: schedaId || '', y: schedaId ? ($('#scheda') ? $('#scheda').scrollTop : 0) : window.scrollY, sel: ultimoTocco };
+  var o = { vista: vista, scheda: schedaId || '', y: schedaId ? ($('#scheda') ? $('#scheda').scrollTop : 0) : window.scrollY, sel: ultimoTocco };
+  /* sulle mappe il «dove ero» non è l'altezza di scorrimento: è l'inquadratura
+     e il fumetto che avevo aperto. Senza questi due, tornando indietro la mappa
+     ricomincerebbe da capo e il cliente scelto non sarebbe più segnato. */
+  var m = vista === 'mappa' ? MP.mappa : (vista === 'vicino' ? mappa : null);
+  if (m) {
+    try { var c = m.getCenter(); o.mc = [c.lat, c.lng]; o.mz = m.getZoom(); } catch (e) {}
+    o.pin = pinSel || MP.ultimoPin || '';
+  }
+  return o;
+}
+/* riapre il fumetto di un cliente sulla mappa giusta: se il suo segnaposto non è
+   fra quelli disegnati (fuori area), prima porta la mappa su di lui e li ridisegna. */
+function riapriPin(v, id, centro, zoom) {
+  var m = v === 'mappa' ? MP.mappa : mappa; if (!m || !id) return;
+  var c = DB.contatti[id];
+  function apri() {
+    var trovato = null;
+    m.eachLayer(function (l) { if (!trovato && l.options && l.options.icon && l._cmId === id) trovato = l; });
+    if (trovato) { if (!trovato.isPopupOpen()) trovato.openPopup(); return true; }
+    return false;
+  }
+  try {
+    if (centro && zoom) m.setView(centro, zoom, { animate: false });
+    else if (c && c.lat && c.lng) m.setView([+c.lat, +c.lng], Math.max(m.getZoom(), 12), { animate: false });
+    m.invalidateSize();
+  } catch (e) {}
+  setTimeout(function () {
+    if (apri()) return;
+    if (v === 'mappa') { MP.ridisegna = false; disegnaPin(); }
+    setTimeout(function () { if (!apri() && c && c.lat && c.lng) { m.setView([+c.lat, +c.lng], 13, { animate: false }); if (v === 'mappa') disegnaPin(); setTimeout(apri, 220); } }, 220);
+  }, 260);
 }
 /* I passi restano anche se l'app si ricarica (aggiornamento, chiusura, telefono che la scarica
    dalla memoria): si scrivono su questo telefono e si rileggono all'avvio. Oltre le 12 ore
@@ -2992,7 +3024,12 @@ function tornaIndietro() {
       setTimeout(function () { var S = $('#scheda'); if (S) S.scrollTop = s0.y || 0; riaccendiSegno(s0.sel); inRitorno = false; aggiornaInd(); }, 90);
     } else {
       mostraVista(s0.vista, true);
-      setTimeout(function () { window.scrollTo(0, s0.y || 0); riaccendiSegno(s0.sel); inRitorno = false; aggiornaInd(); }, 90);
+      setTimeout(function () {
+        window.scrollTo(0, s0.y || 0); riaccendiSegno(s0.sel);
+        if ((s0.vista === 'mappa' || s0.vista === 'vicino') && s0.pin) riapriPin(s0.vista, s0.pin, s0.mc, s0.mz);
+        else if ((s0.vista === 'mappa' || s0.vista === 'vicino') && s0.mc && s0.mz) { var m2 = s0.vista === 'mappa' ? MP.mappa : mappa; if (m2) try { m2.setView(s0.mc, s0.mz, { animate: false }); } catch (e) {} }
+        inRitorno = false; aggiornaInd();
+      }, 90);
     }
   }
   if (schedaId && s0.scheda !== schedaId) {
