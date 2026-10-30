@@ -248,6 +248,7 @@ body.mappa-on .fab{z-index:1200}
 .cl-gd{font-weight:800;font-size:calc(13px * var(--scala));text-transform:capitalize;border-bottom:1px solid var(--bordo);padding:10px 0 4px}
 .cl-gd.oggi{color:var(--accent)}
 .cl-gd.we{color:var(--rosso)}
+.pop-km{margin-top:6px;font-size:calc(12px * var(--scala));font-weight:700;color:var(--accent)}
 .cl-gd i{font-style:normal;font-size:calc(11.5px * var(--scala));font-weight:700;margin-left:6px}
 .sz h3 .pill.fs{background:color-mix(in srgb,var(--rosso) 14%,transparent);color:var(--rosso)}
 .cl-r{display:flex;flex-direction:column;gap:2px}
@@ -629,7 +630,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.18.1';
+var APP_VER = '1.19.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1398,13 +1399,21 @@ function disegnaVicino() {
     if (!mappa) { mappa = window.L.map('mappa', { zoomControl: false }); window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(mappa); livelloPin = window.L.layerGroup().addTo(mappa); }
     livelloPin.clearLayers();
     window.L.marker([posMe.lat, posMe.lng], { icon: window.L.divIcon({ className: '', html: '<div class="pin me"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(livelloPin).bindPopup('Tu sei qui');
-    L.slice(0, 300).forEach(function (x) { var c = x.c, k = sit(c.id); var m = window.L.marker([+c.lat, +c.lng], { icon: window.L.divIcon({ className: '', html: '<div class="pin" style="background:' + colEsito(k.esito) + '"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }) }).addTo(livelloPin); m.bindPopup('<b>' + esc(c.nome) + '</b><br>' + esc(c.sede || c.prov || '') + '<br>' + kmIt(x.km) + ' km · <a href="#" data-apri="' + esc(c.id) + '">Apri scheda</a>');
+    /* stessi segnaposto e stessi fumetti della scheda Mappa: un solo modo di disegnare i contatti */
+    L.slice(0, 300).forEach(function (x) {
+      var c = x.c, m = window.L.marker([+c.lat, +c.lng], { icon: iconaPin(c, 0, 0), riseOnHover: true }).addTo(livelloPin);
+      m.bindPopup(function () { return popupPin(c).replace('</div></div>', '</div><div class="pop-km">' + kmIt(x.km) + ' km da qui</div></div>'); }, { maxWidth: 280, autoPanPaddingTopLeft: [10, 60], autoPanPaddingBottomRight: [10, 60] });
+      m.off('click', m._openPopup, m); m.on('click', function () { if (!m.isPopupOpen()) m.openPopup(); });
       m.on('popupopen', function () { pinSel = c.id; aggiornaFab(); });
       m.on('popupclose', function () { if (pinSel === c.id) { pinSel = ''; aggiornaFab(); } });
     });
     var b = window.L.latLng(posMe.lat, posMe.lng).toBounds(Math.min(raggio, 50) * 1000); mappa.fitBounds(b);
     setTimeout(function () { mappa.invalidateSize(); }, 200);
-    mappa.off('popupopen'); mappa.on('popupopen', function (e) { var a = e.popup.getElement().querySelector('[data-apri]'); if (a) a.addEventListener('click', function (ev) { ev.preventDefault(); apriScheda(a.dataset.apri); }); });
+    mappa.off('popupopen'); mappa.on('popupopen', function (e) {
+      var el_ = e.popup.getElement();
+      var a = el_.querySelector('[data-apri]'); if (a) a.addEventListener('click', function (ev) { ev.preventDefault(); mappa.closePopup(); apriScheda(a.dataset.apri); });
+      var nv = el_.querySelector('[data-nav]'); if (nv) nv.addEventListener('click', function () { naviga(DB.contatti[nv.dataset.nav]); });
+    });
   }
 }
 $('#vi-ricalcola').addEventListener('click', function () { posMe = null; disegnaVicino(); });
