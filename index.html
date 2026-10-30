@@ -163,6 +163,10 @@ h1.tit:first-child{margin-top:2px}
 .sz{border:1px solid var(--bordo);border-radius:14px;margin:0 0 12px;background:var(--carta);box-shadow:var(--ombra);overflow:hidden;border-left:6px solid var(--c)}
 .sz>h3{margin:0;padding:9px 14px;border-bottom:1px solid var(--bordo);text-transform:uppercase;letter-spacing:.12em;font-size:calc(12px * var(--scala));font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 10%,var(--carta));display:flex;align-items:center;gap:6px}
 .sz>h3::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--c)}
+.sz>h3.con-ico::before{content:none}
+.sz>h3.con-ico{gap:8px}
+.sz>h3.con-ico>.ki{width:23px;height:23px;border-radius:7px}
+.sz>h3.con-ico>.ki svg{width:14px;height:14px}
 .sz>h3 .pill{margin-left:auto;text-transform:none;letter-spacing:0}
 @keyframes sz-pulsa{0%,100%{box-shadow:0 0 0 2px var(--c),0 0 0 0 color-mix(in srgb,var(--c) 40%,transparent)}50%{box-shadow:0 0 0 4px var(--c),0 0 24px 10px color-mix(in srgb,var(--c) 32%,transparent)}}
 .sz.lampeggia{animation:sz-pulsa 1.15s ease-in-out infinite;border-color:var(--c);position:relative;z-index:3}
@@ -829,7 +833,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.46.0';
+var APP_VER = '1.47.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1405,6 +1409,105 @@ var KPI_ICO = {
   nuovi: '<circle cx="10" cy="8.6" r="3.4"/><path d="M3.9 19.6c.6-3.3 3.1-5.1 6.1-5.1 1.1 0 2.2.2 3.1.7"/><path d="M17.6 14.2v6M14.6 17.2h6"/>',
   pratiche: '<rect x="3.2" y="7.6" width="17.6" height="11.8" rx="2"/><path d="M9 7.6V6.2a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.4"/>'
 };
+var ICO_SEZ = {
+  contatti: '<circle cx="9.6" cy="8.4" r="3.4"/><path d="M3.6 19.6c.6-3.3 3.1-5.1 6-5.1s5.4 1.8 6 5.1"/><path d="M16.4 10.6a3 3 0 1 0-1.2-5.4"/><path d="M17.6 13.8c2 .6 3.4 2.3 3.4 4.3"/>',
+  ricerca: '<circle cx="11" cy="11" r="6.4"/><path d="M15.6 15.6L21 21"/>',
+  cruscotto: '<path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 18l4.2-5"/><circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none"/>',
+  cronologia: '<path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3 4.6V9h4.4"/><path d="M12 7.7V12l3 1.8"/>',
+  tutele: '<path d="M12 3.2l7.2 2.8v5.6c0 4.3-3 7.6-7.2 9.2-4.2-1.6-7.2-4.9-7.2-9.2V6z"/><path d="M9.2 14.8l5.6-5.6M9.2 9.2l5.6 5.6"/>',
+  mappa: '<path d="M3 6.4l6-2 6 2 6-2v13.2l-6 2-6-2-6 2z"/><path d="M9 4.4v13.2M15 6.4v13.2"/>',
+  giro: '<path d="M12 21s-6.6-5.9-6.6-10.4a6.6 6.6 0 0 1 13.2 0C18.6 15.1 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/>',
+  calendario: '<rect x="3.2" y="5" width="17.6" height="15.6" rx="2"/><path d="M8 3.2v3.6M16 3.2v3.6M3.2 10h17.6"/>',
+  concorrenti: '<path d="M4 20V9.4M10 20V4.6M16 20v-7.6M22 20H2"/>',
+  accordo: '<path d="M6.2 3.4h7.4l4.2 4.2v13H6.2z"/><path d="M13.6 3.4v4.2h4.2"/><path d="M9 13.6l2 2 4-4"/>',
+  documenti: '<path d="M6.2 3.4h7.4l4.2 4.2v13H6.2z"/><path d="M13.6 3.4v4.2h4.2"/><path d="M9 12.6h6M9 16h6"/>',
+  aspetto: '<circle cx="12" cy="12" r="8.4"/><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/>',
+  guida: '<circle cx="12" cy="12" r="8.4"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.3-.9.8-.9 1.4v.5"/><circle cx="12" cy="16.6" r=".9" fill="currentColor" stroke="none"/>',
+  gruppi: '<circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2.8 19.4c.5-2.8 2.6-4.4 5.2-4.4s4.7 1.6 5.2 4.4"/><path d="M14.6 15.2c2.5-.5 5.5.9 6.6 4.2"/>',
+  colori: '<path d="M12 3.4a8.6 8.6 0 1 0 0 17.2c1.2 0 1.8-.8 1.8-1.7 0-1.6-1.4-1.9-1.4-3 0-.9.8-1.6 1.8-1.6h1.6a4.6 4.6 0 0 0 4.6-4.6c0-3.6-3.6-6.3-8.4-6.3z"/><circle cx="8" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1.1" fill="currentColor" stroke="none"/>',
+  carattere: '<path d="M5 19.4L11 4.6h2l6 14.8"/><path d="M7.6 14.2h8.8"/>',
+  salvati: '<path d="M5 4.4h11l3 3v12.2H5z"/><path d="M8.4 4.4v4.6h6V4.4"/><rect x="8.4" y="12.6" width="7.2" height="7"/>',
+  nuvola: '<path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/><path d="M12 11v6M9.5 14.5L12 17l2.5-2.5"/>',
+  file: '<path d="M6.2 3.4h7.4l4.2 4.2v13H6.2z"/><path d="M13.6 3.4v4.2h4.2"/>',
+  anagrafica: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><circle cx="9" cy="11" r="2.4"/><path d="M5.6 16.6c.4-1.8 1.8-2.8 3.4-2.8s3 1 3.4 2.8"/><path d="M15 10h4M15 13.4h4"/>',
+  recapiti: '<path d="M5 3.6h3l1.5 4.2-2 1.3a10.5 10.5 0 0 0 5.5 5.5l1.3-2 4.2 1.5v3a2 2 0 0 1-2.2 2A16 16 0 0 1 3.5 5.8 2 2 0 0 1 5 3.6z"/>',
+  referenti: '<circle cx="12" cy="8.4" r="3.4"/><path d="M5.6 19.6c.6-3.3 3.2-5.1 6.4-5.1s5.8 1.8 6.4 5.1"/>',
+  dimensione: '<path d="M3.4 20.6V10l5-3.4 5 3.4v10.6"/><path d="M13.4 20.6V13l4-2.6 3.2 2.2v8"/><path d="M6.4 20.6v-4h4v4"/>',
+  profilo: '<path d="M5.4 4.6h13v14.8h-13z"/><path d="M8.4 9h7M8.4 12.4h7M8.4 15.8h4"/>',
+  situazione: '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.6V12l3 1.8"/>',
+  prossima: '<path d="M4 12h13"/><path d="M12.6 6.6L18 12l-5.4 5.4"/><path d="M20 5.4v13.2"/>',
+  allegati: '<path d="M20 11.6l-8.2 8.2a4.6 4.6 0 0 1-6.5-6.5l8.4-8.4a3 3 0 0 1 4.3 4.3l-8.4 8.4a1.5 1.5 0 0 1-2.1-2.1l7.6-7.6"/>',
+  modelli: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2"/><path d="M3.4 9.2h17.2M9 9.2v10.2"/>',
+  copie: '<path d="M7.4 7.4h11.2v11.2H7.4z"/><path d="M5.4 15.4V5.4h10"/>',
+  excel: '<path d="M6.2 3.4h7.4l4.2 4.2v13H6.2z"/><path d="M13.6 3.4v4.2h4.2"/><path d="M9.4 11.6l4.4 5.6M13.8 11.6l-4.4 5.6"/>',
+  ordine: '<path d="M4 6h13M4 12h9M4 18h5"/><path d="M19 9v10M16.5 16.5L19 19l2.5-2.5"/>',
+  avviso: '<path d="M12 4.2l8.4 15H3.6z"/><path d="M12 10v4"/><circle cx="12" cy="16.6" r=".9" fill="currentColor" stroke="none"/>'
+};
+/* a ogni titolo la sua icona: prima si guarda la KPI con lo stesso nome, poi l'elenco qui sopra,
+   infine si sceglie per parole chiave del titolo. Nessun titolo resta senza segno. */
+/* L'ordine conta: prima i titoli precisi, poi quelli generici. Le parole brevi hanno il
+   confine di parola, altrimenti «situazione» finirebbe fra le «azioni» e «note» fra le «notifiche». */
+var ICO_PAROLE = [
+  [/situazione/i, 'situazione'], [/prossim(a|o) (mossa|passo)/i, 'prossima'], [/in programma/i, 'calendario'],
+  [/cronolog/i, 'cronologia'], [/da non toccare|tutel/i, 'tutele'], [/\bpartner\b/i, 'partner'],
+  [/richiam|ricontatt/i, 'daric'], [/scadut/i, 'scaduti'], [/\boggi\b/i, 'oggi'], [/settimana|7 giorni/i, 'settimana'],
+  [/visit/i, 'visite'], [/conferm/i, 'confermate'], [/propost/i, 'proposti'], [/attivit/i, 'attivita'],
+  [/offert|pratic|richiest/i, 'sospese'], [/accettat/i, 'accettate'],
+  [/profilo/i, 'profilo'], [/\bnote\b/i, 'profilo'], [/recapit|telefon/i, 'recapiti'],
+  [/referent|persone/i, 'referenti'], [/allegat/i, 'allegati'],
+  [/livell|dimension/i, 'dimensione'], [/tipo di cliente|classific/i, 'nuovi'],
+  [/tipo azione|\bazion/i, 'ordine'], [/mapp|zona|provinc/i, 'mappa'],
+  [/calendar|programm/i, 'calendario'], [/mail|modell/i, 'modelli'], [/copi|sicurezz/i, 'copie'],
+  [/drive|sincroniz|nuvola/i, 'nuvola'], [/colore|aspetto|tema/i, 'colori'], [/carattere|densit/i, 'carattere'],
+  [/gruppi/i, 'gruppi'], [/settagg|salvat/i, 'salvati'], [/visualizzazione|ordinamento|riquadr|schede/i, 'ordine'],
+  [/document|\bfile\b/i, 'file'], [/guida|aiuto|informazioni/i, 'guida'], [/concorren/i, 'concorrenti'],
+  [/\bdati\b/i, 'salvati'], [/periodo|riepilogo/i, 'cruscotto'], [/lavoro fatto/i, 'accettate'],
+  [/client|contatt|element|elenco|anagraf/i, 'contatti'],
+  [/excel|esporta/i, 'excel'], [/avvis|attenzione/i, 'avviso']
+];
+function icoNome(testo) {
+  var t = String(testo || '').replace(/\s+/g, ' ').trim();
+  for (var i = 0; i < ICO_PAROLE.length; i++) if (ICO_PAROLE[i][0].test(t)) return ICO_PAROLE[i][1];
+  return 'contatti';
+}
+function icoHtml(nome) {
+  var d = KPI_ICO[nome] || ICO_SEZ[nome] || KPI_ICO[icoNome(nome)] || ICO_SEZ[icoNome(nome)] || ICO_SEZ.contatti;
+  return '<span class="ki"><svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg></span>';
+}
+/* mette l'icona a sinistra di ogni titolo di blocco che ancora non ce l'ha */
+function mettiIcone(root) {
+  var r = root || document;
+  var tt = [].slice.call(r.querySelectorAll('.sz > h3, .opz.sz > h3'));
+  tt.forEach(function (h) {
+    if (h.querySelector(':scope > .ki')) return;
+    var chiave = h.dataset.ico || (h.closest('section,div') || {}).id || '';
+    if (chiave.indexOf('kpi-') === 0) chiave = chiave.slice(4);
+    if (chiave.indexOf('op-') === 0) chiave = chiave.slice(3);
+    var nome = (KPI_ICO[chiave] || ICO_SEZ[chiave]) ? chiave : icoNome(h.textContent);
+    h.insertAdjacentHTML('afterbegin', icoHtml(nome));
+    h.classList.add('con-ico');
+  });
+}
+/* i blocchi che nascono dopo (viste ridisegnate, schede, fogli) prendono l'icona da soli:
+   un osservatore guarda la pagina e completa i titoli nuovi, senza toccare il codice che li crea */
+(function () {
+  var att = null;
+  function giro() { att = null; try { mettiIcone(); } catch (e) {} }
+  try {
+    new MutationObserver(function () { if (att) return; att = setTimeout(giro, 90); })
+      .observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+})();
+/* i blocchi che nascono dopo prendono l'icona da soli: un osservatore guarda la pagina
+   e completa i titoli nuovi, senza toccare il codice che li crea */
+(function () {
+  var att = null;
+  function giro() { att = null; try { mettiIcone(); } catch (e) {} }
+  try {
+    new MutationObserver(function () { if (att) return; att = setTimeout(giro, 90); })
+      .observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) {}
+})();
 function kpiIco(id) {
   var d = KPI_ICO[id] || KPI_ICO.pratiche;
   return '<span class="ki"><svg viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg></span>';
