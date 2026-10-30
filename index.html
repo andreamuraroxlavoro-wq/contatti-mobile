@@ -689,7 +689,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.29.0';
+var APP_VER = '1.30.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1926,7 +1926,7 @@ function apriScheda(id) {
     '<div class="ev-nota" id="ev-rnota">' + (k.richiamo ? 'in scheda: <b>' + esc(dataIt(k.richiamo)) + '</b> · lascia vuoto per non cambiarlo' : 'vuoto: il richiamo in scheda non cambia') + '</div>');
   h.push('<div class="az"><button class="btn pri" id="ev-salva" style="background:var(--sz-cron);border-color:var(--sz-cron)">Registra</button></div></div></details>');
   if (!ev.length) h.push('<div class="vuoto" style="padding:12px">Nessun evento registrato.</div>');
-  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + (v.h ? '' : '<button class="ev-mod" data-ev="' + esc(v.id) + '" title="Modifica il testo">&#9998; modifica</button>') + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
+  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + (evMail(v) ? '' : '<button class="ev-mod" data-ev="' + esc(v.id) + '" title="Modifica il testo">&#9998; modifica</button>') + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
   h.push('</div></div>');
   /* classificazione */
   h.push('<div class="sz sz-clas"><h3>Classificazione</h3><div class="c"><dl class="rg">');
@@ -2050,6 +2050,19 @@ function naviga(c) {
   $('#nav-ann', f).addEventListener('click', function () { f.remove(); });
   $$('button.v', f).forEach(function (b) { b.addEventListener('click', function () { if ($('#nav-ric', f).checked) { try { localStorage.setItem('cm.nav', b.dataset.n); } catch (e) {} } f.remove(); apriNavigatore(b.dataset.n, c); }); });
 }
+/* una mail archiviata non si modifica: il testo è quello arrivato davvero */
+function evMail(v) { return !!(v && (v.dir || /^Mail «/.test(v.n || '') || (v.c === 'Email' && v.h))); }
+/* dal testo formattato al testo semplice e viceversa, per poter correggere anche i report scritti sul Mac */
+function htmlATesto(h) {
+  var d = document.createElement('div');
+  d.innerHTML = String(h || '').replace(/<\s*br\s*\/?>/gi, '\n').replace(/<\/\s*(p|div|li|h[1-6])\s*>/gi, '\n');
+  return (d.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+}
+function testoAHtml(t) {
+  return String(t || '').split(/\n{2,}/).map(function (p) {
+    return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+}
 /* modifica del testo di un evento già registrato (titolo e nota del report) */
 function modificaEvento(cid, vid) {
   var v = DB.eventi[vid]; if (!v) { toast('Evento non trovato'); return; }
@@ -2058,7 +2071,7 @@ function modificaEvento(cid, vid) {
   f.innerHTML = '<div class="fg"><h4>Modifica il report</h4>' +
     '<div class="due"><label>Giorno <input type="date" id="me-d" value="' + esc(v.d || '') + '"></label><label>Ora <input type="time" id="me-o" value="' + esc(v.o || '') + '"></label></div>' +
     '<label>Titolo <input type="text" id="me-t" value="' + esc(v.t || '') + '" placeholder="es. Visita in sede"></label>' +
-    '<label>Testo del report <textarea id="me-n" rows="7">' + esc(v.n || '') + '</textarea></label>' +
+    '<label>Testo del report <textarea id="me-n" rows="9">' + esc(v.n || htmlATesto(v.h)) + '</textarea></label>' +
     '<div class="az"><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
   f.addEventListener('click', function (e) { if (e.target === f) chiudi(); });
   document.body.appendChild(f);
@@ -2068,7 +2081,7 @@ function modificaEvento(cid, vid) {
     var d = $('#me-d', f).value || v.d, o = $('#me-o', f).value;
     var v2 = Object.assign({}, v); v2.d = d; v2.o = o; v2._m = Date.now();
     if (t) v2.t = t; else delete v2.t;
-    if (n) v2.n = n; else delete v2.n;
+    if (n) { v2.n = n; if (v.h) v2.h = testoAHtml(n); } else { delete v2.n; delete v2.h; }
     DB.eventi[vid] = v2; salva(); chiudi(); toast('Report aggiornato'); apriScheda(cid);
   });
   setTimeout(function () { var n0 = $('#me-n', f); if (n0) n0.focus(); }, 120);
