@@ -793,7 +793,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.40.0';
+var APP_VER = '1.41.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2940,13 +2940,28 @@ function riaccendiSegno(sg) {
 function statoOra() {
   return { vista: vista, scheda: schedaId || '', y: schedaId ? ($('#scheda') ? $('#scheda').scrollTop : 0) : window.scrollY, sel: ultimoTocco };
 }
+/* I passi restano anche se l'app si ricarica (aggiornamento, chiusura, telefono che la scarica
+   dalla memoria): si scrivono su questo telefono e si rileggono all'avvio. Oltre le 12 ore
+   si lasciano cadere: tornare a una schermata di ieri non servirebbe a nessuno. */
+var CHIAVE_STORIA = 'cm.storia', STORIA_ORE = 12;
+function storiaSalva() {
+  try { localStorage.setItem(CHIAVE_STORIA, JSON.stringify({ t: Date.now(), l: STORIA })); } catch (e) {}
+}
+function storiaCarica() {
+  try {
+    var o = JSON.parse(localStorage.getItem(CHIAVE_STORIA) || 'null');
+    if (!o || !Array.isArray(o.l)) return;
+    if (Date.now() - (o.t || 0) > STORIA_ORE * 3600000) { localStorage.removeItem(CHIAVE_STORIA); return; }
+    STORIA = o.l.filter(function (x) { return x && x.vista; }).slice(-STORIA_MAX);
+  } catch (e) {}
+}
 function storiaSegna() {
   if (inRitorno) return;
   var s0 = statoOra(), u = STORIA[STORIA.length - 1];
-  if (u && u.vista === s0.vista && u.scheda === s0.scheda) { u.y = s0.y; u.sel = s0.sel; return; }  /* stesso posto: aggiorno solo l'altezza */
+  if (u && u.vista === s0.vista && u.scheda === s0.scheda) { u.y = s0.y; u.sel = s0.sel; storiaSalva(); return; }  /* stesso posto: aggiorno solo l'altezza */
   STORIA.push(s0);
   if (STORIA.length > STORIA_MAX) STORIA.shift();
-  aggiornaInd();
+  storiaSalva(); aggiornaInd();
 }
 function aggiornaInd() {
   var b = $('#fab-ind'); if (!b) return;
@@ -2957,7 +2972,7 @@ function aggiornaInd() {
 }
 function tornaIndietro() {
   var s0 = STORIA.pop(); if (!s0) return;
-  inRitorno = true;
+  storiaSalva(); inRitorno = true;
   function applica() {
     if (s0.scheda && DB.contatti[s0.scheda]) {
       apriScheda(s0.scheda);
@@ -3063,7 +3078,9 @@ IDB.leggi('db').then(function (t) {
   barraOrdineApplica();
   schedeApplica();
   disegnaGruppi();
-  mostraVista(v); avviaSync(); setTimeout(function () { misuraTestata(); aggiornaFab(); }, 300);
+  inRitorno = true; mostraVista(v); inRitorno = false;   /* riaprire l'app dov'era non è un passo */
+  storiaCarica(); aggiornaInd();
+  avviaSync(); setTimeout(function () { misuraTestata(); aggiornaFab(); aggiornaInd(); }, 300);
   $('#agg-ora').addEventListener('click', applicaAggiornamento);
   $('#agg-no').addEventListener('click', function () { barraAgg(false); });
   controllaAggiornamenti();
