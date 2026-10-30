@@ -630,7 +630,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.19.0';
+var APP_VER = '1.20.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1485,11 +1485,12 @@ function disegnaLegenda() {
 function disegnaMappa() {
   var L_ = window.L; if (!L_) { $('#mp-conta').textContent = 'Libreria della mappa non disponibile.'; return; }
   if (!MP.mappa) {
-    MP.mappa = L_.map('mappa2', { zoomControl: false, preferCanvas: false });
+    MP.mappa = L_.map('mappa2', { zoomControl: false, preferCanvas: false, zoomSnap: 0.25 });
     L_.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: 'Esri' }).addTo(MP.mappa);
     MP.pins = L_.layerGroup().addTo(MP.mappa);
-    var vista0 = null; try { vista0 = JSON.parse(localStorage.getItem('cm.mappa.v') || 'null'); } catch (e) {}
-    if (vista0) MP.mappa.setView([vista0.lat, vista0.lng], vista0.z); else MP.mappa.setView([44.2, 11.5], 6);
+    /* all'apertura la mappa inquadra da sola l'area che contiene i segnaposti: niente mezza Europa a vuoto */
+    MP.mappa.setView([44.2, 11.5], 6);
+    MP.primaVolta = true;
     var tm = null; MP.mappa.on('moveend zoomend', function () { clearTimeout(tm); tm = setTimeout(function () { disegnaPin(); try { var c = MP.mappa.getCenter(); localStorage.setItem('cm.mappa.v', JSON.stringify({ lat: c.lat, lng: c.lng, z: MP.mappa.getZoom() })); } catch (e) {} }, 120); });
     MP.mappa.on('popupclose', function () { if (MP.ridisegna) setTimeout(disegnaPin, 50); });
     MP.mappa.on('popupopen', function (e) { var el_ = e.popup.getElement(); var a = el_.querySelector('[data-apri]'); if (a) a.addEventListener('click', function () { MP.mappa.closePopup(); apriScheda(a.dataset.apri); }); var nv = el_.querySelector('[data-nav]'); if (nv) nv.addEventListener('click', function () { naviga(DB.contatti[nv.dataset.nav]); }); });
@@ -1501,7 +1502,16 @@ function disegnaMappa() {
     $('#mp-tutto').addEventListener('click', function () { var l = filtratiMappa(); if (l.length) MP.mappa.fitBounds(l.map(function (c) { return [+c.lat, +c.lng]; }), { padding: [30, 30] }); else MP.mappa.setView([42.5, 12.5], 5); });
     $('#mp-qui').addEventListener('click', function () { if (!navigator.geolocation) { toast('Posizione non disponibile'); return; } toast('Cerco la tua posizione…'); navigator.geolocation.getCurrentPosition(function (p) { MP.posMe = { lat: p.coords.latitude, lng: p.coords.longitude }; if (MP.qui) MP.qui.remove(); MP.qui = L_.marker([MP.posMe.lat, MP.posMe.lng], { interactive: false, icon: L_.divIcon({ className: 'lp-wrap', iconSize: [0, 0], html: '<div class="qui-punto"></div>' }) }).addTo(MP.mappa); MP.mappa.setView([MP.posMe.lat, MP.posMe.lng], Math.max(MP.mappa.getZoom(), 11)); }, function (e) { toast('Posizione non concessa: ' + e.message, 3500); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }); });
   }
-  setTimeout(function () { MP.mappa.invalidateSize(); disegnaPin(); }, 80);
+  setTimeout(function () {
+    MP.mappa.invalidateSize();
+    if (MP.primaVolta) {
+      MP.primaVolta = false;
+      var l = filtratiMappa();
+      if (l.length > 1) MP.mappa.fitBounds(l.map(function (c) { return [+c.lat, +c.lng]; }), { padding: [26, 26], maxZoom: 13 });
+      else if (l.length === 1) MP.mappa.setView([+l[0].lat, +l[0].lng], 13);
+    }
+    disegnaPin();
+  }, 80);
   $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat));
 }
 function salvaFiltriMappa() { try { localStorage.setItem('cm.mappa.f', JSON.stringify(MP.f)); } catch (e) {} $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat)); }
