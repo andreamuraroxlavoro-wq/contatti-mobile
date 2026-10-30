@@ -132,6 +132,21 @@ html[data-theme="scuro"] .pill.es{background:#1E3A2C;color:#7BD3A5}html[data-the
 .cg-tx{font-size:calc(13.5px * var(--scala));color:var(--testo2);margin-top:3px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .cg-rf{font-size:calc(12px * var(--scala));color:var(--tenue);margin-top:3px}
 .t-azione{--tc:var(--verde)}
+/* CRUSCOTTO */
+.cr-nota{font-size:calc(13px * var(--scala));color:var(--tenue);margin:2px 0 12px;line-height:1.4}
+.cr-k{min-height:76px}
+.cr-k .et{font-size:calc(11.5px * var(--scala));color:var(--tenue);text-transform:uppercase;letter-spacing:.06em;line-height:1.25}
+.cr-k .nm{font-size:calc(22px * var(--scala));font-weight:800;color:var(--c);line-height:1.2;margin-top:2px}
+.cr-k .ds{font-size:calc(11.5px * var(--scala));color:var(--tenue);line-height:1.3}
+/* TUTELE */
+.tu-r{background:var(--carta);border:1px solid var(--bordo);border-left:5px solid var(--ambra);border-radius:12px;padding:10px 12px;box-shadow:var(--ombra)}
+.tu-r:active{background:var(--hover)}
+.tu-n{font-weight:700;font-size:calc(15px * var(--scala));overflow-wrap:anywhere}
+.tu-n i{font-style:normal;color:var(--tenue);font-weight:500;font-size:calc(12.5px * var(--scala))}
+.tu-p{margin-top:6px;border:1px solid color-mix(in srgb,var(--verde) 40%,var(--bordo));background:color-mix(in srgb,var(--verde) 12%,var(--carta));color:var(--verde);
+  border-radius:9px;padding:4px 9px;font:inherit;font-weight:700;font-size:calc(12.5px * var(--scala))}
+.tu-d{font-size:calc(12.5px * var(--scala));color:var(--tenue);margin-top:4px}
+.tu-x{font-size:calc(13.5px * var(--scala));color:var(--testo2);margin-top:4px}
 .altri{width:100%;padding:12px;background:var(--carta2);border:0;color:var(--accent);font-weight:600}
 /* titoli di vista */
 h1.tit{font-size:calc(13px * var(--scala));letter-spacing:.14em;text-transform:uppercase;color:var(--tenue);font-weight:800;margin:14px 2px 8px}
@@ -430,7 +445,9 @@ body.cal-trascino .cl-celle{touch-action:none}
     <div class="conta" id="vi-conta"></div>
     <div class="lista" id="vi-lista"></div>
   </section>
+  <section class="vista" id="v-cruscotto"></section>
   <section class="vista" id="v-cron"></section>
+  <section class="vista" id="v-tutele"></section>
   <section class="vista" id="v-cal"></section>
   <section class="vista" id="v-pratiche"></section>
   <section class="vista" id="v-mappa">
@@ -446,6 +463,8 @@ body.cal-trascino .cl-celle{touch-action:none}
 <nav class="tab" id="tab">
   <button data-v="cerca" class="on"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><path d="M16.2 10.8A3 3 0 1 0 15 5.3"/><path d="M17.6 14.1c2 .6 3.4 2.3 3.4 4.3"/></svg>Contatti</button>
   <button data-v="oggi"><svg viewBox="0 0 24 24"><path d="M3 12h3.5l2.2-6.5 4 13 2.3-6.5H21"/></svg>Attività<span class="tn" id="tn-oggi" style="display:none"></span></button>
+  <button data-v="cruscotto"><svg viewBox="0 0 24 24"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 18l4.2-5"/><circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>Cruscotto</button>
+  <button data-v="tutele"><svg viewBox="0 0 24 24"><path d="M12 3.2l7.2 2.8v5.6c0 4.3-3 7.6-7.2 9.2-4.2-1.6-7.2-4.9-7.2-9.2V6z"/><path d="M9.2 14.8l5.6-5.6M9.2 9.2l5.6 5.6"/></svg>Tutele</button>
   <button data-v="cron"><svg viewBox="0 0 24 24"><path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3 4.6V9h4.4"/><path d="M12 7.7V12l3 1.8"/></svg>Cronologia</button>
   <button data-v="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3.2v3.6M16 3.2v3.6"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="17.8" r="1.1" fill="currentColor" stroke="none"/></svg>Calendario<span class="tn" id="tn-cal" style="display:none"></span></button>
   <button data-v="mappa" id="tab-mappa"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>
@@ -749,7 +768,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.36.0';
+var APP_VER = '1.37.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -878,7 +897,7 @@ function mostraVista(v, ritorno) {
   vista = v; if (v !== 'cerca' && v !== 'vicino') inVista = []; if (v !== 'mappa' && v !== 'vicino') pinSel = ''; setTimeout(aggiornaFab, 60); $('#bt-menu').classList.toggle('on', v === 'altro'); document.body.classList.toggle('mappa-on', v === 'mappa'); $$('nav.tab button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   $$('main .vista').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
   if (ritorno) { var y = scrollV[v] || 0; setTimeout(function () { window.scrollTo(0, y); }, 0); } else window.scrollTo(0, 0);
-  if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'cron') disegnaCron(); if (v === 'vicino') disegnaVicino(); if (v === 'cal') disegnaCal(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
+  if (v === 'cerca') disegnaCerca(); if (v === 'oggi') disegnaOggi(); if (v === 'cron') disegnaCron(); if (v === 'cruscotto') disegnaCruscotto(); if (v === 'tutele') disegnaTutele(); if (v === 'vicino') disegnaVicino(); if (v === 'cal') disegnaCal(); if (v === 'pratiche') disegnaPratiche(); if (v === 'altro') disegnaAltro(); if (v === 'mappa') disegnaMappa();
   if (v === 'vicino' && mappa) setTimeout(function () { mappa.invalidateSize(); }, 250);
   try { localStorage.setItem('cm.vista', v); } catch (e) {}
 }
@@ -939,16 +958,20 @@ function kpiOrdineDaCarte() {
    che le elenca in cima sotto «Altre schede». Almeno due restano sempre in basso.
    ============================================================ */
 var SCHEDE = [
-  { id: 'cerca', n: 'Contatti' }, { id: 'oggi', n: 'Attività' }, { id: 'cron', n: 'Cronologia' },
-  { id: 'cal', n: 'Calendario' }, { id: 'mappa', n: 'Mappa' }, { id: 'vicino', n: 'Vicino' }, { id: 'pratiche', n: 'Pratiche' }
+  { id: 'cerca', n: 'Contatti' }, { id: 'oggi', n: 'Attività' }, { id: 'cruscotto', n: 'Cruscotto' },
+  { id: 'cron', n: 'Cronologia' }, { id: 'cal', n: 'Calendario' }, { id: 'mappa', n: 'Mappa' },
+  { id: 'vicino', n: 'Vicino' }, { id: 'tutele', n: 'Tutele' }, { id: 'pratiche', n: 'Pratiche' }
 ];
+/* con nove schede la barra in basso non le tiene tutte: di partenza ne stanno sei,
+   le altre si aprono dal menu in alto a destra e si scambiano da «Schede dell'app». */
+var SCHEDE_BASE = ['cerca', 'oggi', 'cruscotto', 'cron', 'cal', 'pratiche'];
 var CHIAVE_SCHEDE = 'cm.barra.schede';
 function schedaDi(id) { for (var i = 0; i < SCHEDE.length; i++) if (SCHEDE[i].id === id) return SCHEDE[i]; return null; }
 function schedeIco(id) { var b = document.querySelector('#tab button[data-v="' + id + '"] svg'); return b ? b.outerHTML : ''; }
 function schedeInBarra() {
   try { var v = JSON.parse(localStorage.getItem(CHIAVE_SCHEDE) || 'null');
     if (Array.isArray(v)) { var l = v.filter(function (id) { return !!schedaDi(id); }); if (l.length >= 2) return l; } } catch (e) {}
-  return SCHEDE.map(function (x) { return x.id; });
+  return SCHEDE_BASE.slice();
 }
 function schedeFuori() { var d = schedeInBarra(); return SCHEDE.filter(function (x) { return d.indexOf(x.id) < 0; }); }
 function schedeSalva(l) { try { localStorage.setItem(CHIAVE_SCHEDE, JSON.stringify(l)); } catch (e) {} schedeApplica(); disegnaMenu(); }
@@ -1176,6 +1199,14 @@ function filtra() {
     else if (F.esito && k.esito !== F.esito) return false;
     if (F.pr === 'rich' && !k.richiamo) return false;
     if (F.pr === 'prat' && !DB.pratiche[c.id]) return false;
+    /* i filtri che arrivano dai numeri del Cruscotto */
+    if (F.pr === 'scaduti' && !(k.richiamo && k.richiamo < oggi())) return false;
+    if (F.pr === 'oggi' && k.richiamo !== oggi()) return false;
+    if (F.pr === 'sette' && !(k.richiamo && k.richiamo > oggi() && k.richiamo <= calSomma(oggi(), 7))) return false;
+    if (F.pr === 'fatti' && !(k.esito && k.esito !== 'Da contattare')) return false;
+    if (F.pr === 'positivi' && POSITIVI().indexOf(k.esito) < 0) return false;
+    if (F.pr === 'recapiti' && !(c.tel || c.email)) return false;
+    if (F.pr === 'tutelati' && !c.tutela) return false;
     if (parole.length && !combacia(c, parole)) return false;
     return true;
   });
@@ -2227,6 +2258,126 @@ function disegnaCron() {
   var pi = $('#cg-piu'); if (pi) pi.addEventListener('click', function () { CG.quante += 200; disegnaCron(); });
   cxPrepara(box);
 }
+/* ============================================================
+   CRUSCOTTO — i numeri dell'elenco, uno per riquadro. Ogni riquadro è un tasto:
+   lo tocchi e si apre la scheda Contatti già filtrata su quel numero, così il numero
+   e l'elenco che ci sta dietro sono sempre la stessa cosa. Valgono i gruppi accesi in alto.
+   ============================================================ */
+function vaiAContatti(f) {
+  F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '', tipo: '' };
+  Object.keys(f || {}).forEach(function (k) { F[k] = f[k]; });
+  mostraN = 150; mostraVista('cerca');
+}
+function crRiquadro(et, n, ds, col, f) {
+  return '<button class="kpi cr-k" style="--c:' + col + '" data-f="' + esc(JSON.stringify(f || {})) + '">' +
+    '<div class="et">' + et + '</div><div class="nm">' + num(n) + '</div>' + (ds ? '<div class="ds">' + esc(ds) + '</div>' : '') + '</button>';
+}
+function disegnaCruscotto() {
+  var box = $('#v-cruscotto'), T = lista(), og = oggi(), sett = calSomma(oggi(), 7), h = [];
+  var fatti = 0, positivi = 0, recap = 0, tutelati = 0, nuovi = 0;
+  T.forEach(function (c) {
+    var k = sit(c.id);
+    if (k.esito && k.esito !== 'Da contattare') fatti++;
+    if (POSITIVI().indexOf(k.esito) >= 0) positivi++;
+    if (c.tel || c.email) recap++;
+    if (c.tutela) tutelati++;
+    if (c.fonte !== 'assodimi') nuovi++;
+  });
+  var scad = T.filter(function (c) { var r = sit(c.id).richiamo; return r && r < og; }).length;
+  var oggiN = T.filter(function (c) { return sit(c.id).richiamo === og; }).length;
+  var pross = T.filter(function (c) { var r = sit(c.id).richiamo; return r && r > og && r <= sett; }).length;
+  var conPratica = T.filter(function (c) { return !!DB.pratiche[c.id]; }).length;
+  h.push('<div class="cr-nota">Ogni riquadro è un tasto: toccalo e si apre la scheda <b>Contatti</b> con quel filtro già messo.' + (tuttiAccesi() ? '' : ' Stai guardando ' + esc(gruppiL().filter(function (g) { return GR[g.id]; }).map(function (g) { return g.nome; }).join(' + ')) + '.') + '</div>');
+  /* l'elenco */
+  h.push('<section class="sz" style="--c:var(--sz-clas)"><h3>L\'elenco<span class="pill">' + num(T.length) + '</span></h3><div class="c"><div class="kpis">' +
+    crRiquadro('Contatti in elenco', T.length, 'tutti quelli che vedi ora', 'var(--sz-clas)', {}) +
+    crRiquadro('Con recapiti', recap, 'telefono o email', 'var(--sz-rec)', { pr: 'recapiti' }) +
+    crRiquadro('Aggiunti a mano', nuovi, 'non soci Assodimi', 'var(--accent)', {}) +
+    crRiquadro('Con pratica', conPratica, 'offerta o proposta aperta', 'var(--sz-prat)', { pr: 'prat' }) +
+    '</div></div></section>');
+  /* il lavoro fatto */
+  h.push('<section class="sz" style="--c:var(--sz-sit)"><h3>Il lavoro fatto</h3><div class="c"><div class="kpis">' +
+    crRiquadro('Con un Tipo Azione', fatti, (T.length ? Math.round(fatti / T.length * 100) : 0) + '% dell\'elenco', 'var(--sz-sit)', { pr: 'fatti' }) +
+    crRiquadro('Azioni positive', positivi, 'visita confermata, demo, offerta', 'var(--verde)', { pr: 'positivi' }) +
+    crRiquadro('Mai contattati', T.length - fatti, 'nessun Tipo Azione', 'var(--grigioL)', { esito: '(nessuno)' }) +
+    crRiquadro('Aziende tutelate', tutelati, 'seguite da un Partner', 'var(--ambra)', { pr: 'tutelati' }) +
+    '</div></div></section>');
+  /* i richiami */
+  h.push('<section class="sz" style="--c:var(--rosso)"><h3>Richiami</h3><div class="c"><div class="kpis">' +
+    crRiquadro('Scaduti', scad, 'data passata', 'var(--rosso)', { pr: 'scaduti' }) +
+    crRiquadro('Da sentire oggi', oggiN, dataIt(og), 'var(--ambra)', { pr: 'oggi' }) +
+    crRiquadro('Prossimi 7 giorni', pross, 'fino al ' + dataIt(sett), 'var(--accent)', { pr: 'sette' }) +
+    crRiquadro('Con un richiamo', T.filter(function (c) { return !!sit(c.id).richiamo; }).length, 'una data in agenda', 'var(--sz-prom)', { pr: 'rich' }) +
+    '</div></div></section>');
+  /* per livello */
+  h.push('<section class="sz" style="--c:var(--sz-dim)"><h3>Per livello</h3><div class="c"><div class="kpis">' +
+    ['A', 'B', 'C', 'D'].map(function (l) {
+      var g = T.filter(function (c) { return c.liv === l; });
+      var f2 = g.filter(function (c) { var k = sit(c.id); return k.esito && k.esito !== 'Da contattare'; }).length;
+      return crRiquadro('Livello ' + l, g.length, g.length ? num(f2) + ' con un\'azione · ' + Math.round(f2 / g.length * 100) + '%' : 'nessun contatto', 'var(--sz-dim)', { liv: l });
+    }).join('') + '</div></div></section>');
+  /* tipo di cliente */
+  h.push('<section class="sz" style="--c:var(--sz-prof)"><h3>Tipo di Cliente</h3><div class="c"><div class="kpis">' +
+    TIPI_CLI.map(function (t) { return crRiquadro(esc(t), T.filter(function (c) { return tipoCli(c.id) === t; }).length, '', 'var(--sz-prof)', { tipo: t }); }).join('') +
+    '</div></div></section>');
+  /* tipo azione */
+  h.push('<section class="sz" style="--c:var(--sz-prom)"><h3>Tipo Azione</h3><div class="c"><div class="kpis">' +
+    ESITI().filter(function (e) { return e !== SENZA_AZIONE; }).map(function (e) { return crRiquadro(esc(e), T.filter(function (c) { return sit(c.id).esito === e; }).length, '', 'var(--sz-prom)', { esito: e }); }).join('') +
+    '</div></div></section>');
+  box.innerHTML = h.join('');
+  $$('.cr-k', box).forEach(function (b) { b.addEventListener('click', function () { var f = {}; try { f = JSON.parse(b.dataset.f); } catch (e) {} vaiAContatti(f); }); });
+}
+
+/* ============================================================
+   TUTELE — le aziende su cui non intervenire perché le segue un nostro Partner.
+   Sotto al nome c'è sempre il Partner che la tutela: toccando la pastiglia si apre
+   la scheda del Partner, toccando la riga si apre l'azienda.
+   ============================================================ */
+var TU = { q: '', partner: '' };
+function tutelaDi(c) { var t = c && c.tutela; if (!t) return null; return typeof t === 'string' ? { nota: t, partner: '' } : t; }
+function tutelati() { return lista().filter(function (c) { return !!c.tutela; }); }
+function disegnaTutele() {
+  var box = $('#v-tutele'), L = tutelati(), q = TU.q.trim().toLowerCase(), h = [];
+  var mP = {};
+  L.forEach(function (c) { var t = tutelaDi(c); if (!t || !t.partner) return; var p = DB.contatti[t.partner]; mP[t.partner] = p ? p.nome : t.partner; });
+  var righe = L.filter(function (c) {
+    var t = tutelaDi(c), p = t && t.partner ? (DB.contatti[t.partner] || {}) : {};
+    if (TU.partner && (!t || t.partner !== TU.partner)) return false;
+    if (q && [c.nome, c.prov, c.sede, c.cat, p.nome, t ? t.nota : '', c.gruppo && c.gruppo.nome ? c.gruppo.nome : ''].join(' ').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  h.push('<div class="cg-testa">');
+  h.push('<div class="cg-cerca"><input type="search" id="tu-q" placeholder="Cerca azienda, Partner, sede&hellip;" value="' + esc(TU.q) + '" autocomplete="off"></div>');
+  h.push('<div class="chips"><button class="chip' + (TU.partner ? '' : ' on') + '" data-tp="">Tutti i Partner</button>' +
+    Object.keys(mP).sort(function (a, b) { return mP[a].localeCompare(mP[b], 'it'); }).map(function (k) {
+      return '<button class="chip' + (TU.partner === k ? ' on' : '') + '" data-tp="' + esc(k) + '">' + esc(mP[k]) + '</button>';
+    }).join('') + '</div>');
+  h.push('</div>');
+  h.push('<section class="sz" style="--c:var(--ambra)"><h3>Da non toccare<span class="pill">' + num(righe.length) + (righe.length === L.length ? '' : ' di ' + num(L.length)) + '</span></h3><div class="c">' +
+    '<div class="nota">Queste aziende le segue un nostro Partner: non si contattano direttamente. Se arriva una richiesta, si gira al Partner.</div>' +
+    '<div class="cg-tl" id="tu-el"></div></div></section>');
+  box.innerHTML = h.join('');
+  var el2 = $('#tu-el');
+  if (!righe.length) el2.innerHTML = '<div class="vuoto">' + (L.length ? 'Nessuna azienda tutelata con questi filtri.' : 'Nessuna azienda tutelata in elenco.') + '</div>';
+  else righe.sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), 'it'); }).forEach(function (c) {
+    var t = tutelaDi(c) || {}, p = t.partner ? DB.contatti[t.partner] : null;
+    var d = el('div', 'tu-r');
+    d.innerHTML = '<div class="tu-n">&#9940; ' + esc(c.nome) + (c.prov ? ' <i>' + esc(c.prov) + '</i>' : '') + '</div>' +
+      (p || t.partner ? '<button class="tu-p"' + (p ? ' data-p="' + esc(t.partner) + '"' : '') + '>Tutelata da ' + esc(p ? p.nome : t.partner) + '</button>' : '') +
+      (t.data ? '<div class="tu-d">Segnalata il ' + esc(dataIt(t.data)) + '</div>' : '') +
+      (c.gruppo && c.gruppo.nome ? '<div class="tu-d">Gruppo: ' + esc(c.gruppo.nome) + (c.gruppo.legame ? ' · ' + esc(c.gruppo.legame) : '') + '</div>' : '') +
+      (t.nota ? '<div class="tu-x">' + esc(t.nota) + '</div>' : '') +
+      (c.sede ? '<div class="tu-d">' + esc(c.sede) + '</div>' : '');
+    d.addEventListener('click', function () { apriScheda(c.id); });
+    var bp = $('.tu-p[data-p]', d);
+    if (bp) bp.addEventListener('click', function (e) { e.stopPropagation(); apriScheda(bp.dataset.p); });
+    el2.appendChild(d);
+  });
+  var qi = $('#tu-q');
+  qi.addEventListener('input', function () { TU.q = qi.value; var pz = qi.selectionStart; disegnaTutele(); var n2 = $('#tu-q'); n2.focus(); try { n2.setSelectionRange(pz, pz); } catch (e) {} });
+  $$('[data-tp]', box).forEach(function (b) { b.addEventListener('click', function () { TU.partner = b.dataset.tp; disegnaTutele(); }); });
+  cxPrepara(box);
+}
 function disegnaPratiche() {
   var box = $('#v-pratiche'), P = Object.keys(DB.pratiche).map(function (k) { return DB.pratiche[k]; }).filter(function (q) { return DB.contatti[q.id]; });
   var sosp = P.filter(function (q) { return (q.stato || 'sospesa') === 'sospesa'; }), acc = P.filter(function (q) { return q.stato === 'accettata'; }), rif = P.filter(function (q) { return q.stato === 'rifiutata'; });
@@ -2297,7 +2448,10 @@ function apriScheda(id) {
   if (c.sett) h.push('<dt>Settori</dt><dd>' + String(c.sett).split(' · ').map(function (x) { return '<span class="pill">' + esc(x) + '</span> '; }).join('') + '</dd>');
   h.push('<dt>Gruppi</dt><dd>' + gruppi(c).map(function (g) { return pillGruppo(g) + ' '; }).join('') + '</dd>');
   if (c.gruppo) h.push('<dt>Gruppo aziendale</dt><dd>' + esc(c.gruppo) + '</dd>');
-  if (c.tutela) h.push('<dt>Tutela</dt><dd style="color:var(--rosso);font-weight:600">' + esc(c.tutela) + '</dd>');
+  if (c.tutela) { var tt = tutelaDi(c), tp = tt && tt.partner ? DB.contatti[tt.partner] : null;
+    h.push('<dt>Tutela</dt><dd style="color:var(--rosso);font-weight:600">Non toccare: ' + esc(tp ? 'la segue ' + tp.nome : (tt && tt.partner ? 'la segue ' + tt.partner : 'azienda tutelata')) +
+      (tt && tt.data ? ' <span style="color:var(--tenue);font-weight:500">dal ' + esc(dataIt(tt.data)) + '</span>' : '') +
+      (tt && tt.nota ? '<div style="color:var(--testo2);font-weight:500;margin-top:3px">' + esc(tt.nota) + '</div>' : '') + '</dd>'); }
   if (c.importato) h.push('<dt>Origine</dt><dd>' + esc(c.importato) + '</dd>');
   h.push('</dl>' + (c.motivo ? '<p class="testo" style="margin-top:8px">' + esc(c.motivo) + '</p>' : '') + '</div></div>');
   if (c.fatt || c.dip || c.stato_ci || c.n_sedi) { h.push('<div class="sz sz-dim"><h3>Dimensione</h3><div class="c"><dl class="rg">' + (c.fatt ? '<dt>Fatturato</dt><dd>' + esc(c.fatt) + (c.yoy ? ' <span style="color:var(--tenue)">' + esc(c.yoy) + '</span>' : '') + '</dd>' : '') + (c.dip ? '<dt>Dipendenti</dt><dd>' + esc(c.dip) + '</dd>' : '') + (c.stato_ci ? '<dt>Stato</dt><dd>' + esc(c.stato_ci) + '</dd>' : '') + (c.ateco ? '<dt>ATECO</dt><dd>' + esc(c.ateco) + '</dd>' : '') + (c.n_sedi ? '<dt>Sedi</dt><dd>' + esc(c.n_sedi) + '</dd>' : '') + '</dl></div></div>'); }
