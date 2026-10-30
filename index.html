@@ -197,6 +197,23 @@ body.mappa-on .fab{z-index:1200}
 .toast.on{opacity:.95}
 .opz{background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--ombra)}
 .opz h2{font-size:calc(13px * var(--scala));letter-spacing:.1em;text-transform:uppercase;color:var(--tenue);margin:0 0 8px}
+.tcli{display:inline-block;padding:2px 7px;border-radius:999px;font-size:calc(10.5px * var(--scala));font-weight:800;letter-spacing:.3px;white-space:nowrap;border:1px solid var(--bordo);background:var(--sfondo2);color:var(--tenue)}
+.tcli.at{background:color-mix(in srgb,var(--verde) 16%,transparent);color:var(--verde);border-color:color-mix(in srgb,var(--verde) 40%,transparent)}
+.tcli.na{background:color-mix(in srgb,var(--ambra) 16%,transparent);color:var(--ambra);border-color:color-mix(in srgb,var(--ambra) 40%,transparent)}
+.tcli.ip{background:color-mix(in srgb,#E2721B 18%,transparent);color:#C2600F;border-color:color-mix(in srgb,#E2721B 45%,transparent)}
+.tcli.pe{background:color-mix(in srgb,var(--rosso) 16%,transparent);color:var(--rosso);border-color:color-mix(in srgb,var(--rosso) 40%,transparent)}
+.tcli.nt{background:color-mix(in srgb,#7A4FD6 16%,transparent);color:#6A3FC6;border-color:color-mix(in srgb,#7A4FD6 45%,transparent)}
+.tcli.nu{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.tcli.pc{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent)}
+.tcli-sel{font-weight:800;letter-spacing:.3px}
+.tcli-sel.at{color:var(--verde)} .tcli-sel.na{color:var(--ambra)} .tcli-sel.ip{color:#C2600F} .tcli-sel.pe{color:var(--rosso)}
+.tcli-sel.nt{color:#6A3FC6} .tcli-sel.nu,.tcli-sel.pc{color:var(--accent)}
+.kpi-ord{display:flex;flex-direction:column;gap:6px;padding:6px 0}
+.kpi-r{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--bordo);border-radius:12px;background:var(--carta)}
+.kpi-r.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.kpi-r .kpi-n{flex:1;font-size:calc(14.5px * var(--scala))}
+.kpi-mano{font-size:calc(17px * var(--scala));color:var(--tenue);cursor:grab;touch-action:none;padding:2px 4px}
+.kpi-r.trascino{opacity:.6;box-shadow:0 6px 18px rgba(0,0,0,.18)}
 .opz .riga-o{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 0;border-bottom:1px solid var(--bordo);font-size:calc(14.5px * var(--scala))}.opz .riga-o:last-child{border-bottom:0}.opz .riga-o .sp{flex:1}
 .firma{margin-top:10px;padding-top:10px;border-top:1px solid var(--bordo);font-size:calc(12.5px * var(--scala));color:var(--tenue);text-align:center;line-height:1.5}
 .firma b{color:var(--testo2)}
@@ -637,7 +654,7 @@ body.mappa-on .fab{z-index:1200}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.22.0';
+var APP_VER = '1.23.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -672,6 +689,19 @@ function tipoP(q) { var id = (q && q.tipo) || 'offerta', t = TIPI(); return t.fi
 function classeEsito(e) { if (!e || e === 'Da contattare') return ''; if (POSITIVI().indexOf(e) >= 0) return 'es'; if (e === 'Non interessato') return 'no'; return 'at'; }
 function colEsito(e) { var k = classeEsito(e); return k === 'es' ? '#1C6B4A' : k === 'no' ? '#C00000' : k === 'at' ? '#B08A2E' : '#9A9A9A'; }
 function sit(id) { return DB.situazioni[id] || {}; }
+/* ---------- stato del Cliente ----------
+   Che cliente e' in questo momento: solo una classificazione per ordinare e filtrare.
+   Cambiarlo NON registra eventi e non crea attivita'. */
+var TIPI_CLI = ['NON CLASSIFICATO', 'ATTIVO', 'NON ATTIVO', 'IN PERDITA', 'PERSO', 'TRASCURABILE', 'NON TOCCARE', 'NUOVO', 'PRIMO CONTATTO'];
+var TIPI_CLI_CLS = { 'NON CLASSIFICATO': 'nc', 'ATTIVO': 'at', 'NON ATTIVO': 'na', 'IN PERDITA': 'ip', 'PERSO': 'pe', 'TRASCURABILE': 'tr', 'NON TOCCARE': 'nt', 'NUOVO': 'nu', 'PRIMO CONTATTO': 'pc' };
+function tipoCli(id) { var v = sit(id).tipoCli; return TIPI_CLI.indexOf(v) >= 0 ? v : TIPI_CLI[0]; }
+function pillTipo(v) { v = TIPI_CLI.indexOf(v) >= 0 ? v : TIPI_CLI[0]; return v === TIPI_CLI[0] ? '' : '<span class="tcli ' + TIPI_CLI_CLS[v] + '">' + esc(v) + '</span>'; }
+function salvaTipoCli(id, v) {
+  var k = Object.assign({}, DB.situazioni[id] || { id: id });
+  if (!v || v === TIPI_CLI[0]) delete k.tipoCli; else k.tipoCli = v;
+  k.id = id; k._m = Date.now(); DB.situazioni[id] = k;
+  salva(); toast('Stato del cliente: ' + (v || TIPI_CLI[0]));
+}
 var GRUPPI_BASE = [{ id: 'st', nome: 'Security TOWER', colore: '#D51544' }, { id: 'cl', nome: 'Clienti', colore: '#2a78d6' }];
 function gruppiL() { var l = cfg().gruppi; if (Array.isArray(l) && l.length) return l.filter(function (g) { return g && g.id; }); if (l && typeof l === 'object') return Object.keys(l).map(function (k, i) { return { id: k, nome: l[k], colore: (GRUPPI_BASE[i] || {}).colore || '#8A8A8A' }; }); return GRUPPI_BASE; }
 function grp(id) { var l = gruppiL(); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
@@ -721,7 +751,7 @@ function rigaContatto(c, extra, sopra) {
   var k = sit(c.id), og = oggi();
   var r = el('div', 'riga');
   r.innerHTML = barre(c) + '<div class="tx">' + (sopra ? '<div class="sopra">' + sopra + '</div>' : '') + '<div class="nm">' + esc(c.nome) + '</div><div class="ds">' + [c.prov, c.cat, c.sede ? c.sede.replace(/^.*\d{5}\s*/, '') : ''].filter(Boolean).map(esc).join(' · ') + '</div></div>' +
-    '<div class="dx">' + (extra || '') + (c.liv ? '<span class="liv ' + esc(c.liv) + '">' + esc(c.liv) + '</span>' : '') + pillEsito(k.esito) + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : k.richiamo === og ? 'background:var(--giallo)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + tagPratica(c) + '</div>';
+    '<div class="dx">' + (extra || '') + pillTipo(tipoCli(c.id)) + (c.liv ? '<span class="liv ' + esc(c.liv) + '">' + esc(c.liv) + '</span>' : '') + pillEsito(k.esito) + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : k.richiamo === og ? 'background:var(--giallo)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + tagPratica(c) + '</div>';
   r.addEventListener('click', function () { apriScheda(c.id); });
   return r;
 }
@@ -833,13 +863,14 @@ function disegnaGruppi() {
   if (typeof adattaTestata === 'function') adattaTestata();
 }
 disegnaGruppi();
-var F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '' }, mostraN = 150;
+var F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '', tipo: '' }, mostraN = 150;
 try { Object.assign(F, JSON.parse(localStorage.getItem('cm.filtri') || '{}')); } catch (e) {}
 function filtra() {
   var q = normNome(F.q).trim(), parole = q ? q.split(/\s+/) : [];
   return lista().filter(function (c) {
     if (F.prov && c.prov !== F.prov) return false;
     if (F.liv && c.liv !== F.liv) return false;
+    if (F.tipo && tipoCli(c.id) !== F.tipo) return false;
     var k = sit(c.id);
     if (F.esito === '(nessuno)') { if (k.esito && k.esito !== 'Da contattare') return false; } else if (F.esito && k.esito !== F.esito) return false;
     if (F.pr === 'rich' && !k.richiamo) return false;
@@ -854,11 +885,12 @@ function disegnaChips() {
   h.push('<select class="chip' + (F.prov ? ' on' : '') + '" data-f="prov"><option value="">Provincia</option>' + Object.keys(province).sort().map(function (p) { return '<option value="' + p + '"' + (F.prov === p ? ' selected' : '') + '>' + p + ' (' + num(province[p]) + ')</option>'; }).join('') + '</select>');
   h.push('<select class="chip' + (F.esito ? ' on' : '') + '" data-f="esito"><option value="">Esito</option><option value="(nessuno)"' + (F.esito === '(nessuno)' ? ' selected' : '') + '>Mai contattati</option>' + ESITI().map(function (e) { return '<option' + (F.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>');
   h.push('<select class="chip' + (F.liv ? ' on' : '') + '" data-f="liv"><option value="">Livello</option>' + ['A', 'B', 'C', 'D'].map(function (l) { return '<option' + (F.liv === l ? ' selected' : '') + '>' + l + '</option>'; }).join('') + '</select>');
+  h.push('<select class="chip' + (F.tipo ? ' on' : '') + '" data-f="tipo"><option value="">Stato cliente</option>' + TIPI_CLI.map(function (t) { return '<option' + (F.tipo === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>');
   h.push('<button class="chip' + (F.pr === 'rich' ? ' on' : '') + '" data-f="pr" data-val="rich">Con richiamo</button>');
   h.push('<button class="chip' + (F.pr === 'prat' ? ' on' : '') + '" data-f="pr" data-val="prat">Con pratica</button>');
-  if (F.prov || F.esito || F.liv || F.pr || F.q) h.push('<button class="chip" data-f="azzera" style="color:var(--rosso)">&#10005; Annulla</button>');
+  if (F.prov || F.esito || F.liv || F.pr || F.tipo || F.q) h.push('<button class="chip" data-f="azzera" style="color:var(--rosso)">&#10005; Annulla</button>');
   var box = $('#chips'); box.innerHTML = h.join('');
-  $$('button.chip', box).forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.f === 'azzera') { F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '' }; $('#q').value = ''; } else F[b.dataset.f] = F[b.dataset.f] === b.dataset.val ? '' : b.dataset.val; mostraN = 150; disegnaCerca(); }); });
+  $$('button.chip', box).forEach(function (b) { b.addEventListener('click', function () { if (b.dataset.f === 'azzera') { F = { q: '', gr: '', prov: '', esito: '', liv: '', pr: '', tipo: '' }; $('#q').value = ''; } else F[b.dataset.f] = F[b.dataset.f] === b.dataset.val ? '' : b.dataset.val; mostraN = 150; disegnaCerca(); }); });
   $$('select.chip', box).forEach(function (s) { s.addEventListener('change', function () { F[s.dataset.f] = s.value; mostraN = 150; disegnaCerca(); }); });
 }
 var inVista = []; /* contatti attualmente mostrati: se è uno solo, il tasto «+» lo compila da solo */
@@ -980,6 +1012,52 @@ function kpiScelti() {
   return KPI_BASE.slice();
 }
 function kpiDi(id) { return KPI.filter(function (k) { return k.id === id; })[0]; }
+/* ordine completo: prima i riquadri scelti nell'ordine salvato, poi gli altri */
+function kpiOrdine() { var l = kpiScelti().slice(); KPI.forEach(function (k) { if (l.indexOf(k.id) < 0) l.push(k.id); }); return l; }
+/* elenco dei riquadri: spunta per accenderli, maniglia per trascinarli (funziona a dito e con il mouse) */
+function disegnaKpiOrd() {
+  var box = $('#kpi-ord'); if (!box) return;
+  var sel = kpiScelti();
+  box.innerHTML = kpiOrdine().map(function (id) {
+    var k = kpiDi(id); if (!k) return '';
+    return '<div class="kpi-r' + (sel.indexOf(id) >= 0 ? ' on' : '') + '" data-kpi="' + esc(id) + '"><span class="kpi-mano" title="Trascina">&#9776;</span><span class="kpi-n">' + esc(k.nome) + '</span><input type="checkbox"' + (sel.indexOf(id) >= 0 ? ' checked' : '') + '></div>';
+  }).join('');
+  function salva(avvisa) {
+    var l = [];
+    $$('.kpi-r', box).forEach(function (r) { if ($('input', r).checked) l.push(r.dataset.kpi); });
+    if (!l.length) { if (avvisa) toast('Almeno un riquadro deve restare acceso'); return false; }
+    try { localStorage.setItem('cm.kpi', JSON.stringify(l)); localStorage.setItem('cm.kpi.v2', '1'); } catch (e) {}
+    disegnaOggi();
+    return true;
+  }
+  $$('.kpi-r input', box).forEach(function (ck) {
+    ck.addEventListener('change', function () {
+      if (!salva(true)) { ck.checked = true; return; }
+      ck.closest('.kpi-r').classList.toggle('on', ck.checked);
+    });
+  });
+  $$('.kpi-mano', box).forEach(function (m) {
+    m.addEventListener('pointerdown', function (e) {
+      var riga = m.closest('.kpi-r'); if (!riga) return;
+      e.preventDefault(); riga.classList.add('trascino');
+      try { m.setPointerCapture(e.pointerId); } catch (x) {}
+      function muovi(ev) {
+        var sotto = document.elementFromPoint(ev.clientX, ev.clientY);
+        var alt = sotto && sotto.closest ? sotto.closest('.kpi-r') : null;
+        if (!alt || alt === riga || alt.parentNode !== box) return;
+        var righe = $$('.kpi-r', box);
+        if (righe.indexOf(riga) < righe.indexOf(alt)) box.insertBefore(riga, alt.nextSibling);
+        else box.insertBefore(riga, alt);
+      }
+      function molla() {
+        riga.classList.remove('trascino');
+        document.removeEventListener('pointermove', muovi); document.removeEventListener('pointerup', molla); document.removeEventListener('pointercancel', molla);
+        salva(false);
+      }
+      document.addEventListener('pointermove', muovi); document.addEventListener('pointerup', molla); document.addEventListener('pointercancel', molla);
+    });
+  });
+}
 function disegnaOggi() {
   var og = oggi(), L = lista(), box = $('#v-oggi');
   var sel = kpiScelti(), dati = {};
@@ -1434,7 +1512,7 @@ $('#vi-geo').addEventListener('click', function () { posMe = null; disegnaVicino
    nell'area visibile (con un margine), così il telefono resta fluido anche con migliaia di contatti. */
 var PIN = 'M0 0C-2.2-4.4-5.5-6.6-5.5-10.5A5.5 5.5 0 1 1 5.5-10.5C5.5-6.6 2.2-4.4 0 0Z';
 var COL_LIV = { A: '#1C6B4A', B: '#2B5A9E', C: '#B08A2E', D: '#9A9A9A' }, COL_VIG = '#F2711C', COL_NUOVO = '#4FA8E8';
-var MP = { mappa: null, pins: null, qui: null, colore: 'liv', f: { q: '', prov: '', esito: '', liv: '', cat: '', orig: '', prat: '' }, leg: false, posMe: null, tot: 0, vis: 0 };
+var MP = { mappa: null, pins: null, qui: null, colore: 'liv', f: { q: '', prov: '', esito: '', liv: '', cat: '', orig: '', prat: '', tipo: '' }, leg: false, posMe: null, tot: 0, vis: 0 };
 try { Object.assign(MP.f, JSON.parse(localStorage.getItem('cm.mappa.f') || '{}')); MP.colore = localStorage.getItem('cm.mappa.col') || 'liv'; } catch (e) {}
 function colLiv(c) { return COL_LIV[c.liv] || '#555'; }
 function coloreMappa(c) { var es = sit(c.id).esito; if (MP.colore === 'esito') return colEsito(es); if (c.cat === 'Istituto di Vigilanza') return COL_VIG; return c.fonte === 'assodimi' ? colLiv(c) : COL_NUOVO; }
@@ -1446,6 +1524,7 @@ function filtratiMappa() {
     if (!c.lat || !c.lng) return false;
     if (f.prov && c.prov !== f.prov) return false;
     if (f.liv && c.liv !== f.liv) return false;
+    if (f.tipo && tipoCli(c.id) !== f.tipo) return false;
     if (f.cat && c.cat !== f.cat) return false;
     if (f.orig === 'asso' && c.fonte !== 'assodimi') return false;
     if (f.orig === 'nuovo' && c.fonte === 'assodimi') return false;
@@ -1546,16 +1625,16 @@ function disegnaMappa() {
     }
     disegnaPin();
   }, 80);
-  $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat));
+  $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat || MP.f.tipo));
 }
-function salvaFiltriMappa() { try { localStorage.setItem('cm.mappa.f', JSON.stringify(MP.f)); } catch (e) {} $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat)); }
+function salvaFiltriMappa() { try { localStorage.setItem('cm.mappa.f', JSON.stringify(MP.f)); } catch (e) {} $('#mp-filtri').classList.toggle('on', !!(MP.f.prov || MP.f.esito || MP.f.liv || MP.f.cat || MP.f.orig || MP.f.prat || MP.f.tipo)); }
 function pannelloMappa() {
   var p = $('#mp-pannello'), f = MP.f, province = {}, cats = {};
   lista().forEach(function (c) { if (c.prov) province[c.prov] = 1; if (c.cat) cats[c.cat] = 1; });
-  function sel(id, et, opts, val) { return '<label>' + et + ' <select data-mf="' + id + '"><option value="">Tutt' + (/esito|livello/i.test(et) ? 'i' : 'e') + '</option>' + opts.map(function (o) { var v = Array.isArray(o) ? o[0] : o, n = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(v) + '"' + (val === v ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></label>'; }
-  p.innerHTML = '<div class="form"><div class="due">' + sel('prov', 'Provincia', Object.keys(province).sort(), f.prov) + sel('liv', 'Livello', ['A', 'B', 'C', 'D'], f.liv) + '</div><div class="due">' + sel('esito', 'Esito', [['(nessuno)', 'Mai contattati']].concat(ESITI().filter(function (e) { return e !== 'Da contattare'; })), f.esito) + sel('cat', 'Categoria', Object.keys(cats).sort(), f.cat) + '</div><div class="due">' + sel('orig', 'Origine', [['asso', 'Soci Assodimi'], ['nuovo', 'Aggiunti a mano e Clienti']], f.orig) + sel('prat', 'Pratiche', [['si', 'Con pratica'], ['sospesa', 'In sospeso'], ['accettata', 'Accettate'], ['rifiutata', 'Rifiutate']], f.prat) + '</div><div class="az"><button class="btn" id="mp-azzera">Annulla filtri</button><button class="btn pri" id="mp-chiudi">Applica</button></div></div>';
+  function sel(id, et, opts, val) { return '<label>' + et + ' <select data-mf="' + id + '"><option value="">Tutt' + (/esito|livello|stato/i.test(et) ? 'i' : 'e') + '</option>' + opts.map(function (o) { var v = Array.isArray(o) ? o[0] : o, n = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(v) + '"' + (val === v ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></label>'; }
+  p.innerHTML = '<div class="form">' + sel('tipo', 'Stato cliente', TIPI_CLI, f.tipo) + '<div class="due">' + sel('prov', 'Provincia', Object.keys(province).sort(), f.prov) + sel('liv', 'Livello', ['A', 'B', 'C', 'D'], f.liv) + '</div><div class="due">' + sel('esito', 'Esito', [['(nessuno)', 'Mai contattati']].concat(ESITI().filter(function (e) { return e !== 'Da contattare'; })), f.esito) + sel('cat', 'Categoria', Object.keys(cats).sort(), f.cat) + '</div><div class="due">' + sel('orig', 'Origine', [['asso', 'Soci Assodimi'], ['nuovo', 'Aggiunti a mano e Clienti']], f.orig) + sel('prat', 'Pratiche', [['si', 'Con pratica'], ['sospesa', 'In sospeso'], ['accettata', 'Accettate'], ['rifiutata', 'Rifiutate']], f.prat) + '</div><div class="az"><button class="btn" id="mp-azzera">Annulla filtri</button><button class="btn pri" id="mp-chiudi">Applica</button></div></div>';
   $$('select[data-mf]', p).forEach(function (s) { s.addEventListener('change', function () { MP.f[s.dataset.mf] = s.value; salvaFiltriMappa(); disegnaPin(); }); });
-  $('#mp-azzera').addEventListener('click', function () { MP.f = { q: '', prov: '', esito: '', liv: '', cat: '', orig: '', prat: '' }; $('#mp-q').value = ''; salvaFiltriMappa(); pannelloMappa(); disegnaPin(); });
+  $('#mp-azzera').addEventListener('click', function () { MP.f = { q: '', prov: '', esito: '', liv: '', cat: '', orig: '', prat: '', tipo: '' }; $('#mp-q').value = ''; salvaFiltriMappa(); pannelloMappa(); disegnaPin(); });
   $('#mp-chiudi').addEventListener('click', function () { p.style.display = 'none'; });
 }
 
@@ -1583,6 +1662,7 @@ function apriScheda(id) {
   /* situazione (modificabile) */
   h.push('<div class="sz sz-sit"><h3>Situazione' + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + '</h3><div class="c form">');
   h.push('<div class="due"><label>Esito <select id="sc-esito"><option value="">Da contattare</option>' + ESITI().filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option' + (k.esito === e ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select></label><label>Richiamo il <input type="date" id="sc-richiamo" value="' + esc(k.richiamo || '') + '"></label></div>');
+  h.push('<label>Stato del cliente <select id="sc-tipo" class="tcli-sel ' + TIPI_CLI_CLS[tipoCli(id)] + '">' + TIPI_CLI.map(function (t) { return '<option' + (tipoCli(id) === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select><i class="ds" style="font-style:normal;color:var(--tenue);font-size:calc(11.5px * var(--scala))">classificazione: non entra in cronologia</i></label>');
   h.push('<label>Referente <input type="text" id="sc-ref" value="' + esc(k.referente || '') + '" placeholder="Persona con cui parli"></label>');
   h.push('<label style="color:var(--sz-prom)">Prossimo passo <textarea id="sc-passo" style="background:var(--giallo)">' + esc(k.passo || '') + '</textarea></label>');
   h.push('<div class="ds" style="font-size:calc(12px * var(--scala));color:var(--tenue)">' + (k.data ? 'Ultimo contatto ' + dataIt(k.data) + (k.canale ? ' · ' + esc(k.canale) : '') : 'Mai contattato') + '</div>');
@@ -1641,6 +1721,12 @@ function apriScheda(id) {
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
   document.body.classList.add('sc-aperta'); aggiornaFab();
   agganciaProgramma(id);
+  var scT = $('#sc-tipo');
+  if (scT) scT.addEventListener('change', function () {
+    salvaTipoCli(id, scT.value);
+    scT.className = 'tcli-sel ' + TIPI_CLI_CLS[scT.value];
+    if (vista === 'cerca') disegnaCerca();
+  });
   $('#sc-salva-sit').addEventListener('click', function () {
     salvaSituazione(id, { esito: $('#sc-esito').value, richiamo: $('#sc-richiamo').value, referente: $('#sc-ref').value.trim(), passo: $('#sc-passo').value.trim() });
   });
@@ -1742,7 +1828,7 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Ordine dei contatti</span><span class="sp"></span><select id="op-ordine" class="chip">' + ORDINI.map(function (o) { return '<option value="' + o.id + '"' + (ordine() === o.id ? ' selected' : '') + '>' + esc(o.nome) + '</option>'; }).join('') + '</select></div>');
   h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Vale per l’elenco Contatti e per la ricerca. «Vicino a me» resta in ordine di distanza.</span></div></div>');
   h.push('<div class="opz" id="op-kpi"><h2>Riquadri della scheda Oggi</h2>');
-  h.push(KPI.map(function (k) { return '<label class="riga-o"><span>' + esc(k.nome) + '</span><span class="sp"></span><input type="checkbox" data-kpi="' + k.id + '"' + (sel.indexOf(k.id) >= 0 ? ' checked' : '') + '></label>'; }).join(''));
+  h.push('<div class="kpi-ord" id="kpi-ord"></div><div class="riga-o" style="color:var(--tenue);font-size:calc(12.5px * var(--scala))">Tieni premuto sulla maniglia e trascina per cambiare l\'ordine dei riquadri.</div>');
   h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Toccando un riquadro nella scheda Oggi si va alla lista corrispondente.</span></div></div>');
   h.push('<div class="opz" id="op-sync"><h2>Sincronizzazione con GESTIONE CONTATTI</h2>');
   h.push('<div class="riga-o"><span>Servizio</span><span class="sp"></span><select id="sy-tipo" class="chip"><option value=""' + (!m.tipo ? ' selected' : '') + '>Nessuno</option><option value="drive"' + (m.tipo === 'drive' ? ' selected' : '') + '>Google Drive</option><option value="server"' + (m.tipo === 'server' ? ' selected' : '') + '>Server personale</option></select></div>');
@@ -1773,12 +1859,7 @@ function disegnaAltro() {
   $$('.seg [data-t]', box).forEach(function (b) { b.addEventListener('click', function () { setTema(b.dataset.t); disegnaAltro(); }); });
   $$('.seg [data-fs]', box).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('cm.fs', b.dataset.fs); applicaFs(); disegnaAltro(); }); });
   $('#op-ordine').addEventListener('change', function () { try { localStorage.setItem('cm.ordine', this.value); } catch (e) {} toast('Ordine: ' + this.options[this.selectedIndex].text); if (vista === 'cerca') mostraVista('cerca', true); });
-  $$('[data-kpi]', box).forEach(function (ck) { ck.addEventListener('change', function () {
-    var l = KPI.map(function (k) { return k.id; }).filter(function (id) { var e = $('[data-kpi="' + id + '"]', box); return e && e.checked; });
-    if (!l.length) { ck.checked = true; toast('Almeno un riquadro deve restare acceso'); return; }
-    try { localStorage.setItem('cm.kpi', JSON.stringify(l)); } catch (e) {}
-    disegnaOggi();
-  }); });
+  disegnaKpiOrd();
   $('#dt-json').addEventListener('click', esportaJson);
   $('#dt-xls').addEventListener('click', function () { toast('Preparo il file Excel…'); setTimeout(esportaExcel, 60); });
   $('#dt-imp').addEventListener('click', function () { $('#dt-file').click(); });
