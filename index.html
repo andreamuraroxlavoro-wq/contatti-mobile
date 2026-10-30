@@ -802,7 +802,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.42.0';
+var APP_VER = '1.43.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2382,10 +2382,13 @@ function disegnaTutele() {
   });
   h.push('<div class="cg-testa">');
   h.push('<div class="cg-cerca"><input type="search" id="tu-q" placeholder="Cerca azienda, Partner, sede&hellip;" value="' + esc(TU.q) + '" autocomplete="off"></div>');
-  h.push('<div class="chips"><button class="chip' + (TU.partner ? '' : ' on') + '" data-tp="">Tutti i Partner</button>' +
+  /* un elenco a tendina, non un tasto per ogni Partner: con qualche decina di Partner
+     la riga dei tasti diventerebbe un nastro da scorrere */
+  h.push('<div class="chips"><select class="chip' + (TU.partner ? ' on' : '') + '" id="tu-partner"><option value="">Tutti i Partner (' + num(Object.keys(mP).length) + ')</option>' +
     Object.keys(mP).sort(function (a, b) { return mP[a].localeCompare(mP[b], 'it'); }).map(function (k) {
-      return '<button class="chip' + (TU.partner === k ? ' on' : '') + '" data-tp="' + esc(k) + '">' + esc(mP[k]) + '</button>';
-    }).join('') + '</div>');
+      var n = L.filter(function (c) { var t = tutelaDi(c); return t && t.partner === k; }).length;
+      return '<option value="' + esc(k) + '"' + (TU.partner === k ? ' selected' : '') + '>' + esc(mP[k]) + ' (' + num(n) + ')</option>';
+    }).join('') + '</select>' + (TU.partner ? '<button class="chip" data-tp="" style="color:var(--rosso)">&#10005; Mostra tutti</button>' : '') + '</div>');
   h.push('</div>');
   h.push('<section class="sz" style="--c:var(--ambra)"><h3>Da non toccare<span class="pill">' + num(righe.length) + (righe.length === L.length ? '' : ' di ' + num(L.length)) + '</span></h3><div class="c">' +
     '<div class="nota">Queste aziende le segue un nostro Partner: non si contattano direttamente. Se arriva una richiesta, si gira al Partner.</div>' +
@@ -2409,6 +2412,7 @@ function disegnaTutele() {
   });
   var qi = $('#tu-q');
   qi.addEventListener('input', function () { TU.q = qi.value; var pz = qi.selectionStart; disegnaTutele(); var n2 = $('#tu-q'); n2.focus(); try { n2.setSelectionRange(pz, pz); } catch (e) {} });
+  $('#tu-partner', box).addEventListener('change', function () { TU.partner = this.value; disegnaTutele(); });
   $$('[data-tp]', box).forEach(function (b) { b.addEventListener('click', function () { TU.partner = b.dataset.tp; disegnaTutele(); }); });
   cxPrepara(box);
 }
