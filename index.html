@@ -302,8 +302,9 @@ body.sc-aperta .fab{z-index:3100}
 .kpi .et > span{flex:1 1 auto;min-width:0}
 .kpi-r .ki{width:20px;height:20px;border-radius:6px}
 .kpi-r.on{border-color:color-mix(in srgb,var(--c,var(--accent)) 55%,transparent);background:color-mix(in srgb,var(--c,var(--accent)) 8%,transparent)}
-body.disponi nav.tab button[data-v],body.disponi #v-oggi .kpis .kpi{outline:2px dashed color-mix(in srgb,var(--rosso) 55%,transparent);outline-offset:-3px;border-radius:10px;touch-action:none}
-body.disponi #v-oggi .kpis .kpi.trascino{opacity:.45;transform:scale(.96)}
+body.disponi nav.tab button[data-v],body.disponi #v-oggi .kpis .kpi,body.disponi #v-cruscotto .kpis .kpi{outline:2px dashed color-mix(in srgb,var(--rosso) 55%,transparent);outline-offset:-3px;border-radius:10px;touch-action:none}
+body.disponi nav.tab button[data-v],body.disponi #v-oggi .kpis .kpi,body.disponi #v-cruscotto .kpis .kpi{touch-action:none;-webkit-user-select:none;user-select:none}
+body.disponi #v-oggi .kpis .kpi.trascino,body.disponi #v-cruscotto .kpis .kpi.trascino{opacity:.45;transform:scale(.96)}
 body.disponi #bt-menu{background:var(--rosso)!important;border-color:var(--rosso)!important;color:#fff!important;animation:dsp-menu 1.1s ease-in-out infinite}
 @keyframes dsp-menu{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--rosso) 55%,transparent)}50%{box-shadow:0 0 0 9px color-mix(in srgb,var(--rosso) 0%,transparent)}}
 .menu .pan button.on{background:var(--rosso);border-color:var(--rosso);color:#fff}
@@ -833,7 +834,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.47.0';
+var APP_VER = '1.48.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1130,12 +1131,12 @@ function disponiAccendi(v) {
   if (disponiOn && !b) {
     b = el('div', 'disponi-aiuto');
     b.id = 'disponi-barra';
-    b.innerHTML = '<span>Tieni premuto e trascina: le schede in basso e i riquadri della scheda Oggi</span><button class="btn pri" id="disponi-fine">Fine</button><button class="btn" id="disponi-reset">Ordine iniziale</button>';
+    b.innerHTML = '<span>Tieni premuto e trascina: le schede in basso, i riquadri della scheda Oggi e quelli del Cruscotto</span><button class="btn pri" id="disponi-fine">Fine</button><button class="btn" id="disponi-reset">Ordine iniziale</button>';
     document.body.appendChild(b);
     $('#disponi-fine').addEventListener('click', function () { disponiAccendi(false); });
     $('#disponi-reset').addEventListener('click', function () { try { localStorage.removeItem(CHIAVE_BARRA); } catch (e) {} location.reload(); });
   } else if (!disponiOn && b) b.remove();
-  toast(disponiOn ? 'Disponi acceso: trascina le schede in basso e i riquadri di Oggi' : 'Disponi spento');
+  toast(disponiOn ? 'Disponi acceso: trascina le schede in basso e i riquadri di Oggi e del Cruscotto' : 'Disponi spento');
 }
 /* mentre si dispone, il tocco su una scheda non cambia vista */
 document.addEventListener('click', function (e) {
