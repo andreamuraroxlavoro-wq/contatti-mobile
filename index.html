@@ -138,7 +138,10 @@ dl.rg dt{color:var(--c);font-weight:600;opacity:.85;white-space:nowrap}dl.rg dd{
 .sz-prom textarea{background:var(--giallo)}
 .ev{padding:9px 0;border-bottom:1px solid var(--bordo)}.ev:last-child{border-bottom:0}
 .ev .d{font-size:calc(12px * var(--scala));color:var(--tenue);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.ev .t{font-weight:650;margin-top:2px}.ev .n{font-size:calc(14px * var(--scala));color:var(--testo2);white-space:pre-wrap;margin-top:2px}
+.ev{position:relative}
+.ev .ev-mod{position:absolute;right:0;top:6px;border:1px solid var(--bordo);background:var(--carta);color:var(--tenue);border-radius:8px;padding:3px 8px;font:inherit;font-size:calc(11.5px * var(--scala));cursor:pointer}
+.ev .ev-mod:active{background:var(--sfondo2)}
+.ev .t{font-weight:650;margin-top:2px;padding-right:86px}.ev .n{font-size:calc(14px * var(--scala));color:var(--testo2);white-space:pre-wrap;margin-top:2px}
 .ev .h{font-size:calc(14px * var(--scala));color:var(--testo2);margin-top:2px;overflow-wrap:anywhere}.ev .h img,.ev .h table{max-width:100%}.ev .h table{display:block;overflow-x:auto}.ev .h p{margin:4px 0}.ev .h ul{padding-left:18px;margin:4px 0}
 .dir{font-size:calc(10px * var(--scala));font-weight:800;padding:1px 6px;border-radius:6px;background:var(--carta2)}.dir.out{color:var(--accent)}.dir.in{color:var(--verde)}
 .stati{display:flex;gap:6px;margin-top:10px}.stati button{flex:1;padding:9px 6px;border-radius:10px;border:1px solid var(--bordo);background:var(--carta);font-weight:700;font-size:calc(13px * var(--scala));color:var(--testo2)}
@@ -281,6 +284,13 @@ body.mappa-on .fab{z-index:1200}
 @keyframes cl-batti{0%,100%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}50%{transform:scale(1.12);box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 22%,transparent)}}
 body.cal-trascino{user-select:none}
 body.cal-trascino .cl-celle{touch-action:none}
+.cx-w{position:relative;display:flex;align-items:center;flex:1 1 auto;min-width:0}
+.cx-w>input{flex:1 1 auto;min-width:0;width:100%}
+.cx-w .cx-no{display:none;position:absolute;right:7px;top:50%;transform:translateY(-50%);width:24px;height:24px;border:0;border-radius:7px;background:var(--rosso);color:#fff;font-size:calc(13px * var(--scala));line-height:1;align-items:center;justify-content:center;padding:0;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.cx-w.piena .cx-no{display:flex}
+.cx-w.piena>input{padding-right:38px;border-color:var(--accent);animation:cx-pulsa 1.5s ease-in-out infinite}
+@keyframes cx-pulsa{0%,100%{box-shadow:0 0 0 1px var(--accent),0 0 0 0 color-mix(in srgb,var(--accent) 40%,transparent)}50%{box-shadow:0 0 0 2px var(--accent),0 0 0 6px color-mix(in srgb,var(--accent) 20%,transparent)}}
+@media (prefers-reduced-motion:reduce){.cx-w.piena>input{animation:none;box-shadow:0 0 0 2px var(--accent)}}
 .cl-sug{padding:10px 12px;font-size:calc(12.5px * var(--scala));color:var(--tenue);border-top:1px solid var(--bordo)}
 .cl-int h3{gap:6px}
 .cl-int h3 .pill{text-transform:none;letter-spacing:0;flex:0 0 auto;white-space:nowrap}
@@ -673,7 +683,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.27.0';
+var APP_VER = '1.28.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1274,6 +1284,38 @@ function calRiga(e, og) {
     (e.fatto ? '<span class="ok">&#10003;</span>' : (e.d < og ? '<span class="rit">!</span>' : '')) + '</button>';
 }
 
+/* ---------- campi di ricerca ----------
+   Quando c'è dentro qualcosa il campo si accende e pulsa, e a destra compare il quadratino rosso
+   con la X per svuotarlo in un tocco. Vale per ogni campo di ricerca dell'app, anche quelli che
+   nascono dopo (fogli, pannelli). */
+function cxAggiorna(i) {
+  var w = i.parentNode;
+  if (w && w.classList && w.classList.contains('cx-w')) w.classList.toggle('piena', !!(i.value || '').trim());
+}
+function cxPrepara(root) {
+  $$('input[type="search"]', root || document).forEach(function (i) {
+    if (i._cx) { cxAggiorna(i); return; }
+    i._cx = 1;
+    var w = document.createElement('span'); w.className = 'cx-w';
+    i.parentNode.insertBefore(w, i); w.appendChild(i);
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'cx-no'; b.title = 'Cancella il testo'; b.innerHTML = '&#10005;';
+    w.appendChild(b);
+    b.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      i.value = '';
+      i.dispatchEvent(new Event('input', { bubbles: true }));
+      i.dispatchEvent(new Event('change', { bubbles: true }));
+      cxAggiorna(i); i.focus();
+    });
+    ['input', 'change'].forEach(function (ev) { i.addEventListener(ev, function () { cxAggiorna(i); }); });
+    cxAggiorna(i);
+  });
+}
+try {
+  new MutationObserver(function () { cxPrepara(document); }).observe(document.documentElement, { childList: true, subtree: true });
+} catch (e) {}
+
 /* ---------- scelta di più giorni con il dito ----------
    Tocco semplice: un giorno solo, come sempre. Tocco prolungato (circa mezzo secondo): il giorno
    pulsa, il telefono vibra e, trascinando, si scelgono più giorni di fila; alzato il dito, sotto
@@ -1851,7 +1893,7 @@ function apriScheda(id) {
     '<div class="ev-nota" id="ev-rnota">' + (k.richiamo ? 'in scheda: <b>' + esc(dataIt(k.richiamo)) + '</b> · lascia vuoto per non cambiarlo' : 'vuoto: il richiamo in scheda non cambia') + '</div>');
   h.push('<div class="az"><button class="btn pri" id="ev-salva" style="background:var(--sz-cron);border-color:var(--sz-cron)">Registra</button></div></div></details>');
   if (!ev.length) h.push('<div class="vuoto" style="padding:12px">Nessun evento registrato.</div>');
-  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
+  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + (v.h ? '' : '<button class="ev-mod" data-ev="' + esc(v.id) + '" title="Modifica il testo">&#9998; modifica</button>') + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
   h.push('</div></div>');
   /* classificazione */
   h.push('<div class="sz sz-clas"><h3>Classificazione</h3><div class="c"><dl class="rg">');
@@ -1868,6 +1910,7 @@ function apriScheda(id) {
   if (c.allegati) h.push('<div class="sz sz-file"><h3>Allegati<span class="pill">' + num(c.allegati) + '</span></h3><div class="c"><div class="nota">' + num(c.allegati) + ' allegat' + (c.allegati === 1 ? 'o' : 'i') + ' archiviat' + (c.allegati === 1 ? 'o' : 'i') + ' su GESTIONE CONTATTI (Mac): non viaggiano sul telefono.</div></div></div>');
   S.innerHTML = h.join(''); S.classList.add('on'); S.scrollTop = 0;
   $('#sc-mod').addEventListener('click', function () { formModifica(id); });
+  $$('#scheda .ev-mod').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); modificaEvento(id, b.dataset.ev); }); });
   $('#sc-chiudi').addEventListener('click', function () { if (history.state && history.state.scheda) history.back(); else chiudiScheda(); });
   var nv = $('#sc-naviga'); if (nv) nv.addEventListener('click', function (ev) { ev.preventDefault(); naviga(c); });
   if (!(history.state && history.state.scheda)) history.pushState({ scheda: id }, '');
@@ -1973,6 +2016,29 @@ function naviga(c) {
   f.addEventListener('click', function (ev) { if (ev.target === f) f.remove(); });
   $('#nav-ann', f).addEventListener('click', function () { f.remove(); });
   $$('button.v', f).forEach(function (b) { b.addEventListener('click', function () { if ($('#nav-ric', f).checked) { try { localStorage.setItem('cm.nav', b.dataset.n); } catch (e) {} } f.remove(); apriNavigatore(b.dataset.n, c); }); });
+}
+/* modifica del testo di un evento già registrato (titolo e nota del report) */
+function modificaEvento(cid, vid) {
+  var v = DB.eventi[vid]; if (!v) { toast('Evento non trovato'); return; }
+  var f = el('div', 'foglio att-f');
+  function chiudi() { f.remove(); }
+  f.innerHTML = '<div class="fg"><h4>Modifica il report</h4>' +
+    '<div class="due"><label>Giorno <input type="date" id="me-d" value="' + esc(v.d || '') + '"></label><label>Ora <input type="time" id="me-o" value="' + esc(v.o || '') + '"></label></div>' +
+    '<label>Titolo <input type="text" id="me-t" value="' + esc(v.t || '') + '" placeholder="es. Visita in sede"></label>' +
+    '<label>Testo del report <textarea id="me-n" rows="7">' + esc(v.n || '') + '</textarea></label>' +
+    '<div class="az"><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
+  f.addEventListener('click', function (e) { if (e.target === f) chiudi(); });
+  document.body.appendChild(f);
+  $('#me-ann', f).addEventListener('click', chiudi);
+  $('#me-ok', f).addEventListener('click', function () {
+    var t = $('#me-t', f).value.trim(), n = $('#me-n', f).value.trim();
+    var d = $('#me-d', f).value || v.d, o = $('#me-o', f).value;
+    var v2 = Object.assign({}, v); v2.d = d; v2.o = o; v2._m = Date.now();
+    if (t) v2.t = t; else delete v2.t;
+    if (n) v2.n = n; else delete v2.n;
+    DB.eventi[vid] = v2; salva(); chiudi(); toast('Report aggiornato'); apriScheda(cid);
+  });
+  setTimeout(function () { var n0 = $('#me-n', f); if (n0) n0.focus(); }, 120);
 }
 function salvaSituazione(id, o) {
   var k = Object.assign({}, DB.situazioni[id] || { id: id }), prima = k.esito || '';
