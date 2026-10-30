@@ -226,6 +226,14 @@ body.mappa-on .fab{z-index:1200}
 .kpi .et > span{flex:1 1 auto;min-width:0}
 .kpi-r .ki{width:20px;height:20px;border-radius:6px}
 .kpi-r.on{border-color:color-mix(in srgb,var(--c,var(--accent)) 55%,transparent);background:color-mix(in srgb,var(--c,var(--accent)) 8%,transparent)}
+body.disponi nav.tab button[data-v]{outline:1px dashed color-mix(in srgb,var(--accent) 60%,transparent);outline-offset:-3px;border-radius:10px;touch-action:none}
+body.disponi nav.tab button.trascino{opacity:.5;transform:scale(.94)}
+.disponi-aiuto{position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);z-index:3200;background:var(--carta);border:1px solid var(--accent);border-radius:14px;
+  box-shadow:0 10px 26px rgba(0,0,0,.2);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.disponi-aiuto span{flex:1 1 100%;font-size:calc(12.5px * var(--scala));color:var(--tenue)}
+.disponi-aiuto .btn{flex:1 1 0;min-width:0}
+.menu .pan button.on{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:var(--accent)}
+.mp-on{margin-left:auto;font-size:calc(10.5px * var(--scala));letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 .kpi-ord{display:flex;flex-direction:column;gap:6px;padding:6px 0}
 .kpi-r{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--bordo);border-radius:12px;background:var(--carta)}
 .kpi-r.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
@@ -689,7 +697,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.31.0';
+var APP_VER = '1.32.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -828,6 +836,7 @@ var vistaPrima = 'cerca';
 
 /* ---------- menu a icone: tutte le funzioni in un posto solo ---------- */
 var VOCI_MENU = [
+  { id: '_disponi', nome: 'Disponi la barra', ico: 'disponi' },
   { id: 'vista', nome: 'Visualizzazione', ico: 'ordine' },
   { id: 'kpi', nome: 'Riquadri di Oggi', ico: 'riquadri' },
   { id: 'aspetto', nome: 'Aspetto', ico: 'aspetto' },
@@ -836,13 +845,83 @@ var VOCI_MENU = [
   { id: 'info', nome: 'Informazioni', ico: 'info' },
   { id: '', nome: 'Impostazioni', ico: 'gear' }
 ];
-var ICONE = { 'gear': '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>', 'persone': '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><path d="M16.2 10.8A3 3 0 1 0 15 5.3"/><path d="M17.6 14.1c2 .6 3.4 2.3 3.4 4.3"/>', 'ordine': '<path d="M4 6h13M4 12h9M4 18h5"/><path d="M19 9v10M16.5 16.5L19 19l2.5-2.5"/>', 'riquadri': '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>', 'aspetto': '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>', 'nuvola': '<path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/><path d="M12 11v6M9.5 14.5L12 17l2.5-2.5"/>', 'dati': '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>', 'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/>', 'menu': '<path d="M4 7h16M4 12h16M4 17h16"/>' };
+var ICONE = { 'disponi': '<path d="M4 7h10M4 12h16M4 17h7"/><path d="M17.5 14.5l3 2.5-3 2.5"/><circle cx="18" cy="7" r="2.2"/>', 'gear': '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>', 'persone': '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6"/><path d="M16.2 10.8A3 3 0 1 0 15 5.3"/><path d="M17.6 14.1c2 .6 3.4 2.3 3.4 4.3"/>', 'ordine': '<path d="M4 6h13M4 12h9M4 18h5"/><path d="M19 9v10M16.5 16.5L19 19l2.5-2.5"/>', 'riquadri': '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>', 'aspetto': '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>', 'nuvola': '<path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z"/><path d="M12 11v6M9.5 14.5L12 17l2.5-2.5"/>', 'dati': '<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>', 'info': '<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="1" fill="currentColor" stroke="none"/>', 'menu': '<path d="M4 7h16M4 12h16M4 17h16"/>' };
 function disegnaMenu() {
   $('#menu-pan').innerHTML = VOCI_MENU.map(function (v) {
-    return '<button data-sez="' + esc(v.id) + '"><svg viewBox="0 0 24 24">' + ICONE[v.ico] + '</svg>' + esc(v.nome) + '</button>';
+    var on = v.id === '_disponi' && disponiOn;
+    return '<button data-sez="' + esc(v.id) + '"' + (on ? ' class="on"' : '') + '><svg viewBox="0 0 24 24">' + ICONE[v.ico] + '</svg>' + esc(v.nome) + (on ? '<b class="mp-on">acceso</b>' : '') + '</button>';
   }).join('');
-  $$('#menu-pan button').forEach(function (b) { b.addEventListener('click', function () { chiudiMenu(); apriImpostazioni(b.dataset.sez); }); });
+  $$('#menu-pan button').forEach(function (b) { b.addEventListener('click', function () {
+    if (b.dataset.sez === '_disponi') { disponiAccendi(!disponiOn); setTimeout(disegnaMenu, 0); return; }
+    chiudiMenu(); apriImpostazioni(b.dataset.sez);
+  }); });
 }
+/* ============================================================
+   DISPONI — l'ordine delle schede della barra in basso lo decide Andrea
+   Si accende dal menu e resta acceso finché non lo si spegne. Mentre è acceso
+   le schede si spostano tenendo premuto e trascinando, e il tocco non cambia vista.
+   ============================================================ */
+var CHIAVE_BARRA = 'cm.ordine.barra', disponiOn = false;
+function barraOrdineApplica() {
+  var l; try { l = JSON.parse(localStorage.getItem(CHIAVE_BARRA) || 'null'); } catch (e) { l = null; }
+  if (!Array.isArray(l)) return;
+  var nav = $('#tab'); if (!nav) return;
+  l.forEach(function (v) { var b = nav.querySelector('button[data-v="' + v + '"]'); if (b) nav.appendChild(b); });
+}
+function barraOrdineSalva() {
+  var l = $$('#tab button[data-v]').map(function (b) { return b.dataset.v; });
+  try { localStorage.setItem(CHIAVE_BARRA, JSON.stringify(l)); } catch (e) {}
+}
+function disponiAccendi(v) {
+  disponiOn = !!v;
+  document.body.classList.toggle('disponi', disponiOn);
+  var b = $('#disponi-barra');
+  if (disponiOn && !b) {
+    b = el('div', 'disponi-aiuto');
+    b.id = 'disponi-barra';
+    b.innerHTML = '<span>Tieni premuto su una scheda e trascinala dove vuoi</span><button class="btn pri" id="disponi-fine">Fine</button><button class="btn" id="disponi-reset">Ordine iniziale</button>';
+    document.body.appendChild(b);
+    $('#disponi-fine').addEventListener('click', function () { disponiAccendi(false); });
+    $('#disponi-reset').addEventListener('click', function () { try { localStorage.removeItem(CHIAVE_BARRA); } catch (e) {} location.reload(); });
+  } else if (!disponiOn && b) b.remove();
+  toast(disponiOn ? 'Disponi acceso: trascina le schede in basso' : 'Disponi spento');
+}
+/* mentre si dispone, il tocco su una scheda non cambia vista */
+document.addEventListener('click', function (e) {
+  if (!disponiOn) return;
+  var b = e.target.closest ? e.target.closest('#tab button[data-v]') : null;
+  if (b) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+/* trascinamento con il dito delle schede in basso */
+(function () {
+  var preso = null;
+  document.addEventListener('pointerdown', function (e) {
+    if (!disponiOn) return;
+    var b = e.target.closest ? e.target.closest('#tab button[data-v]') : null;
+    if (!b) return;
+    e.preventDefault();
+    preso = b; b.classList.add('trascino');
+    try { if (navigator.vibrate) navigator.vibrate(25); } catch (x) {}
+    function muovi(ev) {
+      if (!preso) return;
+      var sotto = document.elementFromPoint(ev.clientX, ev.clientY);
+      var alt = sotto && sotto.closest ? sotto.closest('#tab button[data-v]') : null;
+      if (!alt || alt === preso) return;
+      var nav = alt.parentNode, righe = $$('#tab button[data-v]');
+      if (righe.indexOf(preso) < righe.indexOf(alt)) nav.insertBefore(preso, alt.nextSibling);
+      else nav.insertBefore(preso, alt);
+    }
+    function molla() {
+      document.removeEventListener('pointermove', muovi);
+      document.removeEventListener('pointerup', molla);
+      document.removeEventListener('pointercancel', molla);
+      if (preso) { preso.classList.remove('trascino'); preso = null; barraOrdineSalva(); }
+    }
+    document.addEventListener('pointermove', muovi);
+    document.addEventListener('pointerup', molla);
+    document.addEventListener('pointercancel', molla);
+  });
+})();
 function apriMenu() {
   disegnaMenu();
   var h = document.querySelector('header.top');
@@ -2357,6 +2436,7 @@ IDB.leggi('db').then(function (t) {
   /* i tasti dei gruppi nascono prima della lettura dei dati: ora che il settaggio c'e', li ridisegno con nome e colore giusti */
   try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
   migraNessunaAzione();
+  barraOrdineApplica();
   disegnaGruppi();
   mostraVista(v); avviaSync(); setTimeout(function () { misuraTestata(); aggiornaFab(); }, 300);
   $('#agg-ora').addEventListener('click', applicaAggiornamento);
