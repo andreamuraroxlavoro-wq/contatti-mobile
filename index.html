@@ -202,7 +202,9 @@ body.mappa-on .fab{z-index:1200}
 .agg{position:fixed;left:10px;right:10px;bottom:calc(84px + var(--sab));background:var(--accent);color:#fff;border-radius:14px;padding:10px 12px;display:none;align-items:center;gap:10px;z-index:4100;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:calc(14px * var(--scala))}.agg.on{display:flex}.agg b{font-weight:800}.agg .sp{flex:1}.agg button{border:0;border-radius:10px;padding:9px 12px;font-weight:800;font-size:calc(14px * var(--scala));background:#fff;color:var(--accent)}.agg button.chiudi{background:transparent;color:#fff;padding:9px 6px}
 .toast{position:fixed;left:50%;bottom:calc(84px + var(--sab));transform:translateX(-50%);background:#0b0b0b;color:#fff;padding:10px 16px;border-radius:12px;font-size:calc(14px * var(--scala));z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:.95}
-.opz{background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--ombra)}
+.opz:not(.sz){background:var(--carta);border:1px solid var(--bordo);border-radius:14px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--ombra)}
+.opz.sz{padding:0}
+.opz.sz > .c > :first-child{margin-top:0}
 .opz h2{font-size:calc(13px * var(--scala));letter-spacing:.1em;text-transform:uppercase;color:var(--tenue);margin:0 0 8px}
 .tcli{display:inline-block;padding:2px 7px;border-radius:999px;font-size:calc(10.5px * var(--scala));font-weight:800;letter-spacing:.3px;white-space:nowrap;border:1px solid var(--bordo);background:var(--sfondo2);color:var(--tenue)}
 .tcli.at{background:color-mix(in srgb,var(--verde) 16%,transparent);color:var(--verde);border-color:color-mix(in srgb,var(--verde) 40%,transparent)}
@@ -708,7 +710,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.34.0';
+var APP_VER = '1.35.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -969,8 +971,13 @@ function apriImpostazioni(sez) {
   mostraVista('altro');
   setTimeout(function () {
     var e = sez ? $('#op-' + sez) : null;
-    if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); else window.scrollTo(0, 0);
-  }, 90);
+    if (!e) { window.scrollTo(0, 0); return; }
+    /* sotto la testata fissa, altrimenti il titolo del riquadro resta coperto */
+    var h = document.querySelector('header.top'), alt = h ? h.getBoundingClientRect().height : 0;
+    var y = window.scrollY + e.getBoundingClientRect().top - alt - 10;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    evidenziaSez(e);
+  }, 120);
 }
 $('#menu-velo').addEventListener('click', chiudiMenu);
 $('#menu').addEventListener('click', function (e) { if (!e.target.closest('#menu-pan')) chiudiMenu(); });
@@ -2228,6 +2235,22 @@ function registraEvento(id) {
 /* ALTRO: sincronizzazione e opzioni */
 var SY = null;
 function nomeStato(s) { return { off: 'non attiva', ok: 'sincronizzato', sync: 'in corso…', errore: 'errore', offline: 'offline', auth: 'autorizzazione necessaria' }[s] || s; }
+/* I riquadri delle impostazioni nascono grigi: qui prendono lo stesso vestito dei blocchi
+   della scheda Oggi (bordo colorato, titolo in testata, pulsazione all'arrivo dal menu).
+   Si veste dopo il disegno, così il codice che li costruisce resta com'è. */
+var COLORI_OPZ = ['--sz-sit', '--sz-prom', '--sz-clas', '--sz-rec', '--sz-file', '--sz-prof', '--sz-cron'];
+function sezionaOpzioni() {
+  $$('#v-altro .opz').forEach(function (o, i) {
+    if (o.dataset.sz) return; o.dataset.sz = '1';
+    o.classList.add('sz');
+    o.style.setProperty('--c', 'var(' + COLORI_OPZ[i % COLORI_OPZ.length] + ')');
+    var h2 = o.querySelector('h2'), h3 = document.createElement('h3');
+    if (h2) { h3.innerHTML = h2.innerHTML; h2.remove(); }
+    var corpo = document.createElement('div'); corpo.className = 'c';
+    while (o.firstChild) corpo.appendChild(o.firstChild);
+    o.appendChild(h3); o.appendChild(corpo);
+  });
+}
 function disegnaAltro() {
   var box = $('#v-altro'), m = SY ? SY.meta : {}, fs = +(localStorage.getItem('cm.fs') || 16);
   var sel = kpiScelti();
@@ -2272,6 +2295,7 @@ function disegnaAltro() {
   $('#dt-imp').addEventListener('click', function () { $('#dt-file').click(); });
   $('#dt-file').addEventListener('change', function () { if (this.files && this.files[0]) importaCopia(this.files[0]); this.value = ''; });
   $('#agg-chk').addEventListener('click', function () { toast('Controllo in corso…'); controllaAggiornamenti(true); });
+  sezionaOpzioni();
   $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
 function tema() { return localStorage.getItem('cm.tema') || 'auto'; }
