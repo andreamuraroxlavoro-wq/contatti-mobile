@@ -227,7 +227,10 @@ body.mappa-on .fab{z-index:1200}
 .kpi-r .ki{width:20px;height:20px;border-radius:6px}
 .kpi-r.on{border-color:color-mix(in srgb,var(--c,var(--accent)) 55%,transparent);background:color-mix(in srgb,var(--c,var(--accent)) 8%,transparent)}
 body.disponi nav.tab button[data-v]{outline:1px dashed color-mix(in srgb,var(--accent) 60%,transparent);outline-offset:-3px;border-radius:10px;touch-action:none}
-body.disponi nav.tab button.trascino{opacity:.5;transform:scale(.94)}
+body.disponi nav.tab button.trascino{opacity:.45;transform:scale(.92)}
+.disponi-segno{flex:0 0 auto;width:6px;align-self:stretch;margin:6px 1px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent);animation:dsp-lampo .9s ease-in-out infinite}
+@keyframes dsp-lampo{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.disponi-segno{animation:none}}
 .disponi-aiuto{position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);z-index:3200;background:var(--carta);border:1px solid var(--accent);border-radius:14px;
   box-shadow:0 10px 26px rgba(0,0,0,.2);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .disponi-aiuto span{flex:1 1 100%;font-size:calc(12.5px * var(--scala));color:var(--tenue)}
@@ -697,7 +700,7 @@ body.cal-trascino .cl-celle{touch-action:none}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.32.0';
+var APP_VER = '1.33.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -894,7 +897,11 @@ document.addEventListener('click', function (e) {
 }, true);
 /* trascinamento con il dito delle schede in basso */
 (function () {
-  var preso = null;
+  var preso = null, segno = null;
+  function segnale() {
+    if (!segno) { segno = document.createElement('span'); segno.className = 'disponi-segno'; }
+    return segno;
+  }
   document.addEventListener('pointerdown', function (e) {
     if (!disponiOn) return;
     var b = e.target.closest ? e.target.closest('#tab button[data-v]') : null;
@@ -907,14 +914,19 @@ document.addEventListener('click', function (e) {
       var sotto = document.elementFromPoint(ev.clientX, ev.clientY);
       var alt = sotto && sotto.closest ? sotto.closest('#tab button[data-v]') : null;
       if (!alt || alt === preso) return;
-      var nav = alt.parentNode, righe = $$('#tab button[data-v]');
-      if (righe.indexOf(preso) < righe.indexOf(alt)) nav.insertBefore(preso, alt.nextSibling);
-      else nav.insertBefore(preso, alt);
+      /* la barra colorata dice dove finirà la scheda: prima o dopo quella che sto sorvolando */
+      var r = alt.getBoundingClientRect(), prima = (ev.clientX - r.left) < r.width / 2;
+      alt.parentNode.insertBefore(segnale(), prima ? alt : alt.nextSibling);
+    }
+    function posa() {
+      if (segno && segno.parentNode && preso) segno.parentNode.insertBefore(preso, segno);
+      if (segno && segno.parentNode) segno.parentNode.removeChild(segno);
     }
     function molla() {
       document.removeEventListener('pointermove', muovi);
       document.removeEventListener('pointerup', molla);
       document.removeEventListener('pointercancel', molla);
+      posa();
       if (preso) { preso.classList.remove('trascino'); preso = null; barraOrdineSalva(); }
     }
     document.addEventListener('pointermove', muovi);
