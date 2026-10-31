@@ -925,7 +925,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.60.0';
+var APP_VER = '1.61.2';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -4364,6 +4364,28 @@ function ascoltaBreve(suParziale, suTesto, suErrore) {
   return { ferma: basta };
 }
 var PIL = null;
+/* le date lette ad alta voce suonano come le diresti tu: «martedì 3 novembre», non «zero tre barra undici» */
+var GIORNI_PARLA = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+var MESI_PARLA = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+function dataParlata(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return dataIt(iso);
+  var p = iso.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+  if (iso === oggi()) return 'oggi';
+  if (iso === dataPiu(1)) return 'domani';
+  if (iso === dataPiu(2)) return 'dopodomani';
+  return GIORNI_PARLA[d.getDay()] + ' ' + (+p[2]) + ' ' + MESI_PARLA[+p[1] - 1];
+}
+function oraParlata(o) {
+  if (!/^\d{2}:\d{2}$/.test(o || '')) return '';
+  var h = +o.slice(0, 2), m = +o.slice(3);
+  return 'alle ' + h + (m ? ' e ' + (m === 30 ? 'mezza' : m) : '');
+}
+var PIL_DETTO = {};   /* le spiegazioni lunghe si sentono la prima volta, poi bastano quelle corte */
+function dillo(chiave, lungo, corto, dopo) {
+  var primo = !PIL_DETTO[chiave];
+  PIL_DETTO[chiave] = 1;
+  parla(primo ? lungo : (corto || lungo), dopo);
+}
 function pilNomeCliente() { var c = PIL && PIL.cid ? DB.contatti[PIL.cid] : null; return c ? c.nome : ((PIL && PIL.nome) || ''); }
 function pilTipoNome(t) { return t === 'report' ? 'Report' : t === 'visita' ? 'Visita' : t === 'telefonata' ? 'Telefonata' : t === 'mail' ? 'Mail' : t === 'cliente' ? 'Nuovo cliente' : ''; }
 function pilApri(cid) {
@@ -4378,6 +4400,12 @@ function pilApri(cid) {
   document.body.appendChild(f);
   document.body.classList.add('me-aperto');
   $('#pil-x', f).addEventListener('click', pilChiudi);
+  if (guidaVoce() && !PIL_DETTO.intro) {
+    PIL_DETTO.intro = 1;
+    pilScrivi('<b>Ti guido io.</b>', 'Fra un attimo ti chiedo che cosa devi registrare.', [{ id: 'ann', n: 'Annulla', f: pilChiudi }], false);
+    parla('Ti guido io, passo per passo. Io ti faccio una domanda per volta: puoi rispondere parlando, toccando il microfono, oppure toccando i tasti sullo schermo. Niente viene salvato finché non confermi tu.', function () { if (PIL) pilPasso1(); });
+    return;
+  }
   pilPasso1();
 }
 function pilChiudi() {
@@ -4418,6 +4446,7 @@ function pilPasso1() {
     [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Tocca e parla');
   pilMic('Tocca e parla', function () {
     if (REG.attivo) { registraFerma(); return; }
+    zittisci();
     pilScrivi('<b>Ti ascolto…</b>', 'Quando hai finito tocca di nuovo il microfono.', [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Ho finito');
     var b2 = pilMic('Ho finito', function () { registraFerma(); });
     b2.classList.add('reg');
@@ -4448,7 +4477,9 @@ function pilPasso1() {
       function (err) { toast(err === 'NotAllowedError' ? 'Permesso al microfono negato' : 'Microfono non disponibile', 4000); pilChiudi(); }
     );
   });
-  parla(d);
+  dillo('p1',
+    'Dimmi che cosa devi registrare. Raccontamelo come lo diresti a un collega: per esempio, report della visita da Perin, tutto a posto, lo richiamo giovedì. Oppure: fissami una visita da Elettrosistema martedì alle dieci e mezza. Tocca il tasto del microfono, parla, e quando hai finito toccalo di nuovo.',
+    'Che cosa devi registrare? Tocca il microfono e parla.');
 }
 /* che cosa manca ancora? */
 function pilProssimo() {
@@ -4474,7 +4505,9 @@ function pilChiediTipo() {
     if (!PIL.tipo) { toast('Non ho capito: tocca uno dei tasti'); return; }
     pilProssimo();
   }); });
-  parla(d);
+  dillo('tipo',
+    'Non ho capito se è una cosa già fatta o una cosa da fare. Dimmi solo una parola: report, se me lo racconti adesso; visita, telefonata o mail, se devo metterla in calendario. Tocca il microfono e rispondi, oppure tocca il tasto che vuoi.',
+    'Che cosa vuoi fare? Report, visita, telefonata o mail.');
 }
 function pilChiediCliente() {
   $('#pil-pass', PIL.f).textContent = 'Cliente';
@@ -4511,7 +4544,10 @@ function pilChiediCliente() {
     if (c) { PIL.cid = c; PIL.nome = ''; pilProssimo(); return; }
     PIL.nome = t; elenco(t.toLowerCase()); toast('Non l\'ho trovato: scegli dall\'elenco');
   }); });
-  parla(d);
+  dillo('cliente',
+    (PIL.nome ? 'Avevo capito ' + PIL.nome + ', ma non lo trovo in archivio. ' : '') +
+    'Per quale cliente? Tocca il microfono e di\' il nome dell\'azienda, anche solo le prime parole: lo cerco io. Se non lo trovo, scrivilo nel campo qui sotto e scegli dall\'elenco.',
+    'Per quale cliente? Di\' il nome, oppure scrivilo qui sotto.');
 }
 function pilChiediQuando() {
   $('#pil-pass', PIL.f).textContent = 'Quando';
@@ -4528,7 +4564,9 @@ function pilChiediQuando() {
     if (!data) { toast('Non ho capito il giorno: scrivilo qui sotto'); return; }
     pilProssimo();
   }); });
-  parla(d);
+  dillo('quando',
+    'Quando la metto in calendario? Tocca il microfono e dimmi giorno e ora insieme: per esempio martedì alle dieci e mezza, oppure domani mattina alle nove, oppure il dodici novembre alle tre del pomeriggio. Se preferisci, scegli giorno e ora qui sotto e tocca Avanti.',
+    'Quando, e a che ora? Dimmi giorno e ora.');
 }
 function pilChiediRacconto() {
   $('#pil-pass', PIL.f).textContent = 'Racconto';
@@ -4560,7 +4598,9 @@ function pilChiediRacconto() {
       function () { toast('Microfono non disponibile', 4000); pilChiudi(); }
     );
   });
-  parla(d);
+  dillo('racconto',
+    'Raccontami che cosa è successo: con chi hai parlato, che cosa ti ha detto e che cosa resta da fare. Parla pure con calma, anche con le pause: registro tutto. Tocca il microfono per cominciare e toccalo di nuovo quando hai finito.',
+    'Racconta che cosa è successo. Tocca il microfono.');
 }
 /* ascolto di una risposta breve, con il testo che compare mentre parli */
 function pilAscolta(dopo) {
@@ -4624,9 +4664,16 @@ function pilConferma() {
     if (/\bno\b|rifai|sbagli/.test(x)) { if (PIL.tipo === 'report') { PIL.nota = ''; pilChiediRacconto(); } else pilChiediQuando(); return; }
     toast('Dimmi «sì» per confermare, oppure tocca un tasto');
   }); });
-  parla(PIL.tipo === 'report'
-    ? 'Registro il report per ' + nome + (PIL.richiamo ? ', con richiamo il ' + dataIt(PIL.richiamo) : '') + '. Confermi?'
-    : 'Metto in calendario ' + pilTipoNome(PIL.tipo).toLowerCase() + ' da ' + nome + ' il ' + dataIt(PIL.d) + (PIL.o ? ' alle ' + PIL.o : '') + '. Confermi?');
+  var riass = PIL.tipo === 'report'
+    ? 'Registro il report per ' + nome +
+      (PIL.canale ? ', canale ' + PIL.canale.toLowerCase() : '') +
+      (PIL.esito ? ', tipo azione ' + PIL.esito.toLowerCase() : '') +
+      (PIL.richiamo ? ', con richiamo ' + dataParlata(PIL.richiamo) : '') +
+      (PIL.passo ? '. Prossimo passo: ' + PIL.passo : '') + '.'
+    : 'Metto in calendario ' + pilTipoNome(PIL.tipo).toLowerCase() + ' da ' + nome + ' ' + dataParlata(PIL.d) + (PIL.o ? ' ' + oraParlata(PIL.o) : ', a orario libero') + '.';
+  dillo('conferma',
+    riass + ' Se va bene, tocca il microfono e di\' sì, oppure tocca Conferma. Se qualcosa non torna di\' no e rifacciamo quel pezzo; con i tasti puoi anche cambiare cliente o annullare tutto. Finché non confermi non salvo niente.',
+    riass + ' Confermi?');
 }
 function pilSalva() {
   if (!PIL) return;
@@ -4643,7 +4690,7 @@ function pilSalva() {
     if (PIL.passo) k.passo = PIL.passo;
     k._m = Date.now(); DB.situazioni[cid] = k;
     salva(); pilChiudi(); toast('Report registrato per ' + nome);
-    parla('Fatto. Report registrato.');
+    parla('Fatto. Report registrato per ' + nome + '. Apro la sua scheda.');
     apriScheda(cid);
   } else {
     var a = { tipo: tipo, cid: cid, d: PIL.d, o: PIL.o || '', nota: t };
@@ -4651,7 +4698,7 @@ function pilSalva() {
     attSalva(a);
     pilChiudi();
     toast(pilTipoNome(tipo) + ' in calendario: ' + dataIt(a.d) + (a.o ? ' alle ' + a.o : ''));
-    parla('Fatto. ' + pilTipoNome(tipo) + ' messa in calendario.');
+    parla('Fatto. ' + pilTipoNome(tipo) + ' da ' + nome + ' messa in calendario ' + dataParlata(a.d) + (a.o ? ' ' + oraParlata(a.o) : '') + '.');
     if (vista === 'cal') { CAL.sel = a.d; CAL.rif = a.d; disegnaCal(); }
     else if (vista === 'oggi') disegnaOggi();
     else if (document.body.classList.contains('sc-aperta') && schedaId) apriScheda(schedaId);
