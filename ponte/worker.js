@@ -194,6 +194,51 @@ async function riassunto(env, d) {
   return { testo: testo, uso: contoUso(out, modello) };
 }
 
+/* --- 4-bis) la conversazione: si parla, lui risponde e, se serve, propone di salvare --- */
+async function conversa(env, d, frase) {
+  const modello = modelloDi(d);
+  const dati = d.dati && typeof d.dati === 'object' ? d.dati : null;
+  const regole = [
+    'Sei l\'assistente di un venditore italiano di videosorveglianza, dentro la sua app dei contatti. State parlando: lui ti parla al microfono e la tua risposta viene letta ad alta voce.',
+    'Rispondi in italiano, dandogli del tu, con frasi brevi e punteggiatura vera. Da una a tre frasi. Mai elenchi puntati, mai titoli, mai sigle da sillabare, mai simboli: solo parlato naturale.',
+    'Usa soltanto i dati che ricevi. Se una cosa non c\'e\', dillo in mezza riga invece di inventarla: non inventare mai fatti, date, importi, nomi o impegni.',
+    'Le date dille a parole (martedi 3 novembre). Gli importi in euro con la virgola per i decimali.',
+    'Quando ti chiede di registrare una cosa gia\' fatta (un report) o di mettere in calendario una cosa da fare (visita, telefonata, mail), prepara la proposta nel campo azione e nella risposta chiedigli conferma in una frase sola.',
+    'Non proporre un\'azione se non te l\'ha chiesta: alle domande e ai riassunti rispondi e basta, con azione nulla.',
+    'Rispondi SOLO con un oggetto JSON, senza scrivere altro, fatto cosi\': {"risposta":"quello che dici a voce","azione":null,"cliente":""}',
+    'Il campo cliente riempilo solo quando lui passa a parlare di un altro cliente: scrivi il nome come l\'ha detto lui.',
+    'Quando c\'e\' un\'azione, l\'azione e\' fatta cosi\': {"tipo":"report|visita|telefonata|mail","cliente":"nome","testo":"il testo del report o la nota","quando":"AAAA-MM-GG","ora":"HH:MM","canale":"","tipoAzione":"","richiamo":"AAAA-MM-GG","passo":""}',
+    'Nelle azioni: il report e\' una cosa gia\' fatta e non vuole la data; visita, telefonata e mail vanno in calendario e vogliono quando, e l\'ora se l\'ha detta. Lascia vuoto quello che non sai, non indovinare.',
+    'Oggi e\' ' + String(d.oggi || '').slice(0, 10) + '.',
+    dati ? 'Scheda del cliente di cui state parlando, in JSON:\n' + JSON.stringify(dati).slice(0, 60000) : 'Non e\' ancora stato scelto nessun cliente: se ti serve, chiedigli di quale cliente sta parlando.'
+  ].filter(Boolean).join('\n');
+  const storia = (Array.isArray(d.storia) ? d.storia : []).slice(-12)
+    .map(m => ({ role: (m && m.r === 'a') ? 'assistant' : 'user', content: String((m && m.t) || '').slice(0, 4000) }))
+    .filter(m => m.content);
+  const messaggi = storia.concat([{ role: 'user', content: String(frase || '').slice(0, 4000) }]);
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: modello, max_tokens: 700, system: regole, messages: messaggi })
+  });
+  if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
+  const out = await r.json();
+  const grezzo = (out.content || []).map(x => (x && typeof x.text === 'string') ? x.text : '').join('\n').trim();
+  let o = null;
+  try { o = JSON.parse(grezzo); } catch (e) {
+    const m = grezzo.match(/\{[\s\S]*\}/);
+    if (m) { try { o = JSON.parse(m[0]); } catch (e2) { o = null; } }
+  }
+  if (!o || typeof o !== 'object') o = { risposta: grezzo, azione: null, cliente: '' };
+  const az = (o.azione && typeof o.azione === 'object' && ['report', 'visita', 'telefonata', 'mail'].indexOf(o.azione.tipo) >= 0) ? o.azione : null;
+  return {
+    testo: String(o.risposta || '').trim(),
+    azione: az,
+    cliente: String(o.cliente || '').slice(0, 120),
+    uso: contoUso(out, modello)
+  };
+}
+
 /* --- 5) la voce: la frase letta da una voce neurale (OpenAI), con ricaduta sul telefono --- */
 const VOCE_MODELLO = 'gpt-4o-mini-tts';
 const VOCE_RISERVA = 'tts-1';
@@ -256,6 +301,13 @@ export default {
         const r4 = await riassunto(env, d);
         if (!r4.testo) return errore('riassunto non riuscito', 502);
         return risposta({ testo: r4.testo, uso: r4.uso });
+      }
+
+      /* a-ter) la conversazione */
+      if (d.conversa) {
+        const r5 = await conversa(env, d, frase);
+        if (!r5.testo) return errore('risposta vuota', 502);
+        return risposta({ testo: r5.testo, azione: r5.azione, cliente: r5.cliente, tu: frase, uso: r5.uso });
       }
 
       /* b) solo trascrizione, senza campi */
