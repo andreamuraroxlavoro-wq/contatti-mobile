@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.63.0';
+var APP_VER = '1.63.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -4181,18 +4181,25 @@ function vbar(testo, conAnnulla, stato) {
 function nomeNudo(t) {
   return senzaAccenti(t).replace(/\b(s\.?r\.?l\.?|s\.?p\.?a\.?|s\.?n\.?c\.?|s\.?a\.?s\.?|soc\.?|societa|impresa|ditta|di|&|e|c\.?)\b/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
+/* la chiave di un nome: solo lettere e cifre, senza la forma societaria.
+   «C.E.I. SRL» -> «cei». Serve perche' nomeNudo, da solo, scioglie le sigle puntate
+   fino a una lettera e quella lettera si ritroverebbe dentro qualunque parola. */
+function nomeChiave(t) {
+  return senzaAccenti(String(t || '')).replace(/[^a-z0-9]/g, '').replace(/(srls|srl|spa|snc|sas|sapa|scarl|scrl|coop)$/, '');
+}
 function clienteDaNome(nome) {
-  var x = nomeNudo(nome); if (x.length < 3) return '';
+  var x = nomeNudo(nome), xk = nomeChiave(nome);
+  if (xk.length < 3) return '';
   var T = lista(), mig = '', punti = 0;
   T.forEach(function (c) {
-    var y = nomeNudo(c.nome); if (!y) return;
+    var y = nomeNudo(c.nome), yk = nomeChiave(c.nome);
     var p = 0;
-    if (y === x) p = 100;
-    else if (y.indexOf(x) === 0 || x.indexOf(y) === 0) p = 80;
-    else if (y.indexOf(x) >= 0 || x.indexOf(y) >= 0) p = 60;
-    else {
+    if (yk && yk === xk) p = 100;
+    else if (yk.length >= 3 && (yk.indexOf(xk) === 0 || xk.indexOf(yk) === 0)) p = 80;
+    else if (yk.length >= 4 && xk.length >= 4 && (yk.indexOf(xk) >= 0 || xk.indexOf(yk) >= 0)) p = 60;
+    else if (y.length >= 4 && x.length >= 4) {
       var px = x.split(' ').filter(function (w) { return w.length > 2; });
-      var com = px.filter(function (w) { return y.indexOf(w) >= 0; }).length;
+      var com = px.filter(function (w) { return (' ' + y + ' ').indexOf(' ' + w) >= 0 || y.indexOf(w) >= 0; }).length;
       if (px.length && com) p = Math.round(40 * com / px.length);
     }
     if (p > punti) { punti = p; mig = c.id; }
@@ -4345,35 +4352,43 @@ function mostraRiassunto(cid) {
    ============================================================ */
 var CHAT = null;
 function chatNomeCliente() { var c = CHAT && CHAT.cid ? DB.contatti[CHAT.cid] : null; return c ? c.nome : ''; }
-/* il cliente nominato nella frase: prima il nome intero, poi gruppi di una, due o tre parole */
-var CHAT_SALTA = { come: 1, siamo: 1, messi: 1, con: 1, per: 1, del: 1, della: 1, delle: 1, dei: 1, dal: 1, dalla: 1, una: 1, uno: 1, che: 1, cosa: 1, mi: 1, me: 1, ti: 1, lo: 1, la: 1, le: 1, il: 1, un: 1, parlami: 1, raccontami: 1, riassunto: 1, riassumi: 1, situazione: 1, punto: 1, siamocon: 1, fissami: 1, mettimi: 1, segna: 1, registra: 1, report: 1, visita: 1, telefonata: 1, mail: 1, domani: 1, oggi: 1, luned: 1, marted: 1, mercoled: 1, gioved: 1, venerd: 1, sabato: 1, domenica: 1, alle: 1, ore: 1, mezza: 1, quarto: 1, prossima: 1, prossimo: 1, settimana: 1, cliente: 1, sono: 1, stato: 1, stata: 1, andato: 1, andata: 1, chiamato: 1, scritto: 1, da: 1, di: 1, a: 1, e: 1, in: 1, su: 1, non: 1, piu: 1, poi: 1 };
+/* il cliente nominato nella frase. Si confrontano parole intere, mai pezzi di parola:
+   «telefonata domani pomeriggio» non deve diventare un cliente solo perche' contiene una lettera. */
+var CHAT_SALTA = { come: 1, siamo: 1, messi: 1, con: 1, per: 1, del: 1, della: 1, delle: 1, dei: 1, dal: 1, dalla: 1, una: 1, uno: 1, che: 1, cosa: 1, mi: 1, me: 1, ti: 1, lo: 1, la: 1, le: 1, il: 1, un: 1, parlami: 1, raccontami: 1, riassunto: 1, riassumi: 1, situazione: 1, punto: 1, fissami: 1, mettimi: 1, segna: 1, registra: 1, report: 1, visita: 1, telefonata: 1, mail: 1, domani: 1, oggi: 1, ieri: 1, lunedi: 1, martedi: 1, mercoledi: 1, giovedi: 1, venerdi: 1, sabato: 1, domenica: 1, mattina: 1, pomeriggio: 1, sera: 1, alle: 1, ore: 1, mezza: 1, quarto: 1, prossima: 1, prossimo: 1, settimana: 1, mese: 1, cliente: 1, clienti: 1, sono: 1, stato: 1, stata: 1, andato: 1, andata: 1, chiamato: 1, scritto: 1, serve: 1, riepilogo: 1, lavoro: 1, provincia: 1, quanti: 1, quante: 1, tutto: 1, posto: 1, da: 1, di: 1, in: 1, su: 1, non: 1, piu: 1, poi: 1, ho: 1, va: 1 };
+function chatFraseNuda(testo) {
+  /* le sigle puntate diventano una parola sola: «C.E.I.» -> «cei», «A.C.E.S.» -> «aces» */
+  return senzaAccenti(String(testo || '')).replace(/(?:\b[a-z]\.){2,}/g, function (m) { return m.replace(/\./g, ''); });
+}
 function chatClienteDaFrase(testo) {
-  var q = senzaAccenti(String(testo || ''));
+  var q = chatFraseNuda(testo);
   if (q.length < 4) return '';
-  /* 1) il nome dell'azienda dentro la frase, con o senza la forma societaria
-     (A.C.E.S. S.R.L. vale sia «acessrl» sia «aces»: le sigle puntate si leggono lo stesso) */
+  /* 1) il nome intero dell'azienda scritto nella frase */
   var secco = q.replace(/[^a-z0-9]/g, ''), mig = '', lungo = 0;
   lista().forEach(function (c) {
     var pieno = senzaAccenti(c.nome).replace(/[^a-z0-9]/g, '');
-    var nudo = pieno.replace(/(srls|srl|spa|snc|sas|sapa|scarl|scrl|sc|coop)$/, '');
-    [pieno, nudo].forEach(function (n) {
-      if (!n || n.length < 4) return;
-      if (secco.indexOf(n) >= 0 && n.length > lungo) { lungo = n.length; mig = c.id; }
-    });
+    if (pieno.length >= 6 && secco.indexOf(pieno) >= 0 && pieno.length > lungo) { lungo = pieno.length; mig = c.id; }
   });
   if (mig) return mig;
-  /* 2) gruppi di parole: la piu' lunga che trova un cliente vince */
-  var par = q.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function (w) { return w.length > 2 && !CHAT_SALTA[w]; });
-  var i, k, prova, cid;
+  /* 2) parole intere della frase contro la chiave dei nomi: da una a tre parole di fila */
+  var par = q.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+  var chiavi = lista().map(function (c) { return { id: c.id, k: nomeChiave(c.nome) }; }).filter(function (c) { return c.k.length >= 3; });
+  var migliore = '', pt = 0, lung = 0, i, k, gruppo, ck;
   for (k = Math.min(3, par.length); k >= 1; k--) {
     for (i = 0; i + k <= par.length; i++) {
-      prova = par.slice(i, i + k).join(' ');
-      if (prova.length < 4) continue;
-      cid = clienteDaNome(prova);
-      if (cid) return cid;
+      gruppo = par.slice(i, i + k);
+      if (gruppo.every(function (w) { return CHAT_SALTA[w] || w.length < 2; })) continue;
+      ck = gruppo.join('');
+      if (ck.length < 3) continue;
+      chiavi.forEach(function (c) {
+        var p = 0;
+        if (c.k === ck) p = 100;
+        else if (ck.length >= 4 && c.k.indexOf(ck) === 0) p = 80;
+        else if (c.k.length >= 5 && ck.indexOf(c.k) === 0) p = 70;
+        if (p > pt || (p === pt && p > 0 && ck.length > lung)) { pt = p; lung = ck.length; migliore = c.id; }
+      });
     }
   }
-  return '';
+  return pt >= 70 ? migliore : '';
 }
 function chatApri(cid) {
   if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4500); return; }
