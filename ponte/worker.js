@@ -16,6 +16,20 @@ const MODELLO = 'claude-sonnet-5-5';                     /* compila i campi: pre
 const TRASCRIVI = '@cf/openai/whisper-large-v3-turbo';   /* trascrizione, ottima in italiano */
 const TRASCRIVI_RISERVA = '@cf/openai/whisper';          /* se il primo non digerisce il formato */
 const PREZZO = { in: 2 / 1e6, out: 10 / 1e6 };           /* $ per token, listino Sonnet */
+/* i modelli che l'app puo' scegliere, con il loro listino: il conto dei consumi segue il modello usato */
+const MODELLI = {
+  'claude-sonnet-5-5': { in: 2 / 1e6, out: 10 / 1e6 },
+  'claude-haiku-5-5': { in: 0.10 / 1e6, out: 0.50 / 1e6 }
+};
+function modelloDi(d) { const m = d && d.modello; return MODELLI[m] ? m : MODELLO; }
+function prezzoDi(m) { return MODELLI[m] || PREZZO; }
+function contoUso(out, m) {
+  const u = out.usage || {};
+  const inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+  const outTok = u.output_tokens || 0;
+  const pr = prezzoDi(m);
+  return { in: inTok, out: outTok, costo: +(inTok * pr.in + outTok * pr.out).toFixed(6), modello: m };
+}
 const GIORNI = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 
 function cors() {
@@ -82,7 +96,7 @@ async function campi(env, frase, d) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: MODELLO, max_tokens: 700, system: istruzioni, messages: [{ role: 'user', content: frase }] })
+    body: JSON.stringify({ model: modelloDi(d), max_tokens: 700, system: istruzioni, messages: [{ role: 'user', content: frase }] })
   });
   if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
   const out = await r.json();
@@ -93,12 +107,12 @@ async function campi(env, frase, d) {
   const u = out.usage || {};
   const inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
   const outTok = u.output_tokens || 0;
-  esito.uso = { in: inTok, out: outTok, costo: +(inTok * PREZZO.in + outTok * PREZZO.out).toFixed(6), modello: MODELLO };
+  esito.uso = contoUso(out, modelloDi(d));
   return esito;
 }
 
 /* --- 3) sistema il testo di un report: stessa sostanza, forma leggibile --- */
-async function sistemaUnGiro(env, testo, insisti) {
+async function sistemaUnGiro(env, testo, insisti, modello) {
   const breve = testo.length < 700;
   const regole = [
     'Riscrivi il testo che ricevi in una forma piu chiara e corretta, SENZA cambiarne la sostanza, la struttura e la lunghezza.',
@@ -119,7 +133,7 @@ async function sistemaUnGiro(env, testo, insisti) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: MODELLO, max_tokens: 8000, system: regole, messages: [{ role: 'user', content: testo }] })
+    body: JSON.stringify({ model: modello || MODELLO, max_tokens: 8000, system: regole, messages: [{ role: 'user', content: testo }] })
   });
   if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
   const out = await r.json();
@@ -132,7 +146,7 @@ async function sistemaUnGiro(env, testo, insisti) {
     testo: pezzi.join('\n').trim(),
     stop: out.stop_reason || '?',
     tipi: (out.content || []).map(function (x) { return x && x.type; }).join(','),
-    uso: { in: inTok, out: outTok, costo: +(inTok * PREZZO.in + outTok * PREZZO.out).toFixed(6), modello: MODELLO }
+    uso: contoUso(out, modello || MODELLO)
   };
 }
 /* il testo riscritto non puo essere molto piu corto: sarebbe un riassunto, non una riscrittura */
@@ -141,12 +155,12 @@ function troppoCorto(orig, nuovo) {
   const soglia = orig.length < 700 ? 0.45 : 0.80;
   return nuovo.length < orig.length * soglia;
 }
-async function sistema(env, testo) {
-  let a = await sistemaUnGiro(env, testo, false);
+async function sistema(env, testo, modello) {
+  let a = await sistemaUnGiro(env, testo, false, modello);
   if (a.testo && !troppoCorto(testo, a.testo)) return a;
   /* risposta vuota o riassunta: riprovo una volta insistendo, poi dico perche */
-  const b = await sistemaUnGiro(env, testo, true);
-  b.uso = { in: a.uso.in + b.uso.in, out: a.uso.out + b.uso.out, costo: +(a.uso.costo + b.uso.costo).toFixed(6), modello: MODELLO };
+  const b = await sistemaUnGiro(env, testo, true, modello);
+  b.uso = { in: a.uso.in + b.uso.in, out: a.uso.out + b.uso.out, costo: +(a.uso.costo + b.uso.costo).toFixed(6), modello: modello || MODELLO };
   if (b.testo && !troppoCorto(testo, b.testo)) return b;
   if (!b.testo) { b.motivo = 'il modello non ha scritto nulla (stop: ' + b.stop + ', blocchi: ' + (b.tipi || 'nessuno') + ')'; b.testo = ''; return b; }
   b.motivo = 'il modello ha riassunto invece di riscrivere (da ' + testo.length + ' a ' + b.testo.length + ' caratteri): testo lasciato com\'era';
@@ -154,7 +168,33 @@ async function sistema(env, testo) {
   return b;
 }
 
-/* --- 4) la voce: la frase letta da una voce neurale (OpenAI), con ricaduta sul telefono --- */
+/* --- 4) riassunto di un cliente: dai suoi dati, in poche frasi, senza inventare nulla --- */
+async function riassunto(env, d) {
+  const dati = d.dati && typeof d.dati === 'object' ? d.dati : null;
+  if (!dati) throw new Error('mancano i dati del cliente');
+  const domanda = String(d.domanda || '').slice(0, 300);
+  const perVoce = !!d.perVoce;
+  const regole = [
+    'Sei l\'assistente di un venditore di videosorveglianza. Ricevi in JSON la scheda di un suo cliente: anagrafica, situazione attuale, pratiche aperte, appuntamenti in calendario e gli ultimi report.',
+    'Scrivi un riassunto in italiano di quattro o cinque frasi che risponda a: a che punto siamo con questo cliente, che cosa ha chiesto o deciso, che cosa resta da fare e quando, da quanto tempo non lo sentiamo.',
+    'REGOLE: usa SOLO quello che c\'e\' nei dati, non inventare mai fatti, date, importi o impegni; se un\'informazione manca dillo in mezza riga invece di riempire il vuoto; niente elenchi puntati, solo frasi; niente formule di apertura o chiusura.',
+    'Date in forma italiana (3 novembre 2026). Importi in euro con la virgola per i decimali.',
+    perVoce ? 'Il testo verra\' letto ad alta voce mentre la persona guida: frasi brevi, nessuna sigla da sillabare, nessun simbolo, massimo 90 parole.' : '',
+    domanda ? 'Rispondi prima di tutto a questa domanda del venditore: ' + domanda : ''
+  ].filter(Boolean).join('\n');
+  const modello = modelloDi(d);
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: modello, max_tokens: 700, system: regole, messages: [{ role: 'user', content: JSON.stringify(dati).slice(0, 60000) }] })
+  });
+  if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
+  const out = await r.json();
+  const testo = (out.content || []).map(x => (x && typeof x.text === 'string') ? x.text : '').join('\n').trim();
+  return { testo: testo, uso: contoUso(out, modello) };
+}
+
+/* --- 5) la voce: la frase letta da una voce neurale (OpenAI), con ricaduta sul telefono --- */
 const VOCE_MODELLO = 'gpt-4o-mini-tts';
 const VOCE_RISERVA = 'tts-1';
 const VOCE_PREZZO = 15 / 1000000;   /* dollari per carattere: stima buona per il conto dei consumi */
@@ -209,13 +249,20 @@ export default {
         if (!trascritto) return errore('non ho capito nulla dall’audio', 422);
         frase = trascritto;
       }
-      if (!frase) return errore('niente da leggere');
+      if (!frase && !d.riassunto) return errore('niente da leggere');
+
+      /* a-bis) riassunto di un cliente */
+      if (d.riassunto) {
+        const r4 = await riassunto(env, d);
+        if (!r4.testo) return errore('riassunto non riuscito', 502);
+        return risposta({ testo: r4.testo, uso: r4.uso });
+      }
 
       /* b) solo trascrizione, senza campi */
       if (d.soloTesto) return risposta({ testo: frase });
 
       /* c) sistemare il testo di un report già scritto */
-      if (d.sistema) { const r3 = await sistema(env, frase); if (!r3.testo) return errore(r3.motivo || 'testo non riscritto', 502); return risposta({ testo: r3.testo, uso: r3.uso }); }
+      if (d.sistema) { const r3 = await sistema(env, frase, modelloDi(d)); if (!r3.testo) return errore(r3.motivo || 'testo non riscritto', 502); return risposta({ testo: r3.testo, uso: r3.uso }); }
 
       const c = await campi(env, frase, d);
       const TIPI = ['report', 'visita', 'telefonata', 'mail', 'cliente'];
