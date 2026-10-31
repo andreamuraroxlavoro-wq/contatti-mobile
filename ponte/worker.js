@@ -194,6 +194,46 @@ async function riassunto(env, d) {
   return { testo: testo, uso: contoUso(out, modello) };
 }
 
+/* il nome dell'azienda della scheda, per dirlo al modello senza fargli cercare */
+function nomeScheda(dati) {
+  try { return String((dati.cliente && dati.cliente.nome) || 'questo cliente'); } catch (e) { return 'questo cliente'; }
+}
+/* la risposta si legge riga per riga: il parlato e' quello che resta, le righe AZIONE: e CLIENTE: si staccano.
+   Se arrivasse comunque del JSON (anche troncato a meta'), si recupera il solo campo «risposta»
+   invece di mostrare le graffe alla persona. */
+function leggiRisposta(grezzo) {
+  let testo = String(grezzo || '').trim(), azione = null, cliente = '';
+  if (testo.slice(0, 1) === '{') {
+    let o = null;
+    try { o = JSON.parse(testo); } catch (e) { o = null; }
+    if (o && typeof o === 'object') {
+      return {
+        testo: String(o.risposta || '').trim(),
+        azione: (o.azione && typeof o.azione === 'object') ? o.azione : null,
+        cliente: String(o.cliente || '').slice(0, 120)
+      };
+    }
+    /* JSON rotto o tagliato: prendo il testo del campo «risposta» cosi' com'e' */
+    const m = testo.match(/"risposta"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    if (m) {
+      try { testo = JSON.parse('"' + m[1].replace(/\\?$/, '') + '"'); }
+      catch (e) { testo = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'); }
+    }
+  }
+  const righe = testo.split('\n'), tenute = [];
+  righe.forEach(r => {
+    const a = r.match(/^\s*AZIONE\s*:\s*(\{.*)$/i);
+    if (a) {
+      try { azione = JSON.parse(a[1]); } catch (e) { azione = null; }
+      return;
+    }
+    const c = r.match(/^\s*CLIENTE\s*:\s*(.+)$/i);
+    if (c) { cliente = c[1].trim().slice(0, 120); return; }
+    tenute.push(r);
+  });
+  return { testo: tenute.join('\n').trim(), azione: azione, cliente: cliente };
+}
+
 /* --- 4-bis) la conversazione: si parla, lui risponde e, se serve, propone di salvare --- */
 async function conversa(env, d, frase) {
   const modello = modelloDi(d);
@@ -205,12 +245,13 @@ async function conversa(env, d, frase) {
     'Le date dille a parole (martedi 3 novembre). Gli importi in euro con la virgola per i decimali.',
     'Quando ti chiede di registrare una cosa gia\' fatta (un report) o di mettere in calendario una cosa da fare (visita, telefonata, mail), prepara la proposta nel campo azione e nella risposta chiedigli conferma in una frase sola.',
     'Non proporre un\'azione se non te l\'ha chiesta: alle domande e ai riassunti rispondi e basta, con azione nulla.',
-    'Rispondi SOLO con un oggetto JSON, senza scrivere altro, fatto cosi\': {"risposta":"quello che dici a voce","azione":null,"cliente":""}',
-    'Il campo cliente riempilo solo quando lui passa a parlare di un altro cliente: scrivi il nome come l\'ha detto lui.',
-    'Quando c\'e\' un\'azione, l\'azione e\' fatta cosi\': {"tipo":"report|visita|telefonata|mail","cliente":"nome","testo":"il testo del report o la nota","quando":"AAAA-MM-GG","ora":"HH:MM","canale":"","tipoAzione":"","richiamo":"AAAA-MM-GG","passo":""}',
+    'Scrivi la risposta come testo normale, senza virgolette e senza JSON attorno.',
+    'Se e solo se serve, AGGIUNGI IN FONDO una riga a parte che comincia con AZIONE: seguita da un oggetto JSON su una riga sola, fatto cosi\': AZIONE: {"tipo":"report|visita|telefonata|mail","cliente":"nome","testo":"il testo del report o la nota","quando":"AAAA-MM-GG","ora":"HH:MM","canale":"","tipoAzione":"","richiamo":"AAAA-MM-GG","passo":""}',
+    'Se lui passa a parlare di un altro cliente, aggiungi in fondo anche una riga CLIENTE: seguita dal nome come l\'ha detto lui. Queste righe non vengono lette ad alta voce.',
     'Nelle azioni: il report e\' una cosa gia\' fatta e non vuole la data; visita, telefonata e mail vanno in calendario e vogliono quando, e l\'ora se l\'ha detta. Lascia vuoto quello che non sai, non indovinare.',
     'Oggi e\' ' + String(d.oggi || '').slice(0, 10) + '.',
-    dati ? 'Scheda del cliente di cui state parlando, in JSON:\n' + JSON.stringify(dati).slice(0, 60000) : 'Non e\' ancora stato scelto nessun cliente: se ti serve, chiedigli di quale cliente sta parlando.'
+    dati ? 'ATTENZIONE: la scheda qui sotto e\' di ' + nomeScheda(dati) + ' e di nessun altro. Se lui nomina un\'azienda diversa da questa, non hai i suoi dati: dillo subito in una frase, non raccontare quello che leggi qui attribuendolo a un\'altra azienda, e chiedigli di aprire la scheda giusta.' : '',
+    dati ? 'Scheda di ' + nomeScheda(dati) + ', in JSON:\n' + JSON.stringify(dati).slice(0, 60000) : 'Non hai la scheda di nessun cliente: se ti serve, chiedigli di quale cliente sta parlando, e non inventare dati.'
   ].filter(Boolean).join('\n');
   const storia = (Array.isArray(d.storia) ? d.storia : []).slice(-12)
     .map(m => ({ role: (m && m.r === 'a') ? 'assistant' : 'user', content: String((m && m.t) || '').slice(0, 4000) }))
@@ -219,24 +260,14 @@ async function conversa(env, d, frase) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: modello, max_tokens: 700, system: regole, messages: messaggi })
+    body: JSON.stringify({ model: modello, max_tokens: 1200, system: regole, messages: messaggi })
   });
   if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
   const out = await r.json();
   const grezzo = (out.content || []).map(x => (x && typeof x.text === 'string') ? x.text : '').join('\n').trim();
-  let o = null;
-  try { o = JSON.parse(grezzo); } catch (e) {
-    const m = grezzo.match(/\{[\s\S]*\}/);
-    if (m) { try { o = JSON.parse(m[0]); } catch (e2) { o = null; } }
-  }
-  if (!o || typeof o !== 'object') o = { risposta: grezzo, azione: null, cliente: '' };
-  const az = (o.azione && typeof o.azione === 'object' && ['report', 'visita', 'telefonata', 'mail'].indexOf(o.azione.tipo) >= 0) ? o.azione : null;
-  return {
-    testo: String(o.risposta || '').trim(),
-    azione: az,
-    cliente: String(o.cliente || '').slice(0, 120),
-    uso: contoUso(out, modello)
-  };
+  const letto = leggiRisposta(grezzo);
+  const az = (letto.azione && ['report', 'visita', 'telefonata', 'mail'].indexOf(letto.azione.tipo) >= 0) ? letto.azione : null;
+  return { testo: letto.testo, azione: az, cliente: letto.cliente, uso: contoUso(out, modello) };
 }
 
 /* --- 5) la voce: la frase letta da una voce neurale (OpenAI), con ricaduta sul telefono --- */
