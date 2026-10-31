@@ -263,6 +263,9 @@ summary::-webkit-details-marker{display:none}
 .vbar b{color:var(--rosso)}
 .vbar #vbar-t{flex:1;min-width:0}
 .vbar .vb-x{flex:0 0 auto}
+.nc-voce{border:1px solid var(--bordo);border-left:4px solid var(--sz-cron);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:calc(13px * var(--scala));line-height:1.45;background:var(--carta)}
+.nc-voce .nc-ok{margin-top:6px;color:var(--sz-cron)}
+.nc-voce .nc-no{margin-top:6px;color:var(--rosso);font-weight:600}
 .vbar .vb-x{border:1px solid var(--bordo);background:var(--carta);border-radius:10px;padding:6px 10px;font:inherit;font-size:calc(13px * var(--scala));color:var(--tenue)}
 .fab-ind{background:var(--accent);color:#fff;bottom:calc(142px + var(--sab))}
 .fab-ind.trascina{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 26px rgba(0,0,0,.32)}
@@ -870,7 +873,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.53.0';
+var APP_VER = '1.54.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3312,6 +3315,8 @@ function audioAlPonte(blob, idScheda) {
       n: String(d.nota || d.testo || ''),
       passo: String(d.passo || ''),
       cliente: String(d.cliente || ''),
+      tipo: d.tipo === 'cliente' ? 'cliente' : 'report',
+      anagrafica: (d.anagrafica && typeof d.anagrafica === 'object') ? d.anagrafica : {},
       via: 'ponte'
     };
   });
@@ -3484,7 +3489,7 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Scegli quali tabelle di numeri compaiono nella scheda <b>Cruscotto</b> e in che ordine: la spunta le accende, la maniglia le sposta. Almeno una resta sempre accesa.</span></div>');
   h.push('<div class="kpi-ord" id="cru-ord"></div></div>');
   h.push('<div class="opz" id="op-ponte"><h2>Assistente vocale</h2>');
-  h.push('<div class="riga-o"><span>Con il <b>ponte</b> collegato, il tasto <b>Detta il report</b> registra l\'audio e lo fa trascrivere dall\'intelligenza artificiale: testo pulito, gi&agrave; punteggiato, nomi dei clienti riconosciuti, e i campi compilati da soli. Senza ponte l\'app usa il microfono del telefono e legge la frase da sola, senza costi. Se il ponte non risponde, la riserva parte da sola.</span></div>');
+  h.push('<div class="riga-o"><span>Con il <b>ponte</b> collegato, il tasto <b>Detta il report</b> registra l\'audio e lo fa trascrivere dall\'intelligenza artificiale: testo pulito, gi&agrave; punteggiato, nomi dei clienti riconosciuti, e i campi compilati da soli. Senza ponte l\'app usa il microfono del telefono e legge la frase da sola, senza costi. Se il ponte non risponde, la riserva parte da sola. Dal tasto fluttuante col microfono puoi anche dire «inserisci un nuovo cliente» e dettare ragione sociale, indirizzo, telefono, mail e partita IVA: l\'app apre il modulo gi&agrave; compilato, segnalando doppioni e partite IVA sbagliate.</span></div>');
   h.push('<div class="riga-o"><span>Indirizzo del ponte</span><span class="sp"></span><input id="pn-url" type="url" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.url') || '') + '" placeholder="https://…"></div>');
   h.push('<div class="riga-o"><span>Parola d\'ordine</span><span class="sp"></span><input id="pn-tok" type="password" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.tok') || '') + '" placeholder="token"></div>');
   h.push('<div class="az"><button class="btn" id="pn-prova">Prova il ponte</button><button class="btn peri" id="pn-tog">Togli</button></div>');
@@ -3986,6 +3991,50 @@ function scegliClientePerVoce(r) {
   cerca();
   setTimeout(function () { var e = $('#vc-cerca', f); if (e) { e.focus(); e.select(); } }, 120);
 }
+/* la partita IVA italiana: undici cifre con la cifra di controllo */
+function pivaValida(p) {
+  var x = String(p || '').replace(/\D/g, '');
+  if (x.length !== 11) return false;
+  var s = 0;
+  for (var i = 0; i < 11; i++) { var n = +x[i]; if (i % 2) { n *= 2; if (n > 9) n -= 9; } s += n; }
+  return s % 10 === 0;
+}
+/* apre il modulo del contatto nuovo con dentro quello che ho capito, e avverte sui rischi */
+function clienteDaVoce(r) {
+  var a = r.anagrafica || {};
+  if (!a.nome && r.cliente) a.nome = r.cliente;
+  if (!a.nome) { toast('Non ho capito la ragione sociale: dettala di nuovo', 4500); return; }
+  mostraVista('cerca', true);
+  setTimeout(function () {
+    formNuovoContatto();
+    var messi = [];
+    function metti(sel, val, eti) {
+      if (!val) return; var e = $(sel); if (!e) return;
+      e.value = String(val).trim(); e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito'); messi.push(eti);
+    }
+    metti('#nc-nome', a.nome, 'Ragione sociale');
+    metti('#nc-prov', String(a.prov || '').toUpperCase().slice(0, 2), 'Provincia');
+    metti('#nc-piva', String(a.piva || '').replace(/\D/g, ''), 'Partita IVA');
+    metti('#nc-sede', a.sede, 'Sede');
+    metti('#nc-tel', a.tel, 'Telefono');
+    metti('#nc-email', a.email, 'Email');
+    metti('#nc-sito', String(a.sito || '').replace(/^https?:\/\//, ''), 'Sito');
+    metti('#nc-note', a.note || r.testo, 'Note');
+    if (a.cat && CATEGORIE().indexOf(a.cat) >= 0) metti('#nc-cat', a.cat, 'Categoria');
+    /* i controlli: doppione e partita IVA */
+    var avvisi = [];
+    var gemello = clienteDaNome(a.nome);
+    if (gemello && DB.contatti[gemello]) avvisi.push('In archivio c\'è già <b>' + esc(DB.contatti[gemello].nome) + '</b>' + (DB.contatti[gemello].prov ? ' (' + esc(DB.contatti[gemello].prov) + ')' : '') + ': controlla di non fare un doppione.');
+    if (a.piva && !pivaValida(a.piva)) avvisi.push('La partita IVA <b>' + esc(String(a.piva).replace(/\D/g, '')) + '</b> non supera il controllo delle cifre: verificala.');
+    var testa = $('.c', $('#nc-form'));
+    var av = el('div', 'nc-voce');
+    av.innerHTML = '<b>Dettato:</b> ' + esc((r.testo || '').slice(0, 220)) +
+      (messi.length ? '<div class="nc-ok">Ho compilato: ' + messi.join(' · ') + '. Controlla e completa prima di creare il contatto.</div>' : '') +
+      (avvisi.length ? '<div class="nc-no">' + avvisi.join('<br>') + '</div>' : '');
+    testa.insertBefore(av, testa.firstChild);
+    $('#nc-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 300);
+}
 function dettaturaVolante() {
   var b = $('#fab-voce');
   if (REG.attivo) { registraFerma(); return; }
@@ -4001,6 +4050,7 @@ function dettaturaVolante() {
       vbar('Trascrivo l\'audio di ' + durata(sec) + '…', false);
       audioAlPonte(blob, clienteContesto()).then(function (r) {
         vbar(false);
+        if (r.tipo === 'cliente') { clienteDaVoce(r); return; }
         var cid = clienteContesto() || clienteDaNome(r.cliente);
         if (cid && DB.contatti[cid]) reportDaVoce(cid, r); else scegliClientePerVoce(r);
       }, function (e) {
