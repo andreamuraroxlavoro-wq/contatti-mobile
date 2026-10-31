@@ -332,6 +332,22 @@ body.disponi nav.tab button.trascino{opacity:.45;transform:scale(.92)}
 .kpi-r .ki svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .mp-on{margin-left:auto;font-size:calc(10.5px * var(--scala));letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 .kpi-ord{display:flex;flex-direction:column;gap:6px;padding:6px 0}
+/* DETTATURA — il microfono nel modulo del report */
+.dett{border:1px solid color-mix(in srgb,var(--sz-cron) 45%,transparent);background:color-mix(in srgb,var(--sz-cron) 7%,transparent);border-radius:14px;padding:10px;margin-bottom:10px}
+.dett .dett-az{display:flex;align-items:center;gap:10px}
+.dett-bt{display:flex;align-items:center;gap:8px;border:0;border-radius:12px;padding:11px 14px;background:var(--sz-cron);color:#fff;font:inherit;font-weight:600;font-size:calc(14.5px * var(--scala))}
+.dett-bt svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dett-bt.on{background:var(--rosso);animation:dettpuls 1.1s ease-in-out infinite}
+@keyframes dettpuls{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--rosso) 55%,transparent)}50%{box-shadow:0 0 0 10px transparent}}
+.dett .dett-sp{flex:1}
+.dett .dett-aiuto{color:var(--tenue);font-size:calc(12px * var(--scala));margin-top:8px;line-height:1.35}
+.dett-txt{margin-top:9px;padding:9px 10px;border:1px dashed var(--bordo);border-radius:10px;background:var(--carta);font-size:calc(14.5px * var(--scala));min-height:42px;white-space:pre-wrap}
+.dett-txt .prov{color:var(--tenue)}
+.dett-sunto{margin-top:9px;font-size:calc(13px * var(--scala));line-height:1.45}
+.dett-sunto b{color:var(--sz-cron)}
+.dett-sunto .nulla{color:var(--tenue)}
+.capito{animation:capito 1.6s ease-out 1}
+@keyframes capito{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--sz-cron) 60%,transparent);border-color:var(--sz-cron)}100%{box-shadow:0 0 0 9px transparent}}
 .kpi-r{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--bordo);border-radius:12px;background:var(--carta)}
 .kpi-r.on{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .kpi-r .kpi-n{flex:1;font-size:calc(14.5px * var(--scala))}
@@ -838,7 +854,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.49.0';
+var APP_VER = '1.50.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2721,6 +2737,7 @@ function apriScheda(id) {
   /* cronologia */
   h.push('<div class="sz sz-cron"><h3>Cronologia<span class="pill">' + num(ev.length) + '</span></h3><div class="c">');
   h.push('<details id="sc-nuovo"><summary class="btn mini" style="display:inline-block;list-style:none;background:var(--sz-cron);color:#fff;border-color:var(--sz-cron)">+ Registra evento</summary><div class="form" style="margin:10px 0 6px">');
+  h.push(dettaturaHtml());
   h.push('<div class="due"><label>Data <input type="date" id="ev-d" value="' + og + '"></label><label>Ora <input type="time" id="ev-o" value="' + ora() + '"></label></div>');
   h.push('<div class="due"><label>Canale <select id="ev-c">' + CANALI().map(function (x) { return '<option' + (x === 'Telefono' ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label><label>Esito <select id="ev-e"><option value="">(invariato)</option>' + ESITI().filter(function (e) { return e !== 'Da contattare'; }).map(function (e) { return '<option>' + esc(e) + '</option>'; }).join('') + '</select></label></div>');
   h.push('<label>Titolo <input type="text" id="ev-t" placeholder="es. Telefonata con l\'ufficio acquisti"></label><label>Nota <textarea id="ev-n"></textarea></label>');
@@ -2795,6 +2812,7 @@ function apriScheda(id) {
     if (rx) rx.addEventListener('click', function () { if (ri) ri.value = ''; evRicTocco = true; segna(); });
   })();
   $('#ev-salva').addEventListener('click', function () { registraEvento(id); });
+  dettaturaAggancia(id);
 }
 /* MODIFICA ANAGRAFICA dal telefono: le modifiche viaggiano nella raccolta «modificheContatti»; il Mac le applica alla sua
    scheda (per i soci Assodimi come modifiche sopra la base) e rimanda la versione definitiva. Intanto le vedo già qui. */
@@ -2909,6 +2927,223 @@ function salvaSituazione(id, o) {
   salva(); toast('Situazione salvata'); apriScheda(id);
 }
 var evRicTocco = false; /* la data del richiamo si applica solo se l'ho toccata */
+/* ============================================================
+   DETTATURA DEL REPORT — il microfono del telefono scrive, l'app capisce, tu confermi.
+   Niente si salva da solo: i campi vengono riempiti e segnati, il tasto «Registra» resta tuo.
+   La frase viene letta dall'interprete qui sotto, che funziona senza rete; se nelle impostazioni
+   è configurato il ponte AI, la frase passa prima di lì e torna più precisa.
+   ============================================================ */
+var ICO_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
+var ICO_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+function voceDisponibile() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+var VOCE = { rec: null, acceso: false };
+function voceAvvia(suParziale, suFine, suErrore) {
+  var R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) { if (suErrore) suErrore('no'); return; }
+  try { if (VOCE.rec) { VOCE.rec.onend = null; VOCE.rec.abort(); } } catch (e) {}
+  var r = new R(); VOCE.rec = r; VOCE.acceso = true;
+  r.lang = 'it-IT'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+  var fermo = '';
+  r.onresult = function (ev) {
+    var prov = '';
+    for (var i = ev.resultIndex; i < ev.results.length; i++) {
+      var t = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) fermo += (fermo ? ' ' : '') + t.trim(); else prov += t;
+    }
+    if (suParziale) suParziale(fermo, prov.trim());
+  };
+  r.onerror = function (ev) { VOCE.acceso = false; if (suErrore) suErrore(ev.error || 'errore'); };
+  r.onend = function () { VOCE.acceso = false; if (suFine) suFine(fermo); };
+  try { r.start(); } catch (e) { VOCE.acceso = false; if (suErrore) suErrore('avvio'); }
+}
+function voceFerma() { try { if (VOCE.rec) VOCE.rec.stop(); } catch (e) {} VOCE.acceso = false; }
+
+/* --- l'interprete locale: dalla frase ai campi, senza rete --- */
+function senzaAccenti(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+var GIORNI_SET = ['domenica', 'lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato'];
+var MESI_NOME = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+var NUMERI_PAROLA = { uno: 1, una: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, quindici: 15, venti: 20, trenta: 30 };
+function dataPiu(giorni) { var d = new Date(); d.setDate(d.getDate() + giorni); return d.toISOString().slice(0, 10); }
+/* riconosce: domani, dopodomani, lunedì (prossimo), fra N giorni/settimane/mesi, il 12 novembre, 12/11 */
+function dataDaFrase(t) {
+  var x = senzaAccenti(t);
+  if (/\bdopodomani\b/.test(x)) return dataPiu(2);
+  if (/\bdomani\b/.test(x)) return dataPiu(1);
+  var m = x.match(/\b(?:fra|tra)\s+(\w+)\s+(giorni|giorno|settimane|settimana|mesi|mese)\b/);
+  if (m) {
+    var n = parseInt(m[1], 10); if (isNaN(n)) n = NUMERI_PAROLA[m[1]] || 0;
+    if (n > 0) { if (/giorn/.test(m[2])) return dataPiu(n); if (/settiman/.test(m[2])) return dataPiu(n * 7); var d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); }
+  }
+  m = x.match(/\b(?:il\s+)?(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b/);
+  if (m) {
+    var gg = parseInt(m[1], 10), ms = MESI_NOME.indexOf(m[2]), og = new Date(), an = og.getFullYear();
+    var dd = new Date(an, ms, gg); if (dd < new Date(og.toDateString())) dd = new Date(an + 1, ms, gg);
+    return dd.getFullYear() + '-' + String(ms + 1).padStart(2, '0') + '-' + String(gg).padStart(2, '0');
+  }
+  m = x.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+  if (m) {
+    var g2 = parseInt(m[1], 10), m2 = parseInt(m[2], 10), a2 = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+    if (a2 < 100) a2 += 2000;
+    if (g2 >= 1 && g2 <= 31 && m2 >= 1 && m2 <= 12) return a2 + '-' + String(m2).padStart(2, '0') + '-' + String(g2).padStart(2, '0');
+  }
+  for (var i = 0; i < GIORNI_SET.length; i++) {
+    var re = new RegExp('\\b' + GIORNI_SET[i] + '\\b');
+    if (re.test(x)) {
+      var oggiG = new Date().getDay(), delta = (i - oggiG + 7) % 7;
+      if (delta === 0) delta = 7;
+      if (/\bprossim/.test(x) && delta < 7) delta += 7;
+      return dataPiu(delta);
+    }
+  }
+  return '';
+}
+/* sinonimi parlati → voci dell'elenco Tipo Azione, usati solo se la voce esiste davvero */
+var VOCE_ESITI = [
+  [/offerta (inviata|mandata|spedita|partita)|(ho )?(inviato|mandato|spedito|girato) l'offerta/, 'Offerta inviata'],
+  [/proposta (inviata|mandata|spedita)|(ho )?(inviato|mandato|spedito|girato) la proposta/, 'Proposta inviata'],
+  [/proposta da (inviare|mandare|preparare)|devo (mandare|inviare) la proposta/, 'Proposta da inviare'],
+  [/demo (fissata|concordata|in programma)|fissata la demo|abbiamo fissato la demo/, 'Demo fissata'],
+  [/visita (confermata|fissata|concordata)|fissato (la visita|un appuntamento)|appuntamento (fissato|confermato)/, 'Visita confermata'],
+  [/da rivisitare|passo di nuovo|torno a trovarlo/, 'Da rivisitare'],
+  [/da visitare|devo (andare|passare) a trovarlo|va visitato/, 'Da visitare'],
+  [/da richiamare|lo richiamo|richiamare|risentire|risentirci|lo risento/, 'Da richiamare'],
+  [/non (e|sono) interessat|non gli interessa|niente da fare/, 'Non interessato'],
+  [/contattato|ho (parlato|sentito|chiamato)|ci ho parlato/, 'Contattato']
+];
+var VOCE_CANALI = [
+  [/mail|email|posta elettronica|scritto una mail/, 'Email'],
+  [/visit|sono (andato|passato)|di persona|in sede|in azienda/, 'Visita'],
+  [/fiera|allo stand/, 'Fiera'],
+  [/modulo (del )?sito|dal sito/, 'Modulo sito'],
+  [/assodimi|assonolo/, 'Tramite Assodimi'],
+  [/telefon|chiamat|ho sentito|al cellulare/, 'Telefono']
+];
+function vocePrimaFrase(t) {
+  var f = String(t || '').trim().split(/(?<=[.!?])\s+/)[0] || String(t || '').trim();
+  var virgola = f.split(',')[0].trim();
+  if (virgola.length >= 8 && virgola.length <= 70) f = virgola;
+  if (f.length > 70) f = f.slice(0, 67).replace(/\s+\S*$/, '') + '…';
+  return f.charAt(0).toUpperCase() + f.slice(1);
+}
+/* il passo successivo: quello che si è impegnato a fare, se lo dice */
+function vocePasso(t) {
+  var m = String(t || '').match(/(?:prossimo passo|poi devo|devo|gli devo|rimango di|resto di|mi impegno a)\s+([^.!?]{3,120})/i);
+  var chiesto = String(t || '').match(/mi ha chiesto\s+(?:di\s+)?([^.!?]{3,120})/i);
+  if (!m && !chiesto) return '';
+  var v = m ? m[1].trim() : ('Chiede ' + chiesto[1].trim());
+  /* se dopo una virgola si passa a parlare del richiamo, il passo finisce lì */
+  v = v.split(/,\s*(?=(?:e\s+)?(?:lo\s+|li\s+)?(?:richiam|risentir|sentirlo|torno|ripasso|poi\s+lo))/i)[0].trim();
+  return v.charAt(0).toUpperCase() + v.slice(1);
+}
+function leggiFrase(t) {
+  var x = senzaAccenti(t), r = { c: '', e: '', r: '', t: '', n: String(t || '').trim(), passo: '' }, i;
+  var esiti = ESITI();
+  for (i = 0; i < esiti.length; i++) if (x.indexOf(senzaAccenti(esiti[i])) >= 0) { r.e = esiti[i]; break; }
+  if (!r.e) for (i = 0; i < VOCE_ESITI.length; i++) if (VOCE_ESITI[i][0].test(x) && esiti.indexOf(VOCE_ESITI[i][1]) >= 0) { r.e = VOCE_ESITI[i][1]; break; }
+  var canali = CANALI();
+  for (i = 0; i < VOCE_CANALI.length; i++) if (VOCE_CANALI[i][0].test(x) && canali.indexOf(VOCE_CANALI[i][1]) >= 0) { r.c = VOCE_CANALI[i][1]; break; }
+  /* la data vale come richiamo solo se la frase parla di risentirlo */
+  if (/\bricham|\brichiam|risentir|\bsentirlo|\btorno|\bripasso|\bprossim(o|a) (contatto|volta)|\bfissat|\bappuntament|\bdemo\b|\bvisit/.test(x)) r.r = dataDaFrase(t);
+  if (!r.r && /\b(domani|dopodomani|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)\b/.test(x)) r.r = dataDaFrase(t);
+  r.passo = vocePasso(t);
+  r.t = vocePrimaFrase(t);
+  return r;
+}
+
+/* --- il ponte AI (facoltativo): stessa risposta dell'interprete, ma più precisa --- */
+function pontePronto() { try { return !!(localStorage.getItem('cm.ponte.url') || '').trim(); } catch (e) { return false; } }
+function ponteDati() { try { return { url: (localStorage.getItem('cm.ponte.url') || '').trim(), tok: (localStorage.getItem('cm.ponte.tok') || '').trim() }; } catch (e) { return { url: '', tok: '' }; } }
+function frasePonte(testo) {
+  var P = ponteDati();
+  if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+  var corpo = { frase: testo, oggi: oggi(), esiti: ESITI(), canali: CANALI() };
+  var intestazioni = { 'Content-Type': 'application/json' };
+  if (P.tok) intestazioni['X-Token'] = P.tok;
+  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify(corpo) })
+    .then(function (res) { if (!res.ok) throw new Error('ponte: ' + res.status); return res.json(); })
+    .then(function (d) {
+      if (!d || typeof d !== 'object') throw new Error('risposta vuota');
+      var esiti = ESITI(), canali = CANALI();
+      return {
+        c: canali.indexOf(d.canale) >= 0 ? d.canale : '',
+        e: esiti.indexOf(d.esito) >= 0 ? d.esito : '',
+        r: /^\d{4}-\d{2}-\d{2}$/.test(d.richiamo || '') ? d.richiamo : '',
+        t: String(d.titolo || '').slice(0, 90),
+        n: String(d.nota || testo),
+        passo: String(d.passo || ''),
+        via: 'ponte'
+      };
+    });
+}
+function capisciFrase(testo) {
+  if (!pontePronto()) return Promise.resolve(leggiFrase(testo));
+  return frasePonte(testo).catch(function (e) { var l = leggiFrase(testo); l.via = 'locale'; l.errore = e.message || String(e); return l; });
+}
+
+/* --- la barra del microfono dentro il modulo del report --- */
+function dettaturaHtml() {
+  return '<div class="dett" id="dett">' +
+    '<div class="dett-az"><button type="button" class="dett-bt" id="dett-bt">' + ICO_MIC + '<span id="dett-et">Detta il report</span></button><span class="dett-sp"></span>' +
+    '<button type="button" class="btn mini" id="dett-pul">Pulisci</button></div>' +
+    '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale».</span></div>' +
+    '<div class="dett-sunto" id="dett-sunto"></div>' +
+    '<div class="dett-aiuto">Quello che capisco finisce nei campi qui sotto, che si accendono un attimo: controlla e correggi prima di toccare <b>Registra</b>. Niente viene salvato da solo.</div>' +
+    '</div>';
+}
+function dettaturaAggancia(id) {
+  var bt = $('#dett-bt'); if (!bt) return;
+  var et = $('#dett-et'), txt = $('#dett-txt'), sunto = $('#dett-sunto');
+  if (!voceDisponibile()) {
+    bt.disabled = true; et.textContent = 'Microfono non disponibile';
+    txt.innerHTML = '<span class="prov">Questo browser non detta. Usa il tasto microfono della tastiera dentro il campo Nota: il risultato è lo stesso.</span>';
+    return;
+  }
+  var detto = '';
+  function spegni() { bt.classList.remove('on'); bt.innerHTML = ICO_MIC + '<span id="dett-et">Detta il report</span>'; et = $('#dett-et'); }
+  function accendi() { bt.classList.add('on'); bt.innerHTML = ICO_STOP + '<span id="dett-et">Sto ascoltando… tocca per finire</span>'; et = $('#dett-et'); }
+  $('#dett-pul').addEventListener('click', function () {
+    detto = ''; txt.innerHTML = '<span class="prov">Tocca il microfono e racconta.</span>'; sunto.innerHTML = '';
+  });
+  bt.addEventListener('click', function () {
+    if (VOCE.acceso) { voceFerma(); return; }
+    accendi(); sunto.innerHTML = '';
+    voceAvvia(
+      function (fermo, prov) { detto = fermo; txt.innerHTML = esc(fermo) + (prov ? ' <span class="prov">' + esc(prov) + '</span>' : ''); },
+      function (fermo) {
+        spegni(); detto = (fermo || detto || '').trim();
+        if (!detto) { sunto.innerHTML = '<span class="nulla">Non ho sentito nulla.</span>'; return; }
+        txt.textContent = detto;
+        sunto.innerHTML = '<span class="nulla">Sto capendo…</span>';
+        capisciFrase(detto).then(function (r) { dettaturaRiempi(r, sunto); });
+      },
+      function (err) {
+        spegni();
+        txt.innerHTML = '<span class="prov">' + (err === 'not-allowed' ? 'Permesso al microfono negato: concedilo nelle impostazioni del sito.' : err === 'no-speech' ? 'Non ho sentito nulla, riprova.' : 'Microfono non disponibile adesso (serve la rete). Usa il microfono della tastiera nel campo Nota.') + '</span>';
+      }
+    );
+  });
+}
+/* riempie i campi del modulo e dice che cosa ha capito; non salva niente */
+function dettaturaRiempi(r, sunto) {
+  var messi = [];
+  function metti(sel, val, eti) {
+    if (!val) return; var e = $(sel); if (!e) return;
+    e.value = val; e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito');
+    messi.push(eti);
+  }
+  metti('#ev-c', r.c, 'Canale <b>' + esc(r.c) + '</b>');
+  metti('#ev-e', r.e, 'Tipo Azione <b>' + esc(r.e) + '</b>');
+  metti('#ev-t', r.t, 'Titolo');
+  metti('#ev-n', r.n, 'Nota');
+  if (r.r) { var ri = $('#ev-r'); if (ri) { ri.value = r.r; evRicTocco = true; ri.classList.remove('capito'); void ri.offsetWidth; ri.classList.add('capito'); messi.push('Richiamo <b>' + esc(dataIt(r.r)) + '</b>');
+    var n2 = $('#ev-rnota'); if (n2) { n2.innerHTML = 'il richiamo in scheda diventa <b>' + esc(dataIt(r.r)) + '</b>'; n2.classList.add('on'); } } }
+  if (r.passo) { var sp = $('#sc-passo'); if (sp && !sp.value.trim()) { sp.value = r.passo; sp.classList.remove('capito'); void sp.offsetWidth; sp.classList.add('capito'); messi.push('Prossimo passo (da salvare nel riquadro Situazione)'); } }
+  if (!sunto) return;
+  sunto.innerHTML = messi.length
+    ? 'Ho capito: ' + messi.join(' · ') + '.' + (r.via === 'locale' && r.errore ? ' <span class="nulla">Ponte non raggiunto, ho letto la frase da solo.</span>' : '')
+    : '<span class="nulla">Non ho riconosciuto n&eacute; azione n&eacute; data: ho lasciato tutto nella nota, compila a mano.</span>';
+}
+/* appiglio per il banco di prova: la dettatura si collauda senza microfono */
+window.CM_DETT = { leggiFrase: leggiFrase, capisciFrase: capisciFrase, riempi: dettaturaRiempi };
 function registraEvento(id) {
   var d = $('#ev-d').value || oggi(), o = $('#ev-o').value || ora(), c = $('#ev-c').value, e = $('#ev-e').value, t = $('#ev-t').value.trim(), n = $('#ev-n').value.trim(), r = $('#ev-r').value;
   if (!t && !n && !e) { toast('Scrivi almeno un titolo, una nota o un esito'); return; }
@@ -2954,6 +3189,12 @@ function disegnaAltro() {
   h.push('<div class="opz" id="op-cru"><h2>Tabelle del Cruscotto</h2>');
   h.push('<div class="riga-o"><span>Scegli quali tabelle di numeri compaiono nella scheda <b>Cruscotto</b> e in che ordine: la spunta le accende, la maniglia le sposta. Almeno una resta sempre accesa.</span></div>');
   h.push('<div class="kpi-ord" id="cru-ord"></div></div>');
+  h.push('<div class="opz" id="op-ponte"><h2>Assistente vocale</h2>');
+  h.push('<div class="riga-o"><span>Il microfono nel modulo del report funziona sempre. Qui si collega, se c\'&egrave;, il <b>ponte AI</b>: la frase dettata passa di l&igrave; e i campi vengono compilati meglio. Senza ponte legge la frase l\'app, che riconosce azione, data e prossimo passo.</span></div>');
+  h.push('<div class="riga-o"><span>Indirizzo del ponte</span><span class="sp"></span><input id="pn-url" type="url" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.url') || '') + '" placeholder="https://…"></div>');
+  h.push('<div class="riga-o"><span>Parola d\'ordine</span><span class="sp"></span><input id="pn-tok" type="password" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.tok') || '') + '" placeholder="token"></div>');
+  h.push('<div class="az"><button class="btn" id="pn-prova">Prova il ponte</button><button class="btn peri" id="pn-tog">Togli</button></div>');
+  h.push('<div class="riga-o" id="pn-esito" style="color:var(--tenue);font-size:calc(12.5px * var(--scala))"><span>' + (pontePronto() ? 'Ponte configurato.' : 'Nessun ponte: la frase viene letta dall\'app, senza costi e senza rete.') + '</span></div></div>');
   h.push('<div class="opz" id="op-sync"><h2>Sincronizzazione con GESTIONE CONTATTI</h2>');
   h.push('<div class="riga-o"><span>Servizio</span><span class="sp"></span><select id="sy-tipo" class="chip"><option value=""' + (!m.tipo ? ' selected' : '') + '>Nessuno</option><option value="drive"' + (m.tipo === 'drive' ? ' selected' : '') + '>Google Drive</option><option value="server"' + (m.tipo === 'server' ? ' selected' : '') + '>Server personale</option></select></div>');
   h.push('<div class="riga-o" id="sy-url-r" style="display:' + (m.tipo === 'server' ? '' : 'none') + '"><input id="sy-url" type="url" class="chip" style="flex:1" value="' + esc(m.serverUrl || '') + '" placeholder="https://server:8787"></div>');
@@ -2986,6 +3227,27 @@ function disegnaAltro() {
   disegnaKpiOrd();
   disegnaSchedeOrd();
   disegnaCruOrd();
+  (function () {
+    var u = $('#pn-url'), t = $('#pn-tok'), es = $('#pn-esito');
+    function salvaPonte() {
+      try { localStorage.setItem('cm.ponte.url', u.value.trim()); localStorage.setItem('cm.ponte.tok', t.value.trim()); } catch (e) {}
+    }
+    u.addEventListener('change', function () { salvaPonte(); toast('Ponte salvato'); });
+    t.addEventListener('change', salvaPonte);
+    $('#pn-tog').addEventListener('click', function () {
+      u.value = ''; t.value = ''; salvaPonte(); es.innerHTML = '<span>Ponte tolto: la frase viene letta dall\'app.</span>'; toast('Ponte tolto');
+    });
+    $('#pn-prova').addEventListener('click', function () {
+      salvaPonte();
+      if (!pontePronto()) { es.innerHTML = '<span>Metti prima l\'indirizzo del ponte.</span>'; return; }
+      es.innerHTML = '<span>Provo…</span>';
+      frasePonte('Ho chiamato, offerta inviata, richiamare giovedì, mi ha chiesto il prezzo del noleggio trimestrale.').then(function (r) {
+        es.innerHTML = '<span style="color:var(--verde)">Ponte attivo. Prova riuscita: ' + esc([r.c, r.e, r.r ? dataIt(r.r) : ''].filter(Boolean).join(' · ') || 'risposta vuota') + '</span>';
+      }, function (e) {
+        es.innerHTML = '<span style="color:var(--rosso)">Ponte non raggiunto: ' + esc(e.message || String(e)) + '. Intanto la frase la legge l\'app.</span>';
+      });
+    });
+  })();
   $('#dt-json').addEventListener('click', esportaJson);
   $('#dt-xls').addEventListener('click', function () { toast('Preparo il file Excel…'); setTimeout(esportaExcel, 60); });
   $('#dt-imp').addEventListener('click', function () { $('#dt-file').click(); });
