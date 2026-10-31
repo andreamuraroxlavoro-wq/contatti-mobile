@@ -124,6 +124,8 @@ html[data-theme="scuro"] .pill.es{background:#1E3A2C;color:#7BD3A5}html[data-the
   border-radius:12px;padding:9px 11px;box-shadow:var(--ombra)}
 .cg-v:active{background:var(--hover)}
 .cg-w{position:relative}
+.ia-seg{display:inline-flex;align-items:center;gap:6px;font-size:calc(11.5px * var(--scala));color:var(--sz-cron);border:1px solid color-mix(in srgb,var(--sz-cron) 45%,transparent);background:color-mix(in srgb,var(--sz-cron) 10%,transparent);border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}
+.ia-seg span{color:var(--tenue)}
 .cg-ed{position:absolute;right:8px;top:8px;border:1px solid var(--bordo);background:var(--carta);color:var(--tenue);border-radius:10px;padding:6px 10px;font:inherit;font-size:calc(12px * var(--scala));z-index:2}
 .cg-ed:active{background:var(--sfondo2)}
 .cg-v-t{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:calc(12px * var(--scala));color:var(--tenue)}
@@ -879,7 +881,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.55.2';
+var APP_VER = '1.56.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2501,6 +2503,14 @@ function cgTipo(v) {
 }
 var CG_NOMI = { visita: 'Visita', telefonata: 'Telefonata', mail: 'Mail', report: 'Report', azione: 'Cambio di Tipo Azione' };
 function cgTesto(v) { return v.h ? htmlATesto(v.h) : String(v.n || ''); }
+/* segno dei testi passati dall'assistente: la stessa stellina del tasto «Sistema il testo» */
+var SEGNO_IA = '\u2726';
+function quandoIA(iso) {
+  var d = new Date(iso); if (isNaN(d)) return '';
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return 'il ' + p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' alle ' + p(d.getHours()) + '.' + p(d.getMinutes());
+}
+function segnoIA(v, testo) { return v && v.ia ? ' <span class="ia-seg" title="Testo sistemato con l\'assistente ' + esc(quandoIA(v.ia)) + '">' + SEGNO_IA + (testo ? ' <span>sistemato</span>' : '') + '</span>' : ''; }
 /* le voci del periodo scelto, già filtrate e ordinate */
 function cgVoci() {
   var P = cgPeriodo(), q = CG.q.trim().toLowerCase(), l = [];
@@ -2559,7 +2569,7 @@ function disegnaCron() {
       h.push('<div class="cg-w"><button class="cg-ed" data-ev="' + esc(v.id) + '" data-cid="' + esc(x.c.id) + '" title="Apri, modifica o elimina">&#9998;</button>' +
         '<button class="cg-v t-' + x.t + '" data-cid="' + esc(x.c.id) + '">' +
         '<div class="cg-v-t"><span class="cg-o">' + esc(v.o || '') + '</span><span class="cg-tp">' + esc(CG_NOMI[x.t]) + '</span>' +
-        (v.dir ? '<span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + '</div>' +
+        (v.dir ? '<span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + segnoIA(v) + '</div>' +
         '<div class="cg-nm">' + esc(x.c.nome) + (x.c.prov ? ' <i>' + esc(x.c.prov) + '</i>' : '') + '</div>' +
         (v.t ? '<div class="cg-ti">' + esc(v.t) + '</div>' : '') +
         (tx ? '<div class="cg-tx">' + esc(tx) + '</div>' : '') +
@@ -2772,7 +2782,7 @@ function apriScheda(id) {
     '<div class="ev-nota" id="ev-rnota">' + (k.richiamo ? 'in scheda: <b>' + esc(dataIt(k.richiamo)) + '</b> · lascia vuoto per non cambiarlo' : 'vuoto: il richiamo in scheda non cambia') + '</div>');
   h.push('<div class="az"><button class="btn pri" id="ev-salva" style="background:var(--sz-cron);border-color:var(--sz-cron)">Registra</button></div></div></details>');
   if (!ev.length) h.push('<div class="vuoto" style="padding:12px">Nessun evento registrato.</div>');
-  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + '<button class="ev-mod" data-ev="' + esc(v.id) + '" title="Modifica">&#9998; modifica</button>' + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
+  ev.forEach(function (v) { h.push('<div class="ev"><div class="d">' + esc(dataIt(v.d)) + (v.o ? ' ' + esc(v.o) : '') + (v.c ? ' · ' + esc(v.c) : '') + (v.dir ? ' <span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + (v.ref ? ' <span class="pill">' + esc(v.ref) + '</span>' : '') + segnoIA(v) + '</div>' + (v.t ? '<div class="t">' + esc(v.t) + '</div>' : '') + '<button class="ev-mod" data-ev="' + esc(v.id) + '" title="Modifica">&#9998; modifica</button>' + (v.h ? '<div class="h">' + pulisciHtml(v.h) + '</div>' : (v.n ? '<div class="n">' + esc(v.n) + '</div>' : '')) + '</div>'); });
   h.push('</div></div>');
   /* classificazione */
   h.push('<div class="sz sz-clas"><h3>Classificazione</h3><div class="c"><dl class="rg">');
@@ -2840,7 +2850,8 @@ function apriScheda(id) {
   })();
   $('#ev-salva').addEventListener('click', function () { registraEvento(id); });
   dettaturaAggancia(id);
-  sistemaAggancia('#dett-sist', function () { return $('#ev-n').value; }, function (t) { var e = $('#ev-n'); e.value = t; e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito'); });
+  evIA = '';
+  sistemaAggancia('#dett-sist', function () { return $('#ev-n').value; }, function (t) { var e = $('#ev-n'); e.value = t; e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito'); evIA = new Date().toISOString(); var m = $('#ev-ia'); if (m) { m.innerHTML = SEGNO_IA + ' <span>testo sistemato con l\'assistente ' + esc(quandoIA(evIA)) + '</span>'; m.style.display = ''; } });
 }
 /* MODIFICA ANAGRAFICA dal telefono: le modifiche viaggiano nella raccolta «modificheContatti»; il Mac le applica alla sua
    scheda (per i soci Assodimi come modifiche sopra la base) e rimanda la versione definitiva. Intanto le vedo già qui. */
@@ -2925,10 +2936,12 @@ function modificaEvento(cid, vid) {
     '<div class="due"><label>Giorno <input type="date" id="me-d" value="' + esc(v.d || '') + '"></label><label>Ora <input type="time" id="me-o" value="' + esc(v.o || '') + '"></label></div>' +
     '<label>Titolo <input type="text" id="me-t" value="' + esc(v.t || '') + '" placeholder="es. Visita in sede"></label>' +
     '<label>' + (mail ? 'Nota' : 'Testo del report') + ' <textarea id="me-n" rows="9">' + esc(mail ? (v.n || '') : (v.n || htmlATesto(v.h))) + '</textarea></label>' +
-    (mail ? '' : '<div class="az" style="margin-bottom:8px"><button class="btn" id="me-sist">&#10022; Sistema il testo</button></div>') +
+    (mail ? '' : '<div class="az" style="margin-bottom:8px"><button class="btn" id="me-sist">&#10022; Sistema il testo</button><span class="ia-seg" id="me-ia" style="display:none"></span></div>') +
     '<div class="az"><button class="btn elim" id="me-del">Elimina</button><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
   document.body.appendChild(f); document.body.classList.add('me-aperto');
-  if (!mail) sistemaAggancia('#me-sist', function () { return $('#me-n', f).value; }, function (t) { $('#me-n', f).value = t; });
+  var iaMod = v.ia || '';
+  if (!mail) sistemaAggancia('#me-sist', function () { return $('#me-n', f).value; }, function (t) { $('#me-n', f).value = t; iaMod = new Date().toISOString(); var m = $('#me-ia', f); if (m) { m.innerHTML = SEGNO_IA + ' <span>testo sistemato con l\'assistente ' + esc(quandoIA(iaMod)) + '</span>'; m.style.display = ''; } });
+  (function () { var m = $('#me-ia', f); if (m && iaMod) { m.innerHTML = SEGNO_IA + ' <span>testo sistemato con l\'assistente ' + esc(quandoIA(iaMod)) + '</span>'; m.style.display = ''; } })();
   $('#me-ann', f).addEventListener('click', chiudi);
   /* eliminare è definitivo: prima si chiede, dicendo di quale voce si tratta */
   $('#me-del', f).addEventListener('click', function () {
@@ -2944,6 +2957,7 @@ function modificaEvento(cid, vid) {
     if (mail) { if (n) v2.n = n; else delete v2.n; }          /* la mail tiene il suo corpo */
     else if (n) { v2.n = n; if (v.h) v2.h = testoAHtml(n); }
     else { delete v2.n; delete v2.h; }
+    if (iaMod) v2.ia = iaMod;
     DB.eventi[vid] = v2; salva(); chiudi(); toast('Report aggiornato'); apriScheda(cid);
   });
   setTimeout(function () { var n0 = $('#me-n', f); if (n0) n0.focus(); }, 120);
@@ -2956,7 +2970,8 @@ function salvaSituazione(id, o) {
   if ((o.esito || '') !== prima) { var vid = uid('v_'); DB.eventi[vid] = { id: vid, cid: id, d: oggi(), o: ora(), c: k.canale || '', e: o.esito || '', n: '', a: 1, _m: Date.now() }; k.data = oggi(); }
   salva(); toast('Situazione salvata'); apriScheda(id);
 }
-var evRicTocco = false; /* la data del richiamo si applica solo se l'ho toccata */
+var evRicTocco = false;
+var evIA = '';   /* quando il testo del report in corso è passato dall'assistente */ /* la data del richiamo si applica solo se l'ho toccata */
 /* ============================================================
    DETTATURA DEL REPORT — il microfono del telefono scrive, l'app capisce, tu confermi.
    Niente si salva da solo: i campi vengono riempiti e segnati, il tasto «Registra» resta tuo.
@@ -3417,6 +3432,7 @@ function dettaturaHtml() {
     '<button type="button" class="btn mini" id="dett-pul">Pulisci</button></div>' +
     '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale». Il microfono resta acceso finch&eacute; non lo tocchi di nuovo.</span></div>' +
     '<div class="dett-sunto" id="dett-sunto"></div>' +
+    '<div class="ia-seg" id="ev-ia" style="display:none"></div>' +
     '<div class="dett-aiuto">Quello che capisco finisce nei campi qui sotto, che si accendono un attimo: controlla e correggi prima di toccare <b>Registra</b>. Niente viene salvato da solo. <span style="opacity:.6">(dettatura v' + APP_VER + ')</span></div>' +
     '</div>';
 }
@@ -3547,6 +3563,7 @@ function registraEvento(id) {
   var d = $('#ev-d').value || oggi(), o = $('#ev-o').value || ora(), c = $('#ev-c').value, e = $('#ev-e').value, t = $('#ev-t').value.trim(), n = $('#ev-n').value.trim(), r = $('#ev-r').value;
   if (!t && !n && !e) { toast('Scrivi almeno un titolo, una nota o un esito'); return; }
   var vid = uid('v_'); DB.eventi[vid] = { id: vid, cid: id, d: d, o: o, c: c, e: e || (DB.situazioni[id] || {}).esito || '', t: t, n: n, _m: Date.now() };
+  if (evIA) { DB.eventi[vid].ia = evIA; evIA = ''; }
   var k = Object.assign({ id: id }, DB.situazioni[id] || {}); k.data = d; k.canale = c; if (e) k.esito = e;
   if (evRicTocco) { if (r) { k.richiamo = r; } else { delete k.richiamo; } delete k.richiamoApp; }
   evRicTocco = false;
