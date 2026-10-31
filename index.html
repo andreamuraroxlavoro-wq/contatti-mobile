@@ -266,6 +266,12 @@ summary::-webkit-details-marker{display:none}
 .nc-voce{border:1px solid var(--bordo);border-left:4px solid var(--sz-cron);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:calc(13px * var(--scala));line-height:1.45;background:var(--carta)}
 .nc-voce .nc-ok{margin-top:6px;color:var(--sz-cron)}
 .nc-voce .nc-no{margin-top:6px;color:var(--rosso);font-weight:600}
+.cfr{margin-bottom:10px}
+.cfr-t{font-size:calc(11px * var(--scala));letter-spacing:.1em;text-transform:uppercase;color:var(--tenue);margin-bottom:4px}
+.cfr-t.cfr-d{color:var(--sz-cron);font-weight:700}
+.cfr-p{padding:10px 12px;border:1px solid var(--bordo);border-radius:12px;background:var(--sfondo2);color:var(--tenue);font-size:calc(13.5px * var(--scala));line-height:1.45;white-space:pre-wrap;max-height:28vh;overflow:auto}
+.cfr textarea{width:100%;border:1px solid color-mix(in srgb,var(--sz-cron) 55%,transparent);border-radius:12px;padding:10px 12px;font:inherit;font-size:calc(14px * var(--scala));line-height:1.45;background:var(--carta);color:var(--testo)}
+.nota.rosso{border-color:var(--rosso);color:var(--rosso)}
 .vbar .vb-x{border:1px solid var(--bordo);background:var(--carta);border-radius:10px;padding:6px 10px;font:inherit;font-size:calc(13px * var(--scala));color:var(--tenue)}
 .fab-ind{background:var(--accent);color:#fff;bottom:calc(142px + var(--sab))}
 .fab-ind.trascina{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 26px rgba(0,0,0,.32)}
@@ -873,7 +879,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.54.0';
+var APP_VER = '1.55.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2834,6 +2840,7 @@ function apriScheda(id) {
   })();
   $('#ev-salva').addEventListener('click', function () { registraEvento(id); });
   dettaturaAggancia(id);
+  sistemaAggancia('#dett-sist', function () { return $('#ev-n').value; }, function (t) { var e = $('#ev-n'); e.value = t; e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito'); });
 }
 /* MODIFICA ANAGRAFICA dal telefono: le modifiche viaggiano nella raccolta «modificheContatti»; il Mac le applica alla sua
    scheda (per i soci Assodimi come modifiche sopra la base) e rimanda la versione definitiva. Intanto le vedo già qui. */
@@ -2918,8 +2925,10 @@ function modificaEvento(cid, vid) {
     '<div class="due"><label>Giorno <input type="date" id="me-d" value="' + esc(v.d || '') + '"></label><label>Ora <input type="time" id="me-o" value="' + esc(v.o || '') + '"></label></div>' +
     '<label>Titolo <input type="text" id="me-t" value="' + esc(v.t || '') + '" placeholder="es. Visita in sede"></label>' +
     '<label>' + (mail ? 'Nota' : 'Testo del report') + ' <textarea id="me-n" rows="9">' + esc(mail ? (v.n || '') : (v.n || htmlATesto(v.h))) + '</textarea></label>' +
+    (mail ? '' : '<div class="az" style="margin-bottom:8px"><button class="btn" id="me-sist">&#10022; Sistema il testo</button></div>') +
     '<div class="az"><button class="btn elim" id="me-del">Elimina</button><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
   document.body.appendChild(f); document.body.classList.add('me-aperto');
+  if (!mail) sistemaAggancia('#me-sist', function () { return $('#me-n', f).value; }, function (t) { $('#me-n', f).value = t; });
   $('#me-ann', f).addEventListener('click', chiudi);
   /* eliminare è definitivo: prima si chiede, dicendo di quale voce si tratta */
   $('#me-del', f).addEventListener('click', function () {
@@ -3332,10 +3341,76 @@ function usoSegna(u) {
   try { localStorage.setItem('cm.uso', JSON.stringify(tutti)); } catch (e) {}
 }
 
+/* ============================================================
+   SISTEMA IL TESTO — il report scritto o dettato viene riscritto in forma chiara,
+   senza cambiare i fatti. Prima e dopo a confronto: decidi tu se tenerlo.
+   ============================================================ */
+function sistemaAlPonte(testo) {
+  var P = ponteDati();
+  if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+  var intestazioni = { 'Content-Type': 'application/json' };
+  if (P.tok) intestazioni['X-Token'] = P.tok;
+  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ frase: testo, sistema: true, oggi: oggi() }) })
+    .then(function (res) { return res.json().then(function (d) { if (!res.ok || d.errore) throw new Error(d.errore || ('ponte: ' + res.status)); usoSegna(d.uso); return String(d.testo || ''); }); });
+}
+/* controllo di sicurezza: nessun numero del testo originale deve sparire.
+   «4 mesi» che diventa «quattro mesi» non è una perdita: conto anche i numeri scritti in lettere. */
+var NUM_PAROLA = { '1': 'un|uno|una', '2': 'due', '3': 'tre', '4': 'quattro', '5': 'cinque', '6': 'sei', '7': 'sette', '8': 'otto', '9': 'nove', '10': 'dieci',
+  '11': 'undici', '12': 'dodici', '15': 'quindici', '20': 'venti', '24': 'ventiquattro', '30': 'trenta', '50': 'cinquanta', '60': 'sessanta', '100': 'cento', '1000': 'mille' };
+function numeriPersi(prima, dopo) {
+  var a = String(prima).match(/\d[\d.,]*/g) || [], b = String(dopo), bl = b.toLowerCase(), persi = [];
+  a.forEach(function (n) {
+    if (b.indexOf(n) >= 0 || persi.indexOf(n) >= 0) return;
+    var pul = n.replace(/[.,]$/, '');
+    if (b.indexOf(pul) >= 0) return;
+    var pa = NUM_PAROLA[pul];
+    if (pa && new RegExp('\\b(' + pa + ')\\b').test(bl)) return;
+    persi.push(n);
+  });
+  return persi;
+}
+/* il foglio del confronto: prima, dopo, e due tasti */
+function confrontoTesto(prima, dopo, quando) {
+  var f = el('div', 'foglio att-f me-f');
+  function chiudi() { f.remove(); document.body.classList.remove('me-aperto'); }
+  var persi = numeriPersi(prima, dopo);
+  var piuLungo = dopo.length > prima.length * 1.25;
+  f.innerHTML = '<div class="fg"><h4>Testo sistemato</h4>' +
+    (persi.length ? '<div class="nota rosso" style="margin-bottom:10px">Attenzione: nel testo nuovo non compaiono <b>' + esc(persi.join(', ')) + '</b>. Controlla prima di usarlo.</div>' : '') +
+    (piuLungo ? '<div class="nota" style="margin-bottom:10px">Il testo nuovo è più lungo dell\'originale: leggilo con attenzione.</div>' : '') +
+    '<div class="cfr"><div class="cfr-t">Prima</div><div class="cfr-p">' + esc(prima) + '</div></div>' +
+    '<div class="cfr"><div class="cfr-t cfr-d">Dopo</div><textarea id="cfr-dopo" rows="9">' + esc(dopo) + '</textarea></div>' +
+    '<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))">Puoi correggere il testo nuovo qui sopra prima di usarlo. L\'originale resta finché non tocchi «Usa questo».</div>' +
+    '<div class="az"><button class="btn" id="cfr-no">Lascia com\'era</button><button class="btn pri" id="cfr-si">Usa questo</button></div></div>';
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  $('#cfr-no', f).addEventListener('click', chiudi);
+  $('#cfr-si', f).addEventListener('click', function () { var t = $('#cfr-dopo', f).value; chiudi(); quando(t); });
+}
+/* aggancia un tasto «Sistema il testo» a un campo di testo qualsiasi */
+function sistemaAggancia(idTasto, prendi, metti) {
+  var b = $(idTasto); if (!b) return;
+  if (!pontePronto()) { b.style.display = 'none'; return; }
+  b.addEventListener('click', function () {
+    var t = String(prendi() || '').trim();
+    if (t.length < 15) { toast('Scrivi o detta prima il report'); return; }
+    var eti = b.textContent; b.disabled = true; b.textContent = 'Sistemo…';
+    sistemaAlPonte(t).then(function (nuovo) {
+      b.disabled = false; b.textContent = eti;
+      if (!nuovo) { toast('Il ponte non ha restituito nulla'); return; }
+      if (nuovo.trim() === t) { toast('Il testo era già in ordine'); return; }
+      confrontoTesto(t, nuovo, function (scelto) { metti(scelto); toast('Testo sistemato'); });
+    }, function (e) {
+      b.disabled = false; b.textContent = eti;
+      toast('Non riesco a sistemarlo: ' + String(e.message || e).slice(0, 60), 5000);
+    });
+  });
+}
+
 /* --- la barra del microfono dentro il modulo del report --- */
 function dettaturaHtml() {
   return '<div class="dett" id="dett">' +
     '<div class="dett-az"><button type="button" class="dett-bt" id="dett-bt">' + ICO_MIC + '<span id="dett-et">Detta il report</span></button><span class="dett-sp"></span>' +
+    '<button type="button" class="btn mini" id="dett-sist">&#10022; Sistema il testo</button>' +
     '<button type="button" class="btn mini" id="dett-pul">Pulisci</button></div>' +
     '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale». Il microfono resta acceso finch&eacute; non lo tocchi di nuovo.</span></div>' +
     '<div class="dett-sunto" id="dett-sunto"></div>' +
