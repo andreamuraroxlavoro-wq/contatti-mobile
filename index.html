@@ -145,6 +145,20 @@ html[data-theme="scuro"] #dett-sist,html[data-theme="scuro"] #me-sist{color:#241
 .pil-ri > div{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--bordo);padding-bottom:5px}
 .pil-ri span{min-width:110px;font-size:calc(12px * var(--scala));text-transform:uppercase;letter-spacing:.06em;color:var(--tenue)}
 .pil-ri b{font-size:calc(15px * var(--scala));color:var(--testo)}
+.pil-via.ch-via{background:var(--accent)}
+.ch-l{display:flex;flex-direction:column;gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:46vh;min-height:120px;padding:4px 2px;margin-bottom:10px}
+.ch-m{max-width:88%;padding:10px 13px;border-radius:14px;font-size:calc(15.5px * var(--scala));line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.ch-m.tu{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.ch-m.app{align-self:flex-start;background:var(--campo);color:var(--testo);border:1px solid var(--bordo);border-bottom-left-radius:5px}
+.ch-m.pensa{opacity:.75;font-style:italic}
+.ch-m.err{background:color-mix(in srgb,var(--rosso) 14%,transparent);border-color:var(--rosso);color:var(--testo)}
+.ch-prop{align-self:stretch;max-width:100%;border:2px solid var(--ambra,#E0A106);border-radius:14px;padding:12px;background:color-mix(in srgb,var(--ambra,#E0A106) 10%,transparent)}
+.ch-prop h5{margin:0 0 8px;font-size:calc(14px * var(--scala));text-transform:uppercase;letter-spacing:.06em;color:var(--tenue)}
+.ch-prop textarea{width:100%;margin-top:8px;font:inherit;font-size:calc(14.5px * var(--scala));padding:8px;border-radius:10px;border:1px solid var(--bordo);background:var(--campo);color:var(--testo)}
+.ch-prop .az{display:flex;gap:8px;margin-top:10px}
+.ch-scrivi{display:flex;gap:8px;margin-top:10px}
+.ch-scrivi input{flex:1;min-width:0;font:inherit;font-size:calc(15px * var(--scala));padding:10px 12px;border-radius:12px;border:1px solid var(--bordo);background:var(--campo);color:var(--testo)}
+.ch .pil-mic{margin-top:2px}
 .pil-tx{display:block;margin-bottom:8px;font-size:calc(12.5px * var(--scala));color:var(--tenue)}
 .pil-mic{display:flex;justify-content:center;margin:18px 0 14px}
 .pil-b{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:190px;min-height:120px;padding:18px 26px;border:0;border-radius:18px;background:var(--accent);color:#fff;font-weight:700;font-size:calc(15px * var(--scala))}
@@ -925,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.62.0';
+var APP_VER = '1.63.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2225,6 +2239,7 @@ function attForm(o) {
   function disegnaScelta() {
     var h = ['<div class="fg"><h4>Che cosa vuoi fare?</h4>' +
       '<button type="button" class="pil-via" id="att-voce">' + ICO_MIC + '<b>Dillo a voce</b><span>ti guido io, passo per passo</span></button>' +
+      '<button type="button" class="pil-via ch-via" id="att-chat">' + ICO_MIC + '<b>Parla con l\'app</b><span>chiedi, rispondo e salvo solo se confermi</span></button>' +
       '<div class="att-scelta">'];
     ATT_PIANIFICA.forEach(function (t) {
       h.push('<button class="t-' + t.id + '" data-t="' + t.id + '">' + CAL_ICO[t.ico] + '<b>' + esc(t.nome) + '</b><span>da fare: va in calendario</span></button>');
@@ -2235,6 +2250,8 @@ function attForm(o) {
     $('#att-ann', f).addEventListener('click', chiudi);
     var bv = $('#att-voce', f);
     if (bv) bv.addEventListener('click', function () { var cid = a.cid; chiudi(); pilApri(cid); });
+    var bc = $('#att-chat', f);
+    if (bc) bc.addEventListener('click', function () { var cid = a.cid; chiudi(); chatApri(cid); });
     $$('.att-scelta button', f).forEach(function (b) {
       b.addEventListener('click', function () {
         a.tipo = b.dataset.t;
@@ -4308,9 +4325,10 @@ function mostraRiassunto(cid) {
   f.innerHTML = '<div class="fg"><h4>' + esc(c.nome) + '</h4>' +
     '<div class="pil-dom" id="ri-t" style="font-size:calc(16px * var(--scala));line-height:1.5">Sto guardando la scheda e gli ultimi report…</div>' +
     '<div class="riga-o" id="ri-n" style="color:var(--tenue);font-size:calc(12px * var(--scala))"></div>' +
-    '<div class="az"><button class="btn" id="ri-voce" style="display:none">&#128266; Rileggi</button><button class="btn pri" id="ri-x">Chiudi</button></div></div>';
+    '<div class="az"><button class="btn" id="ri-voce" style="display:none">&#128266; Rileggi</button><button class="btn" id="ri-chat">Parlane con me</button><button class="btn pri" id="ri-x">Chiudi</button></div></div>';
   document.body.appendChild(f); document.body.classList.add('me-aperto');
   $('#ri-x', f).addEventListener('click', chiudi);
+  $('#ri-chat', f).addEventListener('click', function () { chiudi(); chatApri(cid); });
   riassuntoAlPonte(cid, '', guidaVoce()).then(function (t) {
     $('#ri-t', f).innerHTML = esc(t).replace(/\n+/g, '<br><br>');
     var u = usoLetto()[usoMese()] || {};
@@ -4320,6 +4338,235 @@ function mostraRiassunto(cid) {
   }, function (e) {
     $('#ri-t', f).innerHTML = '<span style="color:var(--rosso)">Non sono riuscito a fare il riassunto: ' + esc(String(e.message || e).slice(0, 120)) + '</span>';
   });
+}
+/* ============================================================
+   PARLA CON L'APP — la conversazione a voce. Si chiede, lui risponde e legge;
+   quando esce qualcosa da salvare lo propone e aspetta la conferma. Niente si salva da solo.
+   ============================================================ */
+var CHAT = null;
+function chatNomeCliente() { var c = CHAT && CHAT.cid ? DB.contatti[CHAT.cid] : null; return c ? c.nome : ''; }
+/* il cliente nominato nella frase: prima il nome intero, poi gruppi di una, due o tre parole */
+var CHAT_SALTA = { come: 1, siamo: 1, messi: 1, con: 1, per: 1, del: 1, della: 1, delle: 1, dei: 1, dal: 1, dalla: 1, una: 1, uno: 1, che: 1, cosa: 1, mi: 1, me: 1, ti: 1, lo: 1, la: 1, le: 1, il: 1, un: 1, parlami: 1, raccontami: 1, riassunto: 1, riassumi: 1, situazione: 1, punto: 1, siamocon: 1, fissami: 1, mettimi: 1, segna: 1, registra: 1, report: 1, visita: 1, telefonata: 1, mail: 1, domani: 1, oggi: 1, luned: 1, marted: 1, mercoled: 1, gioved: 1, venerd: 1, sabato: 1, domenica: 1, alle: 1, ore: 1, mezza: 1, quarto: 1, prossima: 1, prossimo: 1, settimana: 1, cliente: 1, sono: 1, stato: 1, stata: 1, andato: 1, andata: 1, chiamato: 1, scritto: 1, da: 1, di: 1, a: 1, e: 1, in: 1, su: 1, non: 1, piu: 1, poi: 1 };
+function chatClienteDaFrase(testo) {
+  var q = senzaAccenti(String(testo || ''));
+  if (q.length < 4) return '';
+  /* 1) il nome dell'azienda dentro la frase, con o senza la forma societaria
+     (A.C.E.S. S.R.L. vale sia «acessrl» sia «aces»: le sigle puntate si leggono lo stesso) */
+  var secco = q.replace(/[^a-z0-9]/g, ''), mig = '', lungo = 0;
+  lista().forEach(function (c) {
+    var pieno = senzaAccenti(c.nome).replace(/[^a-z0-9]/g, '');
+    var nudo = pieno.replace(/(srls|srl|spa|snc|sas|sapa|scarl|scrl|sc|coop)$/, '');
+    [pieno, nudo].forEach(function (n) {
+      if (!n || n.length < 4) return;
+      if (secco.indexOf(n) >= 0 && n.length > lungo) { lungo = n.length; mig = c.id; }
+    });
+  });
+  if (mig) return mig;
+  /* 2) gruppi di parole: la piu' lunga che trova un cliente vince */
+  var par = q.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function (w) { return w.length > 2 && !CHAT_SALTA[w]; });
+  var i, k, prova, cid;
+  for (k = Math.min(3, par.length); k >= 1; k--) {
+    for (i = 0; i + k <= par.length; i++) {
+      prova = par.slice(i, i + k).join(' ');
+      if (prova.length < 4) continue;
+      cid = clienteDaNome(prova);
+      if (cid) return cid;
+    }
+  }
+  return '';
+}
+function chatApri(cid) {
+  if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4500); return; }
+  var f = el('div', 'foglio pil-f ch-f');
+  CHAT = { f: f, cid: cid || '', storia: [], occupato: false };
+  f.innerHTML = '<div class="fg pil ch"><div class="pil-top"><b id="ch-chi">Parla con l\'app</b><button class="btn mini" id="ch-x">Chiudi</button></div>' +
+    '<div class="ch-l" id="ch-l"></div>' +
+    '<div class="pil-mic"><button type="button" id="ch-bt" class="pil-b">' + ICO_MIC + '<span id="ch-et">Tocca e parla</span></button></div>' +
+    '<div class="ch-scrivi"><input type="text" id="ch-in" placeholder="oppure scrivi qui…" autocomplete="off"><button class="btn" id="ch-man">Invia</button></div></div>';
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  $('#ch-x', f).addEventListener('click', chatChiudi);
+  $('#ch-bt', f).addEventListener('click', chatMic);
+  $('#ch-man', f).addEventListener('click', chatDaTastiera);
+  $('#ch-in', f).addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); chatDaTastiera(); } });
+  chatChi();
+  var ap = chatNomeCliente()
+    ? 'Dimmi pure: stiamo parlando di ' + chatNomeCliente() + '.'
+    : 'Dimmi pure. Posso raccontarti come siamo messi con un cliente, registrare un report o metterti una cosa in calendario.';
+  chatRiga('app', ap);
+  if (guidaVoce()) parla(ap);
+}
+function chatChiudi() {
+  if (!CHAT) return;
+  zittisci();
+  try { if (REG.attivo) { REG.pezzi = []; registraFerma(); } } catch (e) {}
+  CHAT.f.remove(); document.body.classList.remove('me-aperto'); CHAT = null;
+}
+function chatChi() {
+  if (!CHAT) return;
+  var n = chatNomeCliente();
+  $('#ch-chi', CHAT.f).textContent = n ? 'Parliamo di ' + n : 'Parla con l\'app';
+}
+function chatRiga(chi, testo, classe) {
+  if (!CHAT) return null;
+  var l = $('#ch-l', CHAT.f);
+  var d = el('div', 'ch-m ' + (chi === 'tu' ? 'tu' : 'app') + (classe ? ' ' + classe : ''));
+  d.textContent = testo;
+  l.appendChild(d); l.scrollTop = l.scrollHeight;
+  return d;
+}
+function chatOccupato(si, etichetta) {
+  if (!CHAT) return;
+  CHAT.occupato = si;
+  var b = $('#ch-bt', CHAT.f); if (b) b.disabled = si && etichetta !== 'Ho finito';
+  var e = $('#ch-et', CHAT.f); if (e) e.textContent = etichetta || 'Tocca e parla';
+  var m = $('#ch-man', CHAT.f); if (m) m.disabled = !!si;
+}
+function chatDaTastiera() {
+  if (!CHAT || CHAT.occupato) return;
+  var i = $('#ch-in', CHAT.f), t = i.value.trim();
+  if (!t) return;
+  i.value = '';
+  chatDiciTu(t);
+}
+/* il microfono: registra, il ponte trascrive, poi parte la risposta */
+function chatMic() {
+  if (!CHAT) return;
+  if (REG.attivo) { registraFerma(); return; }
+  if (!registraDisponibile()) { toast('Questo telefono non registra l\'audio', 4000); return; }
+  zittisci();
+  chatOccupato(true, 'Ho finito');
+  var b = $('#ch-bt', CHAT.f); b.classList.add('reg');
+  registraAvvia(
+    function (sec) { var e = $('#ch-et', CHAT.f); if (e) e.textContent = 'Ho finito · ' + durata(sec); },
+    function (blob, sec) {
+      if (!CHAT) return;
+      b.classList.remove('reg');
+      if (!blob || blob.size < 1200 || sec < 1) { chatOccupato(false); toast('Registrazione troppo breve'); return; }
+      chatOccupato(true, 'Sto capendo…');
+      chatTrascrivi(blob).then(function (testo) {
+        if (!CHAT) return;
+        if (!testo) { chatOccupato(false); toast('Non ho capito'); return; }
+        chatDiciTu(testo);
+      }, function (e) {
+        if (!CHAT) return;
+        chatOccupato(false);
+        chatRiga('app', 'Non sono riuscito a trascrivere: ' + String(e.message || e).slice(0, 120), 'err');
+      });
+    },
+    function (err) { if (!CHAT) return; b.classList.remove('reg'); chatOccupato(false); toast(err === 'NotAllowedError' ? 'Permesso al microfono negato' : 'Microfono non disponibile', 4000); }
+  );
+}
+function chatTrascrivi(blob) {
+  var P = ponteDati();
+  if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+  return blobBase64(blob).then(function (b64) {
+    var h = { 'Content-Type': 'application/json' };
+    if (P.tok) h['X-Token'] = P.tok;
+    return fetch(P.url, { method: 'POST', headers: h, body: JSON.stringify({ audio: b64, lingua: 'it', soloTesto: true, nomi: nomiPerVoce(CHAT ? CHAT.cid : '') }) });
+  }).then(function (r) {
+    return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return String(d.testo || '').trim(); });
+  });
+}
+/* una battuta: la tua frase entra, il ponte risponde, la risposta si legge e si ascolta */
+function chatDiciTu(testo) {
+  if (!CHAT) return;
+  chatRiga('tu', testo);
+  CHAT.storia.push({ r: 'u', t: testo });
+  var trovato = chatClienteDaFrase(testo);
+  if (trovato && trovato !== CHAT.cid) { CHAT.cid = trovato; chatChi(); }
+  chatOccupato(true, 'Ci penso…');
+  var pensa = chatRiga('app', 'Ci penso…', 'pensa');
+  chatAlPonte(testo).then(function (r) {
+    if (!CHAT) return;
+    if (pensa) pensa.remove();
+    chatOccupato(false);
+    var t = r.testo || '';
+    CHAT.storia.push({ r: 'a', t: t });
+    chatRiga('app', t);
+    if (r.cliente) { var c2 = clienteDaNome(r.cliente); if (c2 && c2 !== CHAT.cid) { CHAT.cid = c2; chatChi(); } }
+    if (r.azione) chatProposta(r.azione);
+    if (guidaVoce()) parla(t);
+  }, function (e) {
+    if (!CHAT) return;
+    if (pensa) pensa.remove();
+    chatOccupato(false);
+    chatRiga('app', 'Non sono riuscito a rispondere: ' + String(e.message || e).slice(0, 140), 'err');
+  });
+}
+function chatAlPonte(frase) {
+  var P = ponteDati();
+  if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+  var h = { 'Content-Type': 'application/json' };
+  if (P.tok) h['X-Token'] = P.tok;
+  var corpo = { conversa: true, frase: frase, storia: CHAT.storia.slice(-12, -1), oggi: oggi(), modello: modelloTesti() };
+  if (CHAT.cid) corpo.dati = datiPerRiassunto(CHAT.cid);
+  return fetch(P.url, { method: 'POST', headers: h, body: JSON.stringify(corpo) })
+    .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
+    .then(function (d) { usoSegna(d.uso); return d; });
+}
+/* la proposta: scritta per intero, modificabile, e salvata solo se tocchi «Salva» */
+function chatProposta(az) {
+  if (!CHAT) return;
+  var cid = az.cliente ? (clienteDaNome(az.cliente) || CHAT.cid) : CHAT.cid;
+  var nome = cid && DB.contatti[cid] ? DB.contatti[cid].nome : (az.cliente || '');
+  var righe = [['Che cosa', pilTipoNome(az.tipo)], ['Cliente', nome || '— da scegliere —']];
+  if (az.tipo === 'report') {
+    if (az.canale) righe.push(['Canale', az.canale]);
+    if (az.tipoAzione) righe.push(['Tipo Azione', az.tipoAzione]);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(az.richiamo || '')) righe.push(['Richiamo', dataIt(az.richiamo)]);
+    if (az.passo) righe.push(['Prossimo passo', az.passo]);
+  } else {
+    righe.push(['Quando', (/^\d{4}-\d{2}-\d{2}$/.test(az.quando || '') ? dataIt(az.quando) : '— da scegliere —') + (az.ora ? ' alle ' + az.ora : ' · orario libero')]);
+  }
+  var c = el('div', 'ch-m ch-prop');
+  c.innerHTML = '<h5>Vuoi che lo salvi?</h5><div class="pil-ri">' +
+    righe.map(function (r) { return '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1] || '—') + '</b></div>'; }).join('') + '</div>' +
+    '<textarea rows="' + (az.tipo === 'report' ? 5 : 3) + '">' + esc(az.testo || '') + '</textarea>' +
+    '<div class="az"><button class="btn pri" data-k="ok">Salva</button><button class="btn" data-k="no">Lascia stare</button></div>';
+  var l = $('#ch-l', CHAT.f); l.appendChild(c); l.scrollTop = l.scrollHeight;
+  $$('button', c).forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.k === 'no') { c.remove(); chatRiga('app', 'Va bene, non salvo niente.'); return; }
+      az.testo = $('textarea', c).value.trim();
+      az._cid = cid;
+      if (chatSalva(az)) c.remove();
+    });
+  });
+}
+function chatSalva(az) {
+  var cid = az._cid || CHAT.cid;
+  if (!cid) { toast('Dimmi prima di quale cliente'); chatRiga('app', 'Mi manca il cliente: dimmi il nome e riproviamo.'); return false; }
+  var nome = DB.contatti[cid] ? DB.contatti[cid].nome : '';
+  if (az.tipo === 'report') {
+    var vid = uid('v_');
+    DB.eventi[vid] = { id: vid, cid: cid, d: oggi(), o: ora(), c: (CANALI().indexOf(az.canale) >= 0 ? az.canale : ''), e: (ESITI().indexOf(az.tipoAzione) >= 0 ? az.tipoAzione : ''), t: String(az.titolo || '').slice(0, 90), n: az.testo || '', _m: Date.now() };
+    var k = Object.assign({ id: cid }, DB.situazioni[cid] || {});
+    k.data = oggi();
+    if (CANALI().indexOf(az.canale) >= 0) k.canale = az.canale;
+    if (ESITI().indexOf(az.tipoAzione) >= 0) k.esito = az.tipoAzione;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(az.richiamo || '')) { k.richiamo = az.richiamo; delete k.richiamoApp; }
+    if (az.passo) k.passo = az.passo;
+    k._m = Date.now(); DB.situazioni[cid] = k;
+    salva();
+    toast('Report registrato per ' + nome);
+    var fr = 'Fatto. Report registrato per ' + nome + '.';
+    chatRiga('app', fr); CHAT.storia.push({ r: 'a', t: fr });
+    if (guidaVoce()) parla(fr);
+    if (document.body.classList.contains('sc-aperta') && schedaId === cid) apriScheda(cid);
+    return true;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(az.quando || '')) { toast('Manca il giorno'); chatRiga('app', 'Mi manca il giorno: dimmi quando e lo metto in calendario.'); return false; }
+  var a = { tipo: az.tipo, cid: cid, d: az.quando, o: /^\d{2}:\d{2}$/.test(az.ora || '') ? az.ora : '', nota: az.testo || '' };
+  if (!a.o) { delete a.o; a.oraLibera = 1; }
+  attSalva(a);
+  toast(pilTipoNome(az.tipo) + ' in calendario: ' + dataIt(a.d) + (a.o ? ' alle ' + a.o : ''));
+  var f2 = 'Fatto. ' + pilTipoNome(az.tipo) + ' da ' + nome + ' in calendario ' + dataParlata(a.d) + (a.o ? ' ' + oraParlata(a.o) : '') + '.';
+  chatRiga('app', f2); CHAT.storia.push({ r: 'a', t: f2 });
+  if (guidaVoce()) parla(f2);
+  if (vista === 'cal') { CAL.sel = a.d; CAL.rif = a.d; disegnaCal(); }
+  else if (vista === 'oggi') disegnaOggi();
+  else if (document.body.classList.contains('sc-aperta') && schedaId) apriScheda(schedaId);
+  return true;
 }
 /* ============================================================
    PILOTA VOCALE — «Dillo a voce · ti guido io»
