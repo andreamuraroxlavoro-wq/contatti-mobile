@@ -925,7 +925,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.59.0';
+var APP_VER = '1.60.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -946,7 +946,9 @@ var IDB = (function () {
   function db() { return new Promise(function (ris, rej) { var r = indexedDB.open('contatti_mobile', 1); r.onupgradeneeded = function (e) { e.target.result.createObjectStore('kv'); }; r.onsuccess = function (e) { ris(e.target.result); }; r.onerror = function () { rej(r.error); }; }); }
   return {
     leggi: function (k) { return db().then(function (d) { return new Promise(function (ris) { var g = d.transaction('kv').objectStore('kv').get(k); g.onsuccess = function () { ris(g.result); }; g.onerror = function () { ris(undefined); }; }); }).catch(function () { return undefined; }); },
-    scrivi: function (k, v) { return db().then(function (d) { return new Promise(function (ris) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = function () { ris(true); }; t.onerror = function () { ris(false); }; }); }).catch(function () { return false; }); }
+    scrivi: function (k, v) { return db().then(function (d) { return new Promise(function (ris) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = function () { ris(true); }; t.onerror = function () { ris(false); }; }); }).catch(function () { return false; }); },
+    chiavi: function () { return db().then(function (d) { return new Promise(function (ris) { var g = d.transaction('kv').objectStore('kv').getAllKeys(); g.onsuccess = function () { ris(g.result || []); }; g.onerror = function () { ris([]); }; }); }).catch(function () { return []; }); },
+    cancella: function (k) { return db().then(function (d) { return new Promise(function (ris) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = function () { ris(true); }; t.onerror = function () { ris(false); }; }); }).catch(function () { return false; }); }
   };
 })();
 var salvaT = null;
@@ -3676,7 +3678,9 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Guida a voce<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">le domande del pilota vengono lette ad alta voce</span></span><span class="sp"></span><input type="checkbox" id="pn-guida" style="width:26px;height:26px"' + (guidaVoce() ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Voce naturale dal ponte<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">voce neurale invece di quella del telefono; ogni frase si sente una volta sola a pagamento, poi resta salvata qui</span></span><span class="sp"></span><input type="checkbox" id="pn-vocen" style="width:26px;height:26px"' + (voceNeurale() ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Quale voce</span><span class="sp"></span><select id="pn-vocenome" class="chip">' + VOCI.map(function (v) { return '<option value="' + esc(v[0]) + '"' + (voceNome() === v[0] ? ' selected' : '') + '>' + esc(v[1]) + '</option>'; }).join('') + '</select></div>');
-  h.push('<div class="az"><button class="btn" id="pn-vocep">Prova la voce</button></div>');
+  h.push('<div class="riga-o"><span>Velocit&agrave; della voce</span><span class="sp"></span><b id="pn-vele">' + voceVelTesto() + '</b></div>');
+  h.push('<div class="riga-o"><input type="range" id="pn-vel" min="0.8" max="1.6" step="0.05" value="' + voceVel() + '" style="flex:1"></div>');
+  h.push('<div class="az"><button class="btn pri" id="pn-vocep">Prova la voce</button><button class="btn" id="pn-vocer">Rifai le frasi salvate</button></div>');
   h.push('<div class="riga-o"><span>Indirizzo del ponte</span><span class="sp"></span><input id="pn-url" type="url" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.url') || '') + '" placeholder="https://…"></div>');
   h.push('<div class="riga-o"><span>Parola d\'ordine</span><span class="sp"></span><input id="pn-tok" type="password" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.tok') || '') + '" placeholder="token"></div>');
   h.push('<div class="az"><button class="btn" id="pn-prova">Prova il ponte</button><button class="btn peri" id="pn-tog">Togli</button></div>');
@@ -3737,6 +3741,26 @@ function disegnaAltro() {
     if (vnm) vnm.addEventListener('change', function () { try { localStorage.setItem('cm.voceNome', vnm.value); } catch (e) {} parla('Ciao Andrea, sono io che ti guido. Per quale cliente registriamo?'); });
     var vp2 = $('#pn-vocep');
     if (vp2) vp2.addEventListener('click', function () { parla('Ciao Andrea, sono io che ti guido. Per quale cliente registriamo?'); });
+    var vl = $('#pn-vel'), vle = $('#pn-vele');
+    if (vl) {
+      vl.addEventListener('input', function () { if (vle) vle.textContent = voceVelTesto(parseFloat(vl.value)); });
+      vl.addEventListener('change', function () {
+        voceVelSegna(parseFloat(vl.value));
+        if (vle) vle.textContent = voceVelTesto();
+        parla('Ecco come parlo a questa velocit&agrave;.');
+      });
+    }
+    var vr = $('#pn-vocer');
+    if (vr) vr.addEventListener('click', function () {
+      vr.disabled = true; vr.textContent = 'Pulisco…';
+      IDB.chiavi().then(function (l) {
+        var v = l.filter(function (k) { return typeof k === 'string' && k.indexOf('voce:') === 0; });
+        return Promise.all(v.map(function (k) { return IDB.cancella(k); })).then(function () { return v.length; });
+      }).then(function (n) {
+        vr.disabled = false; vr.textContent = 'Rifai le frasi salvate';
+        toast(n ? 'Tolte ' + num(n) + ' frasi: si rifanno alla prossima volta' : 'Nessuna frase salvata');
+      });
+    });
     $('#pn-tog').addEventListener('click', function () {
       u.value = ''; t.value = ''; salvaPonte(); es.innerHTML = '<span>Ponte tolto: la frase viene letta dall\'app.</span>'; toast('Ponte tolto');
     });
@@ -4242,6 +4266,9 @@ function guidaVoceSegna(v) { try { localStorage.setItem('cm.voceGuida', v ? '1' 
 function voceNeurale() { try { return localStorage.getItem('cm.voceNeurale') !== '0'; } catch (e) { return true; } }
 function voceNeuraleSegna(v) { try { localStorage.setItem('cm.voceNeurale', v ? '1' : '0'); } catch (e) {} }
 function voceNome() { try { return localStorage.getItem('cm.voceNome') || 'coral'; } catch (e) { return 'coral'; } }
+function voceVel() { var v = parseFloat(localStorage.getItem('cm.voceVel') || '1.15'); return (isNaN(v) || v < 0.7 || v > 1.8) ? 1.15 : v; }
+function voceVelSegna(v) { try { localStorage.setItem('cm.voceVel', String(v)); } catch (e) {} }
+function voceVelTesto(v) { return (v || voceVel()).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '×'; }
 var VOCI = [['coral', 'Coral — calda, femminile'], ['sage', 'Sage — pacata, femminile'], ['nova', 'Nova — chiara, femminile'], ['ash', 'Ash — calda, maschile'], ['verse', 'Verse — espressiva, maschile'], ['alloy', 'Alloy — neutra']];
 var AUDIO_IN_CORSO = null;
 function zittisci() {
@@ -4279,6 +4306,8 @@ function suonaBase64(b64, dopo) {
     for (i = 0; i < n; i++) arr[i] = bin.charCodeAt(i);
     var url = URL.createObjectURL(new Blob([arr], { type: 'audio/mpeg' }));
     var a = new Audio(url);
+    a.playbackRate = voceVel();
+    try { a.preservesPitch = true; a.mozPreservesPitch = true; a.webkitPreservesPitch = true; } catch (e) {}
     AUDIO_IN_CORSO = a;
     var fatto = false;
     function fine() { if (fatto) return; fatto = true; try { URL.revokeObjectURL(url); } catch (e) {} if (AUDIO_IN_CORSO === a) AUDIO_IN_CORSO = null; if (dopo) dopo(); }
@@ -4312,7 +4341,7 @@ function parlaSistema(testo, dopo) {
   try {
     zittisci();
     var u = new SpeechSynthesisUtterance(t);
-    u.lang = 'it-IT'; u.rate = 0.98; u.pitch = 1.02;
+    u.lang = 'it-IT'; u.rate = Math.max(0.5, Math.min(2, 0.95 * voceVel())); u.pitch = 1.02;
     var vp = vocePreferita(); if (vp) u.voice = vp;
     var fatto = false;
     function fine() { if (fatto) return; fatto = true; if (dopo) dopo(); }
