@@ -99,6 +99,10 @@ html[data-theme="scuro"] .pill.es{background:#1E3A2C;color:#7BD3A5}html[data-the
 .btn{border:1px solid var(--bordo);background:var(--carta);color:var(--testo);border-radius:10px;padding:9px 14px;font-weight:600;font-size:calc(14px * var(--scala))}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}.btn.peri{color:var(--rosso);border-color:var(--rosso)}.btn.mini{padding:8px 12px;font-size:calc(13px * var(--scala));min-height:36px}
 .btn:active{opacity:.75}
+/* il tasto «Sistema il testo»: giallo ambra, come il segno dei testi sistemati */
+#dett-sist,#me-sist{background:var(--ambra);border-color:var(--ambra);color:#fff}
+#dett-sist:disabled,#me-sist:disabled{opacity:.6}
+html[data-theme="scuro"] #dett-sist,html[data-theme="scuro"] #me-sist{color:#241c05}
 .vuoto{padding:22px 14px;color:var(--tenue);text-align:center;font-size:calc(14px * var(--scala))}
 /* CRONOLOGIA */
 .cg-testa{position:sticky;top:0;z-index:12;background:var(--sfondo);padding:6px 0 4px;margin-bottom:8px}
@@ -882,7 +886,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.56.1';
+var APP_VER = '1.56.2';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
