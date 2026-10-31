@@ -925,7 +925,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.58.4';
+var APP_VER = '1.59.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3674,6 +3674,9 @@ function disegnaAltro() {
   h.push('<div class="opz" id="op-ponte"><h2>Assistente vocale</h2>');
   h.push('<div class="riga-o"><span>Con il <b>ponte</b> collegato, il tasto <b>Detta il report</b> registra l\'audio e lo fa trascrivere dall\'intelligenza artificiale: testo pulito, gi&agrave; punteggiato, nomi dei clienti riconosciuti, e i campi compilati da soli. Senza ponte l\'app usa il microfono del telefono e legge la frase da sola, senza costi. Se il ponte non risponde, la riserva parte da sola. Dal tasto rosso <b>Dillo a voce</b> del «+» parte il pilota vocale: dici una frase sola e l\'app capisce se &egrave; un report o un\'attivit&agrave; da mettere in calendario, per quale cliente e quando, chiede solo quello che manca e ti fa confermare. Puoi anche dire «inserisci un nuovo cliente» e dettare ragione sociale, indirizzo, telefono, mail e partita IVA.</span></div>');
   h.push('<div class="riga-o"><span>Guida a voce<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">le domande del pilota vengono lette ad alta voce</span></span><span class="sp"></span><input type="checkbox" id="pn-guida" style="width:26px;height:26px"' + (guidaVoce() ? ' checked' : '') + '></div>');
+  h.push('<div class="riga-o"><span>Voce naturale dal ponte<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">voce neurale invece di quella del telefono; ogni frase si sente una volta sola a pagamento, poi resta salvata qui</span></span><span class="sp"></span><input type="checkbox" id="pn-vocen" style="width:26px;height:26px"' + (voceNeurale() ? ' checked' : '') + '></div>');
+  h.push('<div class="riga-o"><span>Quale voce</span><span class="sp"></span><select id="pn-vocenome" class="chip">' + VOCI.map(function (v) { return '<option value="' + esc(v[0]) + '"' + (voceNome() === v[0] ? ' selected' : '') + '>' + esc(v[1]) + '</option>'; }).join('') + '</select></div>');
+  h.push('<div class="az"><button class="btn" id="pn-vocep">Prova la voce</button></div>');
   h.push('<div class="riga-o"><span>Indirizzo del ponte</span><span class="sp"></span><input id="pn-url" type="url" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.url') || '') + '" placeholder="https://…"></div>');
   h.push('<div class="riga-o"><span>Parola d\'ordine</span><span class="sp"></span><input id="pn-tok" type="password" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.tok') || '') + '" placeholder="token"></div>');
   h.push('<div class="az"><button class="btn" id="pn-prova">Prova il ponte</button><button class="btn peri" id="pn-tog">Togli</button></div>');
@@ -3728,6 +3731,12 @@ function disegnaAltro() {
     t.addEventListener('change', salvaPonte);
     var gv = $('#pn-guida');
     if (gv) gv.addEventListener('change', function () { guidaVoceSegna(gv.checked); toast(gv.checked ? 'Guida a voce accesa' : 'Guida a voce spenta'); if (gv.checked) parla('Guida a voce accesa.'); });
+    var vn = $('#pn-vocen');
+    if (vn) vn.addEventListener('change', function () { voceNeuraleSegna(vn.checked); toast(vn.checked ? 'Voce naturale accesa' : 'Uso la voce del telefono'); });
+    var vnm = $('#pn-vocenome');
+    if (vnm) vnm.addEventListener('change', function () { try { localStorage.setItem('cm.voceNome', vnm.value); } catch (e) {} parla('Ciao Andrea, sono io che ti guido. Per quale cliente registriamo?'); });
+    var vp2 = $('#pn-vocep');
+    if (vp2) vp2.addEventListener('click', function () { parla('Ciao Andrea, sono io che ti guido. Per quale cliente registriamo?'); });
     $('#pn-tog').addEventListener('click', function () {
       u.value = ''; t.value = ''; salvaPonte(); es.innerHTML = '<span>Ponte tolto: la frase viene letta dall\'app.</span>'; toast('Ponte tolto');
     });
@@ -4230,15 +4239,81 @@ function clienteDaVoce(r) {
    ============================================================ */
 function guidaVoce() { try { return localStorage.getItem('cm.voceGuida') !== '0'; } catch (e) { return true; } }
 function guidaVoceSegna(v) { try { localStorage.setItem('cm.voceGuida', v ? '1' : '0'); } catch (e) {} }
-function zittisci() { try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {} }
+function voceNeurale() { try { return localStorage.getItem('cm.voceNeurale') !== '0'; } catch (e) { return true; } }
+function voceNeuraleSegna(v) { try { localStorage.setItem('cm.voceNeurale', v ? '1' : '0'); } catch (e) {} }
+function voceNome() { try { return localStorage.getItem('cm.voceNome') || 'coral'; } catch (e) { return 'coral'; } }
+var VOCI = [['coral', 'Coral — calda, femminile'], ['sage', 'Sage — pacata, femminile'], ['nova', 'Nova — chiara, femminile'], ['ash', 'Ash — calda, maschile'], ['verse', 'Verse — espressiva, maschile'], ['alloy', 'Alloy — neutra']];
+var AUDIO_IN_CORSO = null;
+function zittisci() {
+  try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+  try { if (AUDIO_IN_CORSO) { AUDIO_IN_CORSO.pause(); AUDIO_IN_CORSO = null; } } catch (e) {}
+}
+/* le frasi del pilota sono poche e sempre uguali: la prima volta le fa dire al ponte,
+   poi restano sul telefono e si sentono subito, senza rete e senza costo */
+function chiaveFrase(t) {
+  var x = voceNome() + '|' + t, h = 5381, i;
+  for (i = 0; i < x.length; i++) h = ((h * 33) ^ x.charCodeAt(i)) >>> 0;
+  return 'voce:' + h.toString(36) + ':' + x.length;
+}
+function audioFrase(t) {
+  var k = chiaveFrase(t);
+  return IDB.leggi(k).then(function (b64) {
+    if (b64) return b64;
+    var P = ponteDati();
+    if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+    var intestazioni = { 'Content-Type': 'application/json' };
+    if (P.tok) intestazioni['X-Token'] = P.tok;
+    return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ voce: t, vocenome: voceNome() }) })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
+      .then(function (d) {
+        if (!d.audio) throw new Error('voce vuota');
+        usoSegna(d.uso);
+        IDB.scrivi(k, d.audio);
+        return d.audio;
+      });
+  });
+}
+function suonaBase64(b64, dopo) {
+  try {
+    var bin = atob(b64), n = bin.length, arr = new Uint8Array(n), i;
+    for (i = 0; i < n; i++) arr[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr], { type: 'audio/mpeg' }));
+    var a = new Audio(url);
+    AUDIO_IN_CORSO = a;
+    var fatto = false;
+    function fine() { if (fatto) return; fatto = true; try { URL.revokeObjectURL(url); } catch (e) {} if (AUDIO_IN_CORSO === a) AUDIO_IN_CORSO = null; if (dopo) dopo(); }
+    a.onended = fine; a.onerror = fine;
+    a.play().catch(fine);
+  } catch (e) { if (dopo) dopo(); }
+}
 /* legge la domanda ad alta voce; se la voce e' spenta o non c'e', si va avanti lo stesso */
 function parla(testo, dopo) {
   var t = String(testo || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  if (!t || !guidaVoce() || !window.speechSynthesis || !window.SpeechSynthesisUtterance) { if (dopo) setTimeout(dopo, 50); return; }
+  if (!t || !guidaVoce()) { if (dopo) setTimeout(dopo, 50); return; }
+  zittisci();
+  if (voceNeurale() && pontePronto()) {
+    audioFrase(t).then(function (b64) { suonaBase64(b64, dopo); }, function () { parlaSistema(t, dopo); });
+    return;
+  }
+  parlaSistema(t, dopo);
+}
+/* la voce del telefono: riserva quando manca la rete o la voce neurale è spenta */
+function vocePreferita() {
+  try {
+    var l = speechSynthesis.getVoices().filter(function (v) { return /^it/i.test(v.lang); });
+    if (!l.length) return null;
+    var buona = l.filter(function (v) { return /google|natural|neural|enhanced|premium|siri/i.test(v.name); })[0];
+    return buona || l[0];
+  } catch (e) { return null; }
+}
+function parlaSistema(testo, dopo) {
+  var t = String(testo || '').trim();
+  if (!t || !window.speechSynthesis || !window.SpeechSynthesisUtterance) { if (dopo) setTimeout(dopo, 50); return; }
   try {
     zittisci();
     var u = new SpeechSynthesisUtterance(t);
-    u.lang = 'it-IT'; u.rate = 1.05;
+    u.lang = 'it-IT'; u.rate = 0.98; u.pitch = 1.02;
+    var vp = vocePreferita(); if (vp) u.voice = vp;
     var fatto = false;
     function fine() { if (fatto) return; fatto = true; if (dopo) dopo(); }
     u.onend = fine; u.onerror = fine;
