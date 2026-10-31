@@ -854,7 +854,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.50.1';
+var APP_VER = '1.50.2';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2935,6 +2935,18 @@ var evRicTocco = false; /* la data del richiamo si applica solo se l'ho toccata 
    ============================================================ */
 var ICO_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 var ICO_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+/* fonde due pezzi di trascrizione senza mai ripetere quello che c'è già */
+function fondiPezzo(avuto, nuovo) {
+  avuto = String(avuto || '').trim(); nuovo = String(nuovo || '').trim();
+  if (!nuovo) return avuto;
+  if (!avuto) return nuovo;
+  var a = avuto.toLowerCase().replace(/[,.;:!?]/g, ''), b = nuovo.toLowerCase().replace(/[,.;:!?]/g, '');
+  if (a.indexOf(b) >= 0) return avuto;              /* il pezzo nuovo c'è già tutto */
+  if (b.indexOf(a) >= 0) return nuovo;              /* il pezzo nuovo contiene quello di prima */
+  var L = Math.min(a.length, b.length);             /* coda di uno uguale alla testa dell'altro */
+  for (; L >= 6; L--) if (a.slice(-L) === b.slice(0, L)) return avuto + nuovo.slice(L);
+  return avuto + ' ' + nuovo;
+}
 /* rete di sicurezza: se un gruppo di parole arriva due volte di fila, lo tengo una volta sola.
    Lavoro per parole, mai per lettere: «prezzo» e «noleggio» devono restare intatti. */
 function ripulisciDoppioni(t) {
@@ -2963,16 +2975,21 @@ function voceAvvia(suParziale, suFine, suErrore) {
   r.lang = 'it-IT'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
   /* Android rimanda spesso TUTTO l'elenco dei pezzi già chiusi a ogni risultato: se li accodo
      il testo si ripete. Li tengo quindi in caselle numerate e riscrivo la frase da capo ogni volta. */
-  var pezzi = [], fermo = '';
+  /* Ogni motore rimanda i pezzi a modo suo: alcuni solo il nuovo, Android tutto l'elenco ogni volta,
+     altri la frase intera che cresce. Invece di accodare, FONDO ogni pezzo con quello che ho già:
+     se c'è dentro lo salto, se contiene il mio lo sostituisco, se si sovrappone lo incollo nel punto giusto. */
+  var fermo = '';
   r.onresult = function (ev) {
-    var prov = '', i;
+    var prov = '', i, costruito = '';
     for (i = 0; i < ev.results.length; i++) {
       var t = String(ev.results[i][0].transcript || '').trim();
-      if (ev.results[i].isFinal) { if (t) pezzi[i] = t; }
-      else prov += (prov ? ' ' : '') + t;
+      if (!t) continue;
+      if (ev.results[i].isFinal) costruito = fondiPezzo(costruito, t);
+      else prov = fondiPezzo(prov, t);
     }
-    fermo = ripulisciDoppioni(pezzi.filter(Boolean).join(' '));
-    if (suParziale) suParziale(fermo, prov.trim());
+    /* il motore può ripartire da capo: tengo il più lungo fra quello che avevo e quello appena ricostruito */
+    fermo = fondiPezzo(fermo, costruito);
+    if (suParziale) suParziale(ripulisciDoppioni(fermo), prov.trim());
   };
   r.onerror = function (ev) { VOCE.acceso = false; if (suErrore) suErrore(ev.error || 'errore'); };
   r.onend = function () { VOCE.acceso = false; if (suFine) suFine(fermo); };
@@ -3111,11 +3128,12 @@ function dettaturaHtml() {
     '<button type="button" class="btn mini" id="dett-pul">Pulisci</button></div>' +
     '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale».</span></div>' +
     '<div class="dett-sunto" id="dett-sunto"></div>' +
-    '<div class="dett-aiuto">Quello che capisco finisce nei campi qui sotto, che si accendono un attimo: controlla e correggi prima di toccare <b>Registra</b>. Niente viene salvato da solo.</div>' +
+    '<div class="dett-aiuto">Quello che capisco finisce nei campi qui sotto, che si accendono un attimo: controlla e correggi prima di toccare <b>Registra</b>. Niente viene salvato da solo. <span style="opacity:.6">(dettatura v' + APP_VER + ')</span></div>' +
     '</div>';
 }
 function dettaturaAggancia(id) {
   var bt = $('#dett-bt'); if (!bt) return;
+  if (bt.dataset.pronto) return; bt.dataset.pronto = '1';   /* due agganci = due ascolti insieme = testo doppio */
   var et = $('#dett-et'), txt = $('#dett-txt'), sunto = $('#dett-sunto');
   if (!voceDisponibile()) {
     bt.disabled = true; et.textContent = 'Microfono non disponibile';
