@@ -128,6 +128,31 @@ html[data-theme="scuro"] #dett-sist,html[data-theme="scuro"] #me-sist{color:#241
   border-radius:12px;padding:9px 11px;box-shadow:var(--ombra)}
 .cg-v:active{background:var(--hover)}
 .cg-w{position:relative}
+/* pilota vocale */
+.pil-via{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 12px;padding:14px 16px;border:0;border-radius:14px;background:var(--rosso);color:#fff;text-align:left;min-height:64px}
+.pil-via svg{width:26px;height:26px;flex:0 0 auto;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pil-via b{font-size:calc(17px * var(--scala));display:block}
+.pil-via span{display:block;font-size:calc(12.5px * var(--scala));opacity:.92;margin-top:2px}
+.pil-f .fg{max-width:none;border-radius:0;min-height:100%;display:flex;flex-direction:column;padding-top:calc(12px + var(--sat))}
+.pil-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.pil-top b{font-size:calc(12px * var(--scala));letter-spacing:.1em;text-transform:uppercase;color:var(--tenue)}
+.pil-dom{font-size:calc(21px * var(--scala));line-height:1.3;margin-bottom:10px}
+.pil-sot{font-size:calc(14px * var(--scala));color:var(--tenue);line-height:1.45}
+.pil-sot input[type=search]{width:100%;margin-top:10px;padding:12px 14px;border:1px solid var(--bordo);border-radius:12px;font:inherit;background:var(--carta);color:var(--testo)}
+.pil-sot textarea{width:100%;margin-top:6px;padding:12px 14px;border:1px solid var(--bordo);border-radius:12px;font:inherit;background:var(--carta);color:var(--testo)}
+.pil-n{color:var(--ambra);margin-bottom:8px}
+.pil-ri{display:flex;flex-direction:column;gap:6px;margin:4px 0 12px}
+.pil-ri > div{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--bordo);padding-bottom:5px}
+.pil-ri span{min-width:110px;font-size:calc(12px * var(--scala));text-transform:uppercase;letter-spacing:.06em;color:var(--tenue)}
+.pil-ri b{font-size:calc(15px * var(--scala));color:var(--testo)}
+.pil-tx{display:block;margin-bottom:8px;font-size:calc(12.5px * var(--scala));color:var(--tenue)}
+.pil-mic{display:flex;justify-content:center;margin:18px 0 14px}
+.pil-b{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:190px;min-height:120px;padding:18px 26px;border:0;border-radius:18px;background:var(--accent);color:#fff;font-weight:700;font-size:calc(15px * var(--scala))}
+.pil-b svg{width:34px;height:34px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pil-b.reg{background:var(--rosso);animation:lampeggia 1.15s ease-in-out infinite}
+.pil-az{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:10px}
+.pil-az .btn{flex:1 1 44%;min-height:52px;font-size:calc(15px * var(--scala))}
+.pil-az .btn.pri{flex:1 1 100%}
 .ia-seg{display:inline-flex;align-items:center;gap:6px;font-size:calc(11.5px * var(--scala));color:var(--ambra);border:1px solid color-mix(in srgb,var(--ambra) 45%,transparent);background:color-mix(in srgb,var(--ambra) 12%,transparent);border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}
 .ia-seg span{color:var(--tenue)}
 .ia-seg.sx{margin-left:0;margin-right:5px}
@@ -578,7 +603,6 @@ body.me-aperto{overflow:hidden}
 <div id="scheda"></div>
 <div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
 <button class="fab fab-ind" id="fab-ind" title="Torna al punto da cui sei arrivato"><svg viewBox="0 0 24 24"><path d="M20 12H4"/><path d="M10.5 5.5L4 12l6.5 6.5"/></svg></button>
-<button class="fab fab-voce" id="fab-voce" title="Detta un report da qualsiasi schermata"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>
 <div class="vbar" id="vbar"><span id="vbar-t">Registro&hellip;</span><button class="vb-x" id="vbar-x">Annulla</button></div>
 <button class="fab" id="fab" title="Visita, telefonata o mail da programmare, oppure il report di una cosa già fatta"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 <div class="menu" id="menu"><div class="menu-velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
@@ -901,7 +925,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.57.1';
+var APP_VER = '1.58.4';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2197,7 +2221,9 @@ function attForm(o) {
 
   /* passo 1 */
   function disegnaScelta() {
-    var h = ['<div class="fg"><h4>Che cosa vuoi fare?</h4><div class="att-scelta">'];
+    var h = ['<div class="fg"><h4>Che cosa vuoi fare?</h4>' +
+      '<button type="button" class="pil-via" id="att-voce">' + ICO_MIC + '<b>Dillo a voce</b><span>ti guido io, passo per passo</span></button>' +
+      '<div class="att-scelta">'];
     ATT_PIANIFICA.forEach(function (t) {
       h.push('<button class="t-' + t.id + '" data-t="' + t.id + '">' + CAL_ICO[t.ico] + '<b>' + esc(t.nome) + '</b><span>da fare: va in calendario</span></button>');
     });
@@ -2205,6 +2231,8 @@ function attForm(o) {
     h.push('</div><div class="az"><button class="btn" id="att-ann">Annulla</button></div></div>');
     f.innerHTML = h.join('');
     $('#att-ann', f).addEventListener('click', chiudi);
+    var bv = $('#att-voce', f);
+    if (bv) bv.addEventListener('click', function () { var cid = a.cid; chiudi(); pilApri(cid); });
     $$('.att-scelta button', f).forEach(function (b) {
       b.addEventListener('click', function () {
         a.tipo = b.dataset.t;
@@ -3368,7 +3396,9 @@ function audioAlPonte(blob, idScheda) {
       n: String(d.nota || d.testo || ''),
       passo: String(d.passo || ''),
       cliente: String(d.cliente || ''),
-      tipo: d.tipo === 'cliente' ? 'cliente' : 'report',
+      tipo: ['report', 'visita', 'telefonata', 'mail', 'cliente'].indexOf(d.tipo) >= 0 ? d.tipo : 'report',
+      quando: /^\d{4}-\d{2}-\d{2}$/.test(d.quando || '') ? d.quando : '',
+      ora: /^\d{2}:\d{2}$/.test(d.ora || '') ? d.ora : '',
       anagrafica: (d.anagrafica && typeof d.anagrafica === 'object') ? d.anagrafica : {},
       via: 'ponte'
     };
@@ -3642,7 +3672,8 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Scegli quali tabelle di numeri compaiono nella scheda <b>Cruscotto</b> e in che ordine: la spunta le accende, la maniglia le sposta. Almeno una resta sempre accesa.</span></div>');
   h.push('<div class="kpi-ord" id="cru-ord"></div></div>');
   h.push('<div class="opz" id="op-ponte"><h2>Assistente vocale</h2>');
-  h.push('<div class="riga-o"><span>Con il <b>ponte</b> collegato, il tasto <b>Detta il report</b> registra l\'audio e lo fa trascrivere dall\'intelligenza artificiale: testo pulito, gi&agrave; punteggiato, nomi dei clienti riconosciuti, e i campi compilati da soli. Senza ponte l\'app usa il microfono del telefono e legge la frase da sola, senza costi. Se il ponte non risponde, la riserva parte da sola. Dal tasto fluttuante col microfono puoi anche dire «inserisci un nuovo cliente» e dettare ragione sociale, indirizzo, telefono, mail e partita IVA: l\'app apre il modulo gi&agrave; compilato, segnalando doppioni e partite IVA sbagliate.</span></div>');
+  h.push('<div class="riga-o"><span>Con il <b>ponte</b> collegato, il tasto <b>Detta il report</b> registra l\'audio e lo fa trascrivere dall\'intelligenza artificiale: testo pulito, gi&agrave; punteggiato, nomi dei clienti riconosciuti, e i campi compilati da soli. Senza ponte l\'app usa il microfono del telefono e legge la frase da sola, senza costi. Se il ponte non risponde, la riserva parte da sola. Dal tasto rosso <b>Dillo a voce</b> del «+» parte il pilota vocale: dici una frase sola e l\'app capisce se &egrave; un report o un\'attivit&agrave; da mettere in calendario, per quale cliente e quando, chiede solo quello che manca e ti fa confermare. Puoi anche dire «inserisci un nuovo cliente» e dettare ragione sociale, indirizzo, telefono, mail e partita IVA.</span></div>');
+  h.push('<div class="riga-o"><span>Guida a voce<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">le domande del pilota vengono lette ad alta voce</span></span><span class="sp"></span><input type="checkbox" id="pn-guida" style="width:26px;height:26px"' + (guidaVoce() ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Indirizzo del ponte</span><span class="sp"></span><input id="pn-url" type="url" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.url') || '') + '" placeholder="https://…"></div>');
   h.push('<div class="riga-o"><span>Parola d\'ordine</span><span class="sp"></span><input id="pn-tok" type="password" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.tok') || '') + '" placeholder="token"></div>');
   h.push('<div class="az"><button class="btn" id="pn-prova">Prova il ponte</button><button class="btn peri" id="pn-tog">Togli</button></div>');
@@ -3695,6 +3726,8 @@ function disegnaAltro() {
     }
     u.addEventListener('change', function () { salvaPonte(); toast('Ponte salvato'); });
     t.addEventListener('change', salvaPonte);
+    var gv = $('#pn-guida');
+    if (gv) gv.addEventListener('change', function () { guidaVoceSegna(gv.checked); toast(gv.checked ? 'Guida a voce accesa' : 'Guida a voce spenta'); if (gv.checked) parla('Guida a voce accesa.'); });
     $('#pn-tog').addEventListener('click', function () {
       u.value = ''; t.value = ''; salvaPonte(); es.innerHTML = '<span>Ponte tolto: la frase viene letta dall\'app.</span>'; toast('Ponte tolto');
     });
@@ -4189,34 +4222,336 @@ function clienteDaVoce(r) {
     $('#nc-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 300);
 }
-function dettaturaVolante() {
-  var b = $('#fab-voce');
-  if (REG.attivo) { registraFerma(); return; }
-  if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4000); return; }
-  if (!registraDisponibile()) { toast('Questo telefono non registra l\'audio', 4000); return; }
-  b.classList.add('reg');
-  vbar('<b>Registro…</b> 0:00 — tocca il microfono per finire', true, 'reg');
-  registraAvvia(
-    function (sec) { vbar('<b>Registro…</b> ' + durata(sec) + ' — tocca il microfono per finire', true, 'reg'); },
-    function (blob, sec) {
-      b.classList.remove('reg');
-      if (!blob || blob.size < 1200 || sec < 1) { vbar(false); toast('Registrazione troppo breve'); return; }
-      vbar('<b>Trascrivo</b> l\'audio di ' + durata(sec) + ' — attendi', false, 'lav');
-      audioAlPonte(blob, clienteContesto()).then(function (r) {
-        vbar(false);
-        if (r.tipo === 'cliente') { clienteDaVoce(r); return; }
-        var cid = clienteContesto() || clienteDaNome(r.cliente);
-        if (cid && DB.contatti[cid]) reportDaVoce(cid, r); else scegliClientePerVoce(r);
-      }, function (e) {
-        vbar(false);
-        toast('Trascrizione non riuscita: ' + String(e.message || e).slice(0, 60), 5000);
-      });
-    },
-    function (err) {
-      b.classList.remove('reg'); vbar(false);
-      toast(err === 'NotAllowedError' ? 'Permesso al microfono negato' : 'Microfono non disponibile', 4000);
-    }
+/* ============================================================
+   PILOTA VOCALE — «Dillo a voce · ti guido io»
+   Una frase sola: l'app capisce se e' un report o un'attivita' da mettere in calendario,
+   per quale cliente e quando. Quello che manca lo chiede un passo per volta, scritto a schermo
+   e letto ad alta voce; si risponde parlando o toccando. La conferma finale e' sempre tua.
+   ============================================================ */
+function guidaVoce() { try { return localStorage.getItem('cm.voceGuida') !== '0'; } catch (e) { return true; } }
+function guidaVoceSegna(v) { try { localStorage.setItem('cm.voceGuida', v ? '1' : '0'); } catch (e) {} }
+function zittisci() { try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {} }
+/* legge la domanda ad alta voce; se la voce e' spenta o non c'e', si va avanti lo stesso */
+function parla(testo, dopo) {
+  var t = String(testo || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t || !guidaVoce() || !window.speechSynthesis || !window.SpeechSynthesisUtterance) { if (dopo) setTimeout(dopo, 50); return; }
+  try {
+    zittisci();
+    var u = new SpeechSynthesisUtterance(t);
+    u.lang = 'it-IT'; u.rate = 1.05;
+    var fatto = false;
+    function fine() { if (fatto) return; fatto = true; if (dopo) dopo(); }
+    u.onend = fine; u.onerror = fine;
+    setTimeout(fine, Math.min(12000, 900 + t.length * 60));
+    speechSynthesis.speak(u);
+  } catch (e) { if (dopo) dopo(); }
+}
+/* ascolto breve per le risposte secche: si chiude da solo dopo un paio di secondi di silenzio */
+function ascoltaBreve(suParziale, suTesto, suErrore) {
+  if (!voceDisponibile()) { if (suErrore) suErrore('no'); return null; }
+  var ultimo = Date.now(), finito = false, timer = null;
+  function basta() { if (finito) return; finito = true; clearInterval(timer); voceFerma(); }
+  voceAvvia(
+    function (fermo, prov) { if ((fermo + ' ' + prov).trim()) ultimo = Date.now(); if (suParziale) suParziale(fermo, prov); },
+    function (fermo) { finito = true; clearInterval(timer); if (suTesto) suTesto(String(fermo || '').trim()); },
+    function (err) { finito = true; clearInterval(timer); if (suErrore) suErrore(err); }
   );
+  timer = setInterval(function () { if (Date.now() - ultimo > 2300) basta(); }, 250);
+  return { ferma: basta };
+}
+var PIL = null;
+function pilNomeCliente() { var c = PIL && PIL.cid ? DB.contatti[PIL.cid] : null; return c ? c.nome : ((PIL && PIL.nome) || ''); }
+function pilTipoNome(t) { return t === 'report' ? 'Report' : t === 'visita' ? 'Visita' : t === 'telefonata' ? 'Telefonata' : t === 'mail' ? 'Mail' : t === 'cliente' ? 'Nuovo cliente' : ''; }
+function pilApri(cid) {
+  if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4500); return; }
+  if (!registraDisponibile()) { toast('Questo telefono non registra l\'audio', 4000); return; }
+  var f = el('div', 'foglio pil-f');
+  PIL = { f: f, tipo: '', cid: cid || '', nome: '', d: '', o: '', nota: '', titolo: '', esito: '', canale: '', richiamo: '', passo: '', testo: '', ascolto: null };
+  f.innerHTML = '<div class="fg pil"><div class="pil-top"><b id="pil-pass">Pilota vocale</b><button class="btn mini" id="pil-x">Chiudi</button></div>' +
+    '<div class="pil-dom" id="pil-dom"></div><div class="pil-sot" id="pil-sot"></div>' +
+    '<div class="pil-mic"><button type="button" id="pil-bt" class="pil-b">' + ICO_MIC + '<span id="pil-et">Tocca e parla</span></button></div>' +
+    '<div class="pil-az" id="pil-az"></div></div>';
+  document.body.appendChild(f);
+  document.body.classList.add('me-aperto');
+  $('#pil-x', f).addEventListener('click', pilChiudi);
+  pilPasso1();
+}
+function pilChiudi() {
+  if (!PIL) return;
+  zittisci();
+  try { if (PIL.ascolto) PIL.ascolto.ferma(); } catch (e) {}
+  try { if (REG.attivo) { REG.pezzi = []; registraFerma(); } } catch (e) {}
+  PIL.f.remove(); document.body.classList.remove('me-aperto'); PIL = null;
+}
+function pilScrivi(domanda, sotto, azioni, etichettaMic) {
+  if (!PIL) return;
+  var f = PIL.f;
+  $('#pil-dom', f).innerHTML = domanda;
+  $('#pil-sot', f).innerHTML = sotto || '';
+  $('#pil-bt', f).style.display = etichettaMic === false ? 'none' : '';
+  if (etichettaMic !== false) $('#pil-et', f).textContent = etichettaMic || 'Tocca e parla';
+  $('#pil-az', f).innerHTML = (azioni || []).map(function (a) {
+    return '<button class="btn' + (a.cls ? ' ' + a.cls : '') + '" data-a="' + esc(a.id) + '">' + esc(a.n) + '</button>';
+  }).join('');
+  $$('#pil-az button', f).forEach(function (b) {
+    b.addEventListener('click', function () { var a = (azioni || []).filter(function (x) { return x.id === b.dataset.a; })[0]; if (a && a.f) { zittisci(); a.f(); } });
+  });
+}
+function pilMic(etichetta, quando) {
+  var b = $('#pil-bt', PIL.f);
+  var nb = b.cloneNode(true); b.parentNode.replaceChild(nb, b);
+  $('#pil-et', PIL.f).textContent = etichetta;
+  nb.addEventListener('click', quando);
+  return nb;
+}
+/* passo 1: una frase sola, registrata e letta dal ponte */
+function pilPasso1() {
+  if (!PIL) return;
+  $('#pil-pass', PIL.f).textContent = 'Passo 1 di 2';
+  var d = 'Che cosa devi registrare?';
+  pilScrivi('<b>' + d + '</b>',
+    'Parla come parleresti a un collega: «report della visita da Perin, tutto a posto, lo richiamo gioved&igrave;» oppure «fissami una visita da Elettrosistema marted&igrave; alle dieci e mezza».',
+    [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Tocca e parla');
+  pilMic('Tocca e parla', function () {
+    if (REG.attivo) { registraFerma(); return; }
+    pilScrivi('<b>Ti ascolto…</b>', 'Quando hai finito tocca di nuovo il microfono.', [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Ho finito');
+    var b2 = pilMic('Ho finito', function () { registraFerma(); });
+    b2.classList.add('reg');
+    registraAvvia(
+      function (sec) { var e = $('#pil-et', PIL.f); if (e) e.textContent = 'Ho finito · ' + durata(sec); },
+      function (blob, sec) {
+        if (!PIL) return;
+        if (!blob || blob.size < 1200 || sec < 1) { toast('Registrazione troppo breve'); pilPasso1(); return; }
+        pilScrivi('<b>Sto capendo…</b>', 'Trascrivo l\'audio di ' + esc(durata(sec)) + ' e compilo i campi.', [{ id: 'ann', n: 'Annulla', f: pilChiudi }], false);
+        audioAlPonte(blob, PIL.cid).then(function (r) {
+          if (!PIL) return;
+          PIL.testo = r.testo || '';
+          PIL.tipo = r.tipo || 'report';
+          PIL.nota = r.n || r.testo || '';
+          PIL.titolo = r.t || '';
+          PIL.esito = r.e || ''; PIL.canale = r.c || '';
+          PIL.richiamo = r.r || ''; PIL.passo = r.passo || '';
+          PIL.d = r.quando || ''; PIL.o = r.ora || '';
+          if (PIL.tipo === 'cliente') { pilChiudi(); clienteDaVoce(r); return; }
+          if (!PIL.cid && r.cliente) { PIL.nome = r.cliente; var c = clienteDaNome(r.cliente); if (c) PIL.cid = c; }
+          pilProssimo();
+        }, function (e) {
+          if (!PIL) return;
+          pilScrivi('<b>Non sono riuscito a trascrivere</b>', esc(String(e.message || e).slice(0, 120)),
+            [{ id: 'ri', n: 'Riprova', cls: 'pri', f: pilPasso1 }, { id: 'ann', n: 'Annulla', f: pilChiudi }], false);
+        });
+      },
+      function (err) { toast(err === 'NotAllowedError' ? 'Permesso al microfono negato' : 'Microfono non disponibile', 4000); pilChiudi(); }
+    );
+  });
+  parla(d);
+}
+/* che cosa manca ancora? */
+function pilProssimo() {
+  if (!PIL) return;
+  if (!PIL.tipo) return pilChiediTipo();
+  if (!PIL.cid) return pilChiediCliente();
+  if (PIL.tipo !== 'report' && !PIL.d) return pilChiediQuando();
+  if (PIL.tipo === 'report' && !String(PIL.nota || '').trim()) return pilChiediRacconto();
+  pilConferma();
+}
+function pilChiediTipo() {
+  $('#pil-pass', PIL.f).textContent = 'Che cosa';
+  var d = 'Che cosa vuoi fare?';
+  pilScrivi('<b>' + d + '</b>', 'Rispondi a voce («report», «visita», «telefonata», «mail») oppure tocca.',
+    [{ id: 'report', n: 'Report', cls: 'pri', f: function () { PIL.tipo = 'report'; pilProssimo(); } },
+     { id: 'visita', n: 'Visita', f: function () { PIL.tipo = 'visita'; pilProssimo(); } },
+     { id: 'telefonata', n: 'Telefonata', f: function () { PIL.tipo = 'telefonata'; pilProssimo(); } },
+     { id: 'mail', n: 'Mail', f: function () { PIL.tipo = 'mail'; pilProssimo(); } },
+     { id: 'ann', n: 'Annulla', f: pilChiudi }], 'Rispondi a voce');
+  pilMic('Rispondi a voce', function () { pilAscolta(function (t) {
+    var x = senzaAccenti(t);
+    PIL.tipo = /visit|andare|passare/.test(x) ? 'visita' : /telefon|chiam/.test(x) ? 'telefonata' : /mail|scriver/.test(x) ? 'mail' : /report|raccont|fatt/.test(x) ? 'report' : '';
+    if (!PIL.tipo) { toast('Non ho capito: tocca uno dei tasti'); return; }
+    pilProssimo();
+  }); });
+  parla(d);
+}
+function pilChiediCliente() {
+  $('#pil-pass', PIL.f).textContent = 'Cliente';
+  var d = 'Per quale cliente?';
+  var sugg = PIL.nome ? '<div class="pil-n">Avevo capito «' + esc(PIL.nome) + '» ma non lo trovo in archivio.</div>' : '';
+  pilScrivi('<b>' + d + '</b>', sugg + '<input type="search" id="pil-cerca" placeholder="oppure scrivi il nome…" autocomplete="off"><div class="att-sugg" id="pil-sugg"></div>',
+    [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Di\' il nome');
+  /* ricerca tollerante: «aces» trova «A.C.E.S. S.R.L.», accenti, punti e spazi non contano */
+  function pilSecco(x) { return senzaAccenti(x).replace(/[^a-z0-9]/g, ''); }
+  function elenco(t) {
+    var q = pilSecco(t);
+    var l = [];
+    if (q.length >= 2) {
+      var ini = [], dentro = [];
+      lista().forEach(function (c) {
+        var n = pilSecco(c.nome);
+        if (n.indexOf(q) === 0) ini.push({ c: c, via: '' });
+        else if (n.indexOf(q) >= 0) dentro.push({ c: c, via: '' });
+      });
+      l = ini.concat(dentro).slice(0, 10);
+    }
+    if (!l.length) l = attTrova(t);
+    $('#pil-sugg', PIL.f).innerHTML = l.length
+      ? l.map(function (x) { return '<button data-c="' + esc(x.c.id) + '">' + esc(x.c.nome) + (x.c.prov ? '<span> · ' + esc(x.c.prov) + '</span>' : '') + '</button>'; }).join('')
+      : '<div class="vuoto">Nessun cliente con questo nome.</div>';
+    $$('#pil-sugg button', PIL.f).forEach(function (b) { b.addEventListener('click', function () { PIL.cid = b.dataset.c; PIL.nome = ''; pilProssimo(); }); });
+  }
+  var ce = $('#pil-cerca', PIL.f);
+  if (ce) ce.addEventListener('input', function () { if (ce.value.trim().length >= 2) elenco(ce.value.trim().toLowerCase()); else $('#pil-sugg', PIL.f).innerHTML = ''; });
+  if (PIL.nome) elenco(String(PIL.nome).toLowerCase().slice(0, 12));
+  pilMic('Di\' il nome', function () { pilAscolta(function (t) {
+    if (!t) return;
+    var c = clienteDaNome(t);
+    if (c) { PIL.cid = c; PIL.nome = ''; pilProssimo(); return; }
+    PIL.nome = t; elenco(t.toLowerCase()); toast('Non l\'ho trovato: scegli dall\'elenco');
+  }); });
+  parla(d);
+}
+function pilChiediQuando() {
+  $('#pil-pass', PIL.f).textContent = 'Quando';
+  var d = 'Quando, e a che ora?';
+  pilScrivi('<b>' + d + '</b>', 'Per esempio «marted&igrave; alle dieci e mezza», «domani mattina», «il 12 novembre alle 15».' +
+    '<div class="due" style="margin-top:10px"><label>Giorno <input type="date" id="pil-d" value="' + esc(PIL.d || '') + '"></label><label>Ora <input type="time" id="pil-o" value="' + esc(PIL.o || '') + '"></label></div>',
+    [{ id: 'ok', n: 'Avanti', cls: 'pri', f: function () { PIL.d = $('#pil-d', PIL.f).value || PIL.d; PIL.o = $('#pil-o', PIL.f).value || ''; if (!PIL.d) { toast('Manca il giorno'); return; } pilProssimo(); } },
+     { id: 'ann', n: 'Annulla', f: pilChiudi }], 'Dillo a voce');
+  pilMic('Dillo a voce', function () { pilAscolta(function (t) {
+    if (!t) return;
+    var data = dataDaFrase(t), orario = oraDaFrase(t);
+    if (data) { PIL.d = data; var e1 = $('#pil-d', PIL.f); if (e1) e1.value = data; }
+    if (orario) { PIL.o = orario; var e2 = $('#pil-o', PIL.f); if (e2) e2.value = orario; }
+    if (!data) { toast('Non ho capito il giorno: scrivilo qui sotto'); return; }
+    pilProssimo();
+  }); });
+  parla(d);
+}
+function pilChiediRacconto() {
+  $('#pil-pass', PIL.f).textContent = 'Racconto';
+  var d = 'Racconta che cosa è successo.';
+  pilScrivi('<b>' + d + '</b>', 'Registro tutto e lo faccio trascrivere dal ponte, come sempre.',
+    [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Tocca e parla');
+  pilMic('Tocca e parla', function () {
+    if (REG.attivo) { registraFerma(); return; }
+    pilScrivi('<b>Ti ascolto…</b>', 'Tocca di nuovo quando hai finito.', [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Ho finito');
+    var b2 = pilMic('Ho finito', function () { registraFerma(); });
+    b2.classList.add('reg');
+    registraAvvia(
+      function (sec) { var e = $('#pil-et', PIL.f); if (e) e.textContent = 'Ho finito · ' + durata(sec); },
+      function (blob, sec) {
+        if (!PIL) return;
+        if (!blob || blob.size < 1200 || sec < 1) { toast('Registrazione troppo breve'); pilChiediRacconto(); return; }
+        pilScrivi('<b>Sto capendo…</b>', 'Trascrivo l\'audio di ' + esc(durata(sec)) + '.', [], false);
+        audioAlPonte(blob, PIL.cid).then(function (r) {
+          if (!PIL) return;
+          PIL.nota = r.n || r.testo || ''; PIL.testo = r.testo || PIL.testo;
+          if (r.t) PIL.titolo = r.t;
+          if (r.e) PIL.esito = r.e;
+          if (r.c) PIL.canale = r.c;
+          if (r.r) PIL.richiamo = r.r;
+          if (r.passo) PIL.passo = r.passo;
+          pilProssimo();
+        }, function (e) { if (!PIL) return; toast('Trascrizione non riuscita: ' + String(e.message || e).slice(0, 60), 5000); pilChiediRacconto(); });
+      },
+      function () { toast('Microfono non disponibile', 4000); pilChiudi(); }
+    );
+  });
+  parla(d);
+}
+/* ascolto di una risposta breve, con il testo che compare mentre parli */
+function pilAscolta(dopo) {
+  if (!voceDisponibile()) { toast('Questo telefono non ascolta: usa i tasti', 4000); return; }
+  var b = $('#pil-bt', PIL.f);
+  b.classList.add('reg'); $('#pil-et', PIL.f).textContent = 'Ti ascolto…';
+  zittisci();
+  PIL.ascolto = ascoltaBreve(
+    function (fermo, prov) { var e = $('#pil-et', PIL.f); if (e) e.textContent = (fermo + ' ' + prov).trim().slice(-40) || 'Ti ascolto…'; },
+    function (t) { if (!PIL) return; PIL.ascolto = null; b.classList.remove('reg'); dopo(t); },
+    function () { if (!PIL) return; PIL.ascolto = null; b.classList.remove('reg'); $('#pil-et', PIL.f).textContent = 'Riprova'; }
+  );
+}
+/* dalla frase all'orario: «alle dieci e mezza», «alle 15», «alle tre del pomeriggio» */
+var ORE_PAROLA = { una: 1, un: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10, undici: 11, dodici: 12, tredici: 13, quattordici: 14, quindici: 15, sedici: 16, diciassette: 17, diciotto: 18, diciannove: 19, venti: 20, ventuno: 21 };
+function oraDaFrase(t) {
+  var x = senzaAccenti(t), h = null, mi = 0, m;
+  m = x.match(/\b(?:alle|ore|all')\s*(\d{1,2})[:.](\d{2})\b/) || x.match(/\b(\d{1,2}):(\d{2})\b/);
+  if (m) { h = +m[1]; mi = +m[2]; }
+  else {
+    m = x.match(/\b(?:alle|ore|all')\s*(\d{1,2})\b/);
+    if (m) h = +m[1];
+    else { m = x.match(/\b(?:alle|ore|all')\s*([a-z]+)/); if (m && ORE_PAROLA[m[1]]) h = ORE_PAROLA[m[1]]; }
+    if (h === null) return '';
+    if (/\be\s*mezz/.test(x)) mi = 30;
+    else if (/\be\s*un\s*quarto/.test(x)) mi = 15;
+    else if (/\bmeno\s*un\s*quarto/.test(x)) { mi = 45; h = h - 1; }
+  }
+  if (h === null || isNaN(h)) return '';
+  if (/pomeriggio|sera|di notte/.test(x) && h < 12) h += 12;
+  if (/mattin/.test(x) && h === 12) h = 0;
+  if (h < 0) h += 24;
+  if (h > 23) return '';
+  return (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi;
+}
+/* la conferma: sempre, scritta e letta */
+function pilConferma() {
+  $('#pil-pass', PIL.f).textContent = 'Passo 2 di 2 · conferma';
+  var nome = pilNomeCliente(), righe = [];
+  righe.push(['Che cosa', pilTipoNome(PIL.tipo)]);
+  righe.push(['Cliente', nome]);
+  if (PIL.tipo === 'report') {
+    if (PIL.canale) righe.push(['Canale', PIL.canale]);
+    if (PIL.esito) righe.push(['Tipo Azione', PIL.esito]);
+    if (PIL.richiamo) righe.push(['Richiamo', dataIt(PIL.richiamo)]);
+    if (PIL.passo) righe.push(['Prossimo passo', PIL.passo]);
+  } else {
+    righe.push(['Quando', dataIt(PIL.d) + (PIL.o ? ' alle ' + PIL.o : ' · orario libero')]);
+  }
+  var testo = PIL.nota || PIL.testo || '';
+  var h = '<div class="pil-ri">' + righe.map(function (r) { return '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1] || '—') + '</b></div>'; }).join('') + '</div>' +
+    '<label class="pil-tx">' + (PIL.tipo === 'report' ? 'Testo del report' : 'Nota') + '<textarea id="pil-n" rows="' + (PIL.tipo === 'report' ? 6 : 3) + '">' + esc(testo) + '</textarea></label>';
+  pilScrivi('<b>Confermi?</b>', h,
+    [{ id: 'ok', n: 'Conferma', cls: 'pri', f: pilSalva },
+     { id: 'rif', n: PIL.tipo === 'report' ? 'Rifai il racconto' : 'Cambia quando', f: function () { if (PIL.tipo === 'report') { PIL.nota = ''; pilChiediRacconto(); } else pilChiediQuando(); } },
+     { id: 'cli', n: 'Cambia cliente', f: function () { PIL.cid = ''; pilChiediCliente(); } },
+     { id: 'ann', n: 'Annulla', f: pilChiudi }], 'Di\' «sì» per confermare');
+  pilMic('Di\' «sì» per confermare', function () { pilAscolta(function (t) {
+    var x = senzaAccenti(t);
+    if (/\b(si|conferma|confermo|va bene|ok|okay|perfetto|giusto|esatto)\b/.test(x)) { pilSalva(); return; }
+    if (/\bno\b|rifai|sbagli/.test(x)) { if (PIL.tipo === 'report') { PIL.nota = ''; pilChiediRacconto(); } else pilChiediQuando(); return; }
+    toast('Dimmi «sì» per confermare, oppure tocca un tasto');
+  }); });
+  parla(PIL.tipo === 'report'
+    ? 'Registro il report per ' + nome + (PIL.richiamo ? ', con richiamo il ' + dataIt(PIL.richiamo) : '') + '. Confermi?'
+    : 'Metto in calendario ' + pilTipoNome(PIL.tipo).toLowerCase() + ' da ' + nome + ' il ' + dataIt(PIL.d) + (PIL.o ? ' alle ' + PIL.o : '') + '. Confermi?');
+}
+function pilSalva() {
+  if (!PIL) return;
+  var campo = $('#pil-n', PIL.f);
+  var t = campo ? campo.value.trim() : String(PIL.nota || '').trim();
+  var cid = PIL.cid, tipo = PIL.tipo, nome = pilNomeCliente();
+  if (!cid) { pilChiediCliente(); return; }
+  if (tipo === 'report') {
+    var vid = uid('v_');
+    DB.eventi[vid] = { id: vid, cid: cid, d: oggi(), o: ora(), c: PIL.canale || '', e: PIL.esito || '', t: PIL.titolo || '', n: t, _m: Date.now() };
+    var k = Object.assign({ id: cid }, DB.situazioni[cid] || {});
+    k.data = oggi(); if (PIL.canale) k.canale = PIL.canale; if (PIL.esito) k.esito = PIL.esito;
+    if (PIL.richiamo) { k.richiamo = PIL.richiamo; delete k.richiamoApp; }
+    if (PIL.passo) k.passo = PIL.passo;
+    k._m = Date.now(); DB.situazioni[cid] = k;
+    salva(); pilChiudi(); toast('Report registrato per ' + nome);
+    parla('Fatto. Report registrato.');
+    apriScheda(cid);
+  } else {
+    var a = { tipo: tipo, cid: cid, d: PIL.d, o: PIL.o || '', nota: t };
+    if (!a.o) { delete a.o; a.oraLibera = 1; }
+    attSalva(a);
+    pilChiudi();
+    toast(pilTipoNome(tipo) + ' in calendario: ' + dataIt(a.d) + (a.o ? ' alle ' + a.o : ''));
+    parla('Fatto. ' + pilTipoNome(tipo) + ' messa in calendario.');
+    if (vista === 'cal') { CAL.sel = a.d; CAL.rif = a.d; disegnaCal(); }
+    else if (vista === 'oggi') disegnaOggi();
+    else if (document.body.classList.contains('sc-aperta') && schedaId) apriScheda(schedaId);
+  }
 }
 function aggiornaFab() {
   var f = $('#fab'); if (!f) return;
@@ -4225,22 +4560,15 @@ function aggiornaFab() {
   var c = clienteContesto() ? DB.contatti[clienteContesto()] : null;
   f.title = c ? 'Aggiungi per ' + c.nome : 'Visita, telefonata o mail da programmare, oppure il report di una cosa già fatta';
   f.classList.toggle('mirato', !!c);
-  var v = $('#fab-voce');
-  if (v) {
-    v.classList.toggle('on', pontePronto());
-    v.classList.toggle('sopra', document.body.classList.contains('sc-aperta'));
-    v.title = c ? 'Detta il report per ' + c.nome : 'Detta un report da qualsiasi schermata';
-  }
 }
 $('#fab').addEventListener('click', function () {
   if (this.dataset.spostato) return;
   attForm({ cid: clienteContesto(), d: (vista === 'cal' && CAL.sel) ? CAL.sel : oggi() });
 });
 $('#fab-ind').addEventListener('click', function () { if (this.dataset.spostato) return; tornaIndietro(); });
-$('#fab-voce').addEventListener('click', function () { if (this.dataset.spostato) return; dettaturaVolante(); });
-$('#vbar-x').addEventListener('click', function () { if (REG.attivo) { REG.pezzi = []; registraFerma(); } vbar(false); $('#fab-voce').classList.remove('reg'); toast('Dettatura annullata'); });
-fabSpostabile($('#fab')); fabSpostabile($('#fab-ind')); fabSpostabile($('#fab-voce'));
-window.addEventListener('resize', function () { fabPosApplica($('#fab')); fabPosApplica($('#fab-ind')); fabPosApplica($('#fab-voce')); });
+$('#vbar-x').addEventListener('click', function () { if (REG.attivo) { REG.pezzi = []; registraFerma(); } vbar(false); toast('Dettatura annullata'); });
+fabSpostabile($('#fab')); fabSpostabile($('#fab-ind'));
+window.addEventListener('resize', function () { fabPosApplica($('#fab')); fabPosApplica($('#fab-ind')); });
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
