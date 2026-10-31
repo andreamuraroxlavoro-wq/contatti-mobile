@@ -854,7 +854,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.50.2';
+var APP_VER = '1.51.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2935,6 +2935,15 @@ var evRicTocco = false; /* la data del richiamo si applica solo se l'ho toccata 
    ============================================================ */
 var ICO_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 var ICO_STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+/* di una trascrizione che ricomincia da capo tiene solo la coda che non ho ancora preso */
+function pezzoNuovo(visto, tutto) {
+  visto = String(visto || '').trim(); tutto = String(tutto || '').trim();
+  if (!visto) return tutto;
+  var pul = function (w) { return w.toLowerCase().replace(/[,.;:!?]/g, ''); };
+  var pv = visto.split(/\s+/), pt = tutto.split(/\s+/), i = 0;
+  while (i < pv.length && i < pt.length && pul(pv[i]) === pul(pt[i])) i++;
+  return i === pv.length ? pt.slice(i).join(' ') : tutto;
+}
 /* fonde due pezzi di trascrizione senza mai ripetere quello che c'è già */
 function fondiPezzo(avuto, nuovo) {
   avuto = String(avuto || '').trim(); nuovo = String(nuovo || '').trim();
@@ -2967,35 +2976,111 @@ function ripulisciDoppioni(t) {
   return ris.join(' ').replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
 }
 function voceDisponibile() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
-var VOCE = { rec: null, acceso: false };
+/* Il motore del telefono si spegne da solo dopo qualche secondo di silenzio: qui lo riaccendo
+   finché non sei tu a toccare il tasto. Ogni pausa chiude la frase con il punto e la successiva
+   riparte con la maiuscola, così il report dettato esce già punteggiato. */
+var VOCE = { rec: null, acceso: false, voluto: false, frasi: [], corrente: '', ultimo: 0, riavvii: 0, suFine: null, finito: false };
+var PAUSA_FRASE = 1200;   /* millisecondi di silenzio che chiudono la frase */
+
+/* le parole dette al posto dei segni: «virgola» e «punto» solo dove non possono essere parole vere */
+function segniDettati(t) {
+  var x = ' ' + String(t || '') + ' ';
+  x = x.replace(/\s+punto e virgola\s+/gi, '; ');
+  x = x.replace(/\s+due punti\s+/gi, ': ');
+  x = x.replace(/\s+punto (interrogativo|di domanda)\s*/gi, '? ');
+  x = x.replace(/\s+punto esclamativo\s*/gi, '! ');
+  x = x.replace(/\s+(vai a capo|a capo|nuova riga)\s*/gi, '. ');
+  x = x.replace(/\s+virgola\s+/gi, ', ');
+  x = x.replace(/\s+virgola\s*$/i, ', ');
+  x = x.replace(/\s+punto\s*$/i, '. ');   /* «punto» vale come segno solo a fine frase: «punto vendita» resta intatto */
+  return x.replace(/\s+/g, ' ').trim();
+}
+/* mette maiuscole e punti dove servono e toglie gli spazi prima dei segni */
+function punteggia(frasi) {
+  var out = [];
+  (frasi || []).forEach(function (f) {
+    var x = segniDettati(f);
+    x = x.replace(/\s+([,.;:!?])/g, '$1').replace(/([,;:])(\S)/g, '$1 $2').replace(/\s+/g, ' ').trim();
+    if (!x) return;
+    x = x.charAt(0).toUpperCase() + x.slice(1);
+    /* maiuscola dopo ogni punto interno */
+    x = x.replace(/([.!?])\s+([a-zà-ù])/g, function (m, s, l) { return s + ' ' + l.toUpperCase(); });
+    if (!/[.!?]$/.test(x)) x += '.';
+    out.push(x);
+  });
+  return out.join(' ').trim();
+}
+function voceTesto(conCorrente) {
+  var l = VOCE.frasi.slice();
+  if (conCorrente && VOCE.corrente.trim()) l.push(VOCE.corrente.trim());
+  return punteggia(l);
+}
+function voceChiudiFrase() {
+  var c = ripulisciDoppioni(VOCE.corrente.trim());
+  if (c) VOCE.frasi.push(c);
+  VOCE.corrente = '';
+}
 function voceAvvia(suParziale, suFine, suErrore) {
   var R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) { if (suErrore) suErrore('no'); return; }
-  try { if (VOCE.rec) { VOCE.rec.onend = null; VOCE.rec.abort(); } } catch (e) {}
-  var r = new R(); VOCE.rec = r; VOCE.acceso = true;
-  r.lang = 'it-IT'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
-  /* Android rimanda spesso TUTTO l'elenco dei pezzi già chiusi a ogni risultato: se li accodo
-     il testo si ripete. Li tengo quindi in caselle numerate e riscrivo la frase da capo ogni volta. */
-  /* Ogni motore rimanda i pezzi a modo suo: alcuni solo il nuovo, Android tutto l'elenco ogni volta,
-     altri la frase intera che cresce. Invece di accodare, FONDO ogni pezzo con quello che ho già:
-     se c'è dentro lo salto, se contiene il mio lo sostituisco, se si sovrappone lo incollo nel punto giusto. */
-  var fermo = '';
-  r.onresult = function (ev) {
-    var prov = '', i, costruito = '';
-    for (i = 0; i < ev.results.length; i++) {
-      var t = String(ev.results[i][0].transcript || '').trim();
-      if (!t) continue;
-      if (ev.results[i].isFinal) costruito = fondiPezzo(costruito, t);
-      else prov = fondiPezzo(prov, t);
-    }
-    /* il motore può ripartire da capo: tengo il più lungo fra quello che avevo e quello appena ricostruito */
-    fermo = fondiPezzo(fermo, costruito);
-    if (suParziale) suParziale(ripulisciDoppioni(fermo), prov.trim());
-  };
-  r.onerror = function (ev) { VOCE.acceso = false; if (suErrore) suErrore(ev.error || 'errore'); };
-  r.onend = function () { VOCE.acceso = false; if (suFine) suFine(fermo); };
-  try { r.start(); } catch (e) { VOCE.acceso = false; if (suErrore) suErrore('avvio'); }
+  try { if (VOCE.rec) { VOCE.rec.onend = null; VOCE.rec.onerror = null; VOCE.rec.abort(); } } catch (e) {}
+  VOCE.voluto = true; VOCE.frasi = []; VOCE.corrente = ''; VOCE.ultimo = 0; VOCE.riavvii = 0; VOCE.finito = false;
+  VOCE.suFine = function (t) { if (VOCE.finito) return; VOCE.finito = true; if (suFine) suFine(t); };
+
+  function accendi() {
+    var r = new R(); VOCE.rec = r; VOCE.acceso = true;
+    r.lang = 'it-IT'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    var visto = '';   /* ciò che questo giro ha già prodotto */
+    r.onresult = function (ev) {
+      var prov = '', i, costruito = '';
+      for (i = 0; i < ev.results.length; i++) {
+        var t = String(ev.results[i][0].transcript || '').trim();
+        if (!t) continue;
+        if (ev.results[i].isFinal) costruito = fondiPezzo(costruito, t);
+        else prov = fondiPezzo(prov, t);
+      }
+      VOCE.riavvii = 0;
+      if (costruito && costruito !== visto) {
+        /* di tutto quello che il motore rimanda prendo solo la parte che non ho già preso */
+        var nuovo = pezzoNuovo(visto, costruito);
+        if (nuovo) {
+          /* silenzio lungo fra due pezzi chiusi: la frase di prima finisce qui */
+          if (VOCE.ultimo && Date.now() - VOCE.ultimo > PAUSA_FRASE) voceChiudiFrase();
+          VOCE.corrente = fondiPezzo(VOCE.corrente, nuovo);
+          VOCE.ultimo = Date.now();
+        }
+        visto = costruito;
+      }
+      if (suParziale) suParziale(voceTesto(true), prov.trim());
+    };
+    r.onerror = function (ev) {
+      var e = ev.error || 'errore';
+      VOCE.acceso = false;
+      if (e === 'no-speech' || e === 'aborted' || e === 'network') return;   /* il riavvio lo fa onend */
+      VOCE.voluto = false;
+      if (suErrore) suErrore(e);
+    };
+    r.onend = function () {
+      VOCE.acceso = false;
+      if (!VOCE.voluto) { voceChiudiFrase(); VOCE.suFine(voceTesto(false)); return; }
+      /* il motore si è spento da solo: chiudo la frase e riparto, così la pausa non interrompe la dettatura */
+      voceChiudiFrase();
+      VOCE.riavvii++;
+      if (VOCE.riavvii > 40) { VOCE.voluto = false; VOCE.suFine(voceTesto(false)); return; }
+      if (suParziale) suParziale(voceTesto(true), '');
+      setTimeout(function () { if (VOCE.voluto) accendi(); }, 220);
+    };
+    try { r.start(); } catch (e) { VOCE.acceso = false; VOCE.voluto = false; if (suErrore) suErrore('avvio'); }
+  }
+  accendi();
 }
-function voceFerma() { try { if (VOCE.rec) VOCE.rec.stop(); } catch (e) {} VOCE.acceso = false; }
+function voceFerma() {
+  VOCE.voluto = false;
+  if (VOCE.acceso && VOCE.rec) { try { VOCE.rec.stop(); } catch (e) {} VOCE.acceso = false; return; }
+  /* toccato nell'attimo fra un riavvio e l'altro: chiudo io, senza aspettare un «fine» che non arriverà */
+  VOCE.acceso = false;
+  voceChiudiFrase();
+  if (VOCE.suFine) VOCE.suFine(voceTesto(false));
+}
 
 /* --- l'interprete locale: dalla frase ai campi, senza rete --- */
 function senzaAccenti(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
@@ -3126,7 +3211,7 @@ function dettaturaHtml() {
   return '<div class="dett" id="dett">' +
     '<div class="dett-az"><button type="button" class="dett-bt" id="dett-bt">' + ICO_MIC + '<span id="dett-et">Detta il report</span></button><span class="dett-sp"></span>' +
     '<button type="button" class="btn mini" id="dett-pul">Pulisci</button></div>' +
-    '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale».</span></div>' +
+    '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale». Il microfono resta acceso finch&eacute; non lo tocchi di nuovo: ogni pausa chiude la frase con il punto.</span></div>' +
     '<div class="dett-sunto" id="dett-sunto"></div>' +
     '<div class="dett-aiuto">Quello che capisco finisce nei campi qui sotto, che si accendono un attimo: controlla e correggi prima di toccare <b>Registra</b>. Niente viene salvato da solo. <span style="opacity:.6">(dettatura v' + APP_VER + ')</span></div>' +
     '</div>';
@@ -3143,16 +3228,17 @@ function dettaturaAggancia(id) {
   var detto = '';
   function spegni() { bt.classList.remove('on'); bt.innerHTML = ICO_MIC + '<span id="dett-et">Detta il report</span>'; et = $('#dett-et'); }
   function accendi() { bt.classList.add('on'); bt.innerHTML = ICO_STOP + '<span id="dett-et">Sto ascoltando… tocca per finire</span>'; et = $('#dett-et'); }
+  /* il microfono resta acceso anche nelle pause: si spegne solo quando lo tocchi */
   $('#dett-pul').addEventListener('click', function () {
     detto = ''; txt.innerHTML = '<span class="prov">Tocca il microfono e racconta.</span>'; sunto.innerHTML = '';
   });
   bt.addEventListener('click', function () {
-    if (VOCE.acceso) { voceFerma(); return; }
+    if (VOCE.voluto || VOCE.acceso) { voceFerma(); return; }
     accendi(); sunto.innerHTML = '';
     voceAvvia(
-      function (fermo, prov) { detto = fermo; txt.innerHTML = esc(fermo) + (prov ? ' <span class="prov">' + esc(prov) + '</span>' : ''); },
+      function (fermo, prov) { detto = fermo; txt.innerHTML = esc(fermo) + (prov ? ' <span class="prov">' + esc(prov) + '</span>' : ''); txt.scrollTop = txt.scrollHeight; },
       function (fermo) {
-        spegni(); detto = ripulisciDoppioni(fermo || detto || '');
+        spegni(); detto = (fermo || detto || '').trim();
         if (!detto) { sunto.innerHTML = '<span class="nulla">Non ho sentito nulla.</span>'; return; }
         txt.textContent = detto;
         sunto.innerHTML = '<span class="nulla">Sto capendo…</span>';
@@ -3186,7 +3272,7 @@ function dettaturaRiempi(r, sunto) {
     : '<span class="nulla">Non ho riconosciuto n&eacute; azione n&eacute; data: ho lasciato tutto nella nota, compila a mano.</span>';
 }
 /* appiglio per il banco di prova: la dettatura si collauda senza microfono */
-window.CM_DETT = { leggiFrase: leggiFrase, capisciFrase: capisciFrase, riempi: dettaturaRiempi, pulisci: ripulisciDoppioni, avvia: voceAvvia };
+window.CM_DETT = { leggiFrase: leggiFrase, capisciFrase: capisciFrase, riempi: dettaturaRiempi, pulisci: ripulisciDoppioni, avvia: voceAvvia, punteggia: punteggia, segni: segniDettati };
 function registraEvento(id) {
   var d = $('#ev-d').value || oggi(), o = $('#ev-o').value || ora(), c = $('#ev-c').value, e = $('#ev-e').value, t = $('#ev-t').value.trim(), n = $('#ev-n').value.trim(), r = $('#ev-r').value;
   if (!t && !n && !e) { toast('Scrivi almeno un titolo, una nota o un esito'); return; }
