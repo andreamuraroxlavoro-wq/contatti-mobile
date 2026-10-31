@@ -57,14 +57,22 @@ async function campi(env, frase, d) {
   const istruzioni = [
     'Sei il compilatore di un report commerciale. Ricevi la frase che un venditore ha dettato dopo un contatto con un cliente, oppure la scheda di un cliente nuovo che sta dettando.',
     'Rispondi SOLO con un oggetto JSON, senza testo attorno, con queste chiavi:',
-    '{"tipo":"report","canale":"","esito":"","richiamo":"","titolo":"","nota":"","passo":"","cliente":"","anagrafica":{}}',
-    '- tipo: "cliente" se sta dettando i dati di un\'azienda da inserire in anagrafica (dice per esempio «inserisci un nuovo cliente», «aggiungi il contatto», oppure elenca ragione sociale, indirizzo, telefono, mail, partita IVA senza raccontare un contatto avvenuto); negli altri casi "report".',
+    '{"tipo":"report","canale":"","esito":"","richiamo":"","titolo":"","nota":"","passo":"","cliente":"","quando":"","ora":"","anagrafica":{}}',
+    '- tipo: una di queste cinque parole.',
+    '   "report" = racconta un contatto GIA\' avvenuto (sono andato, ho chiamato, ho mandato, mi ha detto);',
+    '   "visita" = chiede di mettere in calendario una visita DA FARE (vai, passa, fissa una visita, devo andare);',
+    '   "telefonata" = chiede di mettere in calendario una chiamata DA FARE (devo chiamare, ricordami di telefonare);',
+    '   "mail" = chiede di mettere in calendario una mail DA MANDARE (devo scrivere, mandare una mail);',
+    '   "cliente" = sta dettando i dati di un\'azienda da inserire in anagrafica (inserisci un nuovo cliente, aggiungi il contatto, oppure elenca ragione sociale, indirizzo, telefono, mail, partita IVA senza raccontare un contatto).',
+    '   Nel dubbio fra un contatto avvenuto e uno da fare guarda i verbi: al passato e\' "report", all\'imperativo o al futuro e\' un\'attivita\' da fare.',
+    '- quando: SOLO per visita, telefonata e mail: il giorno in cui va fatta, formato AAAA-MM-GG, vuoto se non lo dice.',
+    '- ora: SOLO per visita, telefonata e mail: l\'orario in formato HH:MM (24 ore), vuoto se non lo dice. «Dieci e mezza» del mattino e\' 10:30, «alle tre» del pomeriggio e\' 15:00.',
     '- anagrafica: solo se tipo vale "cliente", un oggetto con le chiavi presenti fra nome, prov (sigla di due lettere), sede (via, CAP e comune), tel, email, sito, piva (solo cifre), cat, note. Nessuna invenzione: metti solo ciò che ha detto. Negli altri casi lascialo vuoto.',
     '- canale: esattamente una di queste voci, o stringa vuota: ' + JSON.stringify(canali),
     '- esito: esattamente una di queste voci, o stringa vuota: ' + JSON.stringify(esiti),
     '- richiamo: la data in cui risentire il cliente, formato AAAA-MM-GG, vuota se non la dice. Oggi è ' + oggi + ', ' + giorno + '. "Giovedì" significa il primo giovedì successivo a oggi, "giovedì prossimo" quello della settimana dopo.',
     '- titolo: massimo 60 caratteri, la frase ridotta a titolo.',
-    '- nota: il racconto ripulito: punteggiatura, maiuscole, parole spezzate rimesse insieme. Non aggiungere nulla che non sia stato detto, non togliere informazioni.',
+    '- nota: il racconto ripulito: punteggiatura, maiuscole, parole spezzate rimesse insieme. Non aggiungere nulla che non sia stato detto, non togliere informazioni. Per le attivita\' da fare, che cosa c\'e\' da fare o da portare, senza la data.',
     '- passo: che cosa si è impegnato a fare lui, in poche parole, vuota se non emerge.',
     '- cliente: il nome dell\'azienda se la frase lo nomina, scegliendolo dall\'elenco qui sotto quando corrisponde, altrimenti come l\'ha detto; vuota se non lo nomina.',
     nomi.length ? 'Elenco dei clienti noti (usalo per correggere i nomi storpiati dalla trascrizione): ' + nomi.join('; ') : '',
@@ -173,12 +181,15 @@ export default {
       if (d.sistema) { const r3 = await sistema(env, frase); if (!r3.testo) return errore(r3.motivo || 'testo non riscritto', 502); return risposta({ testo: r3.testo, uso: r3.uso }); }
 
       const c = await campi(env, frase, d);
+      const TIPI = ['report', 'visita', 'telefonata', 'mail', 'cliente'];
       return risposta({
         testo: frase,
         trascritto: !!trascritto,
         canale: c.canale || '', esito: c.esito || '', richiamo: c.richiamo || '',
         titolo: c.titolo || '', nota: c.nota || frase, passo: c.passo || '', cliente: c.cliente || '',
-        tipo: c.tipo === 'cliente' ? 'cliente' : 'report',
+        tipo: TIPI.indexOf(c.tipo) >= 0 ? c.tipo : 'report',
+        quando: /^\d{4}-\d{2}-\d{2}$/.test(c.quando || '') ? c.quando : '',
+        ora: /^\d{1,2}:\d{2}$/.test(c.ora || '') ? (c.ora.length === 4 ? '0' + c.ora : c.ora) : '',
         anagrafica: (c.anagrafica && typeof c.anagrafica === 'object') ? c.anagrafica : {},
         uso: c.uso
       });
