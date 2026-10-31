@@ -123,6 +123,9 @@ html[data-theme="scuro"] .pill.es{background:#1E3A2C;color:#7BD3A5}html[data-the
 .cg-v{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:var(--carta);border:1px solid var(--bordo);border-left:5px solid var(--tc,var(--accent));
   border-radius:12px;padding:9px 11px;box-shadow:var(--ombra)}
 .cg-v:active{background:var(--hover)}
+.cg-w{position:relative}
+.cg-ed{position:absolute;right:8px;top:8px;border:1px solid var(--bordo);background:var(--carta);color:var(--tenue);border-radius:10px;padding:6px 10px;font:inherit;font-size:calc(12px * var(--scala));z-index:2}
+.cg-ed:active{background:var(--sfondo2)}
 .cg-v-t{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:calc(12px * var(--scala));color:var(--tenue)}
 .cg-o{font-weight:700;color:var(--tc,var(--accent))}
 .cg-tp{border:1px solid color-mix(in srgb,var(--tc) 40%,var(--bordo));color:var(--tc);border-radius:7px;padding:1px 6px;font-size:calc(11px * var(--scala));font-weight:700}
@@ -250,6 +253,17 @@ summary::-webkit-details-marker{display:none}
 .fab svg{stroke-width:2.6}
 /* il tasto «indietro»: sta sotto al «+», si accende solo se c'è davvero dove tornare */
 .fab{touch-action:none}   /* il tasto si lascia spostare: il gesto non deve diventare uno scorrimento */
+.fab-voce{background:var(--sz-cron);color:#fff;bottom:calc(200px + var(--sab))}
+.fab-voce.sopra{bottom:calc(138px + var(--sab))}
+.fab-voce.trascina{box-shadow:0 0 0 10px color-mix(in srgb,var(--sz-cron) 22%,transparent),0 10px 26px rgba(0,0,0,.32)}
+.fab-voce.reg{background:var(--rosso);animation:fabreg 1.1s ease-in-out infinite}
+@keyframes fabreg{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--rosso) 55%,transparent),0 8px 22px rgba(0,0,0,.28)}50%{box-shadow:0 0 0 12px transparent,0 8px 22px rgba(0,0,0,.28)}}
+.vbar{position:fixed;left:12px;right:12px;bottom:calc(84px + var(--sab));z-index:3200;display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:14px;background:var(--carta);border:1px solid var(--bordo);box-shadow:0 10px 30px rgba(0,0,0,.24);font-size:calc(14px * var(--scala))}
+.vbar.on{display:flex}
+.vbar b{color:var(--rosso)}
+.vbar #vbar-t{flex:1;min-width:0}
+.vbar .vb-x{flex:0 0 auto}
+.vbar .vb-x{border:1px solid var(--bordo);background:var(--carta);border-radius:10px;padding:6px 10px;font:inherit;font-size:calc(13px * var(--scala));color:var(--tenue)}
 .fab-ind{background:var(--accent);color:#fff;bottom:calc(142px + var(--sab))}
 .fab-ind.trascina{box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 26px rgba(0,0,0,.32)}
 .fab-ind.sopra{bottom:calc(80px + var(--sab))}
@@ -523,7 +537,7 @@ body.me-aperto{overflow:hidden}
   <button data-v="oggi"><svg viewBox="0 0 24 24"><path d="M3 12h3.5l2.2-6.5 4 13 2.3-6.5H21"/></svg>Attività<span class="tn" id="tn-oggi" style="display:none"></span></button>
   <button data-v="cruscotto"><svg viewBox="0 0 24 24"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 18l4.2-5"/><circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>Cruscotto</button>
   <button data-v="tutele"><svg viewBox="0 0 24 24"><path d="M12 3.2l7.2 2.8v5.6c0 4.3-3 7.6-7.2 9.2-4.2-1.6-7.2-4.9-7.2-9.2V6z"/><path d="M9.2 14.8l5.6-5.6M9.2 9.2l5.6 5.6"/></svg>Tutele</button>
-  <button data-v="cron"><svg viewBox="0 0 24 24"><path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3 4.6V9h4.4"/><path d="M12 7.7V12l3 1.8"/></svg>Cronologia</button>
+  <button data-v="cron"><svg viewBox="0 0 24 24"><path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3 4.6V9h4.4"/><path d="M12 7.7V12l3 1.8"/></svg>Report</button>
   <button data-v="cal"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3.2v3.6M16 3.2v3.6"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="14.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="17.8" r="1.1" fill="currentColor" stroke="none"/></svg>Calendario<span class="tn" id="tn-cal" style="display:none"></span></button>
   <button data-v="mappa" id="tab-mappa"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>
   <button data-v="vicino"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Vicino</button>
@@ -533,6 +547,8 @@ body.me-aperto{overflow:hidden}
 <div id="scheda"></div>
 <div class="agg" id="agg"><span id="agg-txt"></span><span class="sp"></span><button id="agg-ora">Aggiorna</button><button class="chiudi" id="agg-no">&#10005;</button></div>
 <button class="fab fab-ind" id="fab-ind" title="Torna al punto da cui sei arrivato"><svg viewBox="0 0 24 24"><path d="M20 12H4"/><path d="M10.5 5.5L4 12l6.5 6.5"/></svg></button>
+<button class="fab fab-voce" id="fab-voce" title="Detta un report da qualsiasi schermata"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>
+<div class="vbar" id="vbar"><span id="vbar-t">Registro&hellip;</span><button class="vb-x" id="vbar-x">Annulla</button></div>
 <button class="fab" id="fab" title="Visita, telefonata o mail da programmare, oppure il report di una cosa già fatta"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 <div class="menu" id="menu"><div class="menu-velo" id="menu-velo"></div><div class="pan" id="menu-pan"></div></div>
 <div class="toast" id="toast"></div>
@@ -854,7 +870,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.52.0';
+var APP_VER = '1.53.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1087,7 +1103,7 @@ function kpiOrdineDaCarte() {
    ============================================================ */
 var SCHEDE = [
   { id: 'cerca', n: 'Contatti' }, { id: 'oggi', n: 'Attività' }, { id: 'cruscotto', n: 'Cruscotto' },
-  { id: 'cron', n: 'Cronologia' }, { id: 'cal', n: 'Calendario' }, { id: 'mappa', n: 'Mappa' },
+  { id: 'cron', n: 'Report' }, { id: 'cal', n: 'Calendario' }, { id: 'mappa', n: 'Mappa' },
   { id: 'vicino', n: 'Vicino' }, { id: 'tutele', n: 'Tutele' }, { id: 'pratiche', n: 'Pratiche' }
 ];
 /* con nove schede la barra in basso non le tiene tutte: di partenza ne stanno sei,
@@ -2512,12 +2528,12 @@ function disegnaCron() {
   var cli = {}, cnt = { visita: 0, telefonata: 0, mail: 0, report: 0, azione: 0 };
   L.forEach(function (x) { cli[x.c.id] = 1; cnt[x.t]++; });
   h.push('<section class="sz" style="--c:var(--sz-cron)"><h3>Nel periodo<span class="pill">' + esc(P.nome) + '</span></h3><div class="c"><div class="cg-k">' +
-    [['Eventi', L.length], ['Clienti', Object.keys(cli).length], ['Visite', cnt.visita], ['Telefonate', cnt.telefonata], ['Mail', cnt.mail], ['Report', cnt.report]]
+    [['Totale', L.length], ['Clienti', Object.keys(cli).length], ['Visite', cnt.visita], ['Telefonate', cnt.telefonata], ['Mail', cnt.mail], ['Report', cnt.report]]
       .map(function (k) { return '<div><b>' + num(k[1]) + '</b><span>' + esc(k[0]) + '</span></div>'; }).join('') +
     '</div></div></section>');
   /* linea del tempo */
   if (!L.length) {
-    h.push('<div class="vuoto">Nessun evento in questo periodo' + (CG.q || CG.tipo ? ' con questi filtri' : '') + '.<br>Con le frecce ti sposti nel tempo, con «Tutto» vedi l\'intero archivio.</div>');
+    h.push('<div class="vuoto">Nessun report in questo periodo' + (CG.q || CG.tipo ? ' con questi filtri' : '') + '.<br>Con le frecce ti sposti nel tempo, con «Tutto» vedi l\'intero archivio.</div>');
   } else {
     var mostra = L.slice(0, CG.quante), mese = null, giorno = null;
     h.push('<div class="cg-tl">');
@@ -2528,16 +2544,17 @@ function disegnaCron() {
         giorno = x.v.d;
         var ng = L.filter(function (y) { return y.v.d === giorno; }).length, cg2 = {};
         L.forEach(function (y) { if (y.v.d === giorno) cg2[y.c.id] = 1; });
-        h.push('<div class="cg-giorno' + (giorno === og ? ' oggi' : '') + '">' + esc(cgGiornoIt(giorno)) + '<span>' + num(ng) + (ng === 1 ? ' evento' : ' eventi') + ' · ' + num(Object.keys(cg2).length) + (Object.keys(cg2).length === 1 ? ' cliente' : ' clienti') + '</span></div>');
+        h.push('<div class="cg-giorno' + (giorno === og ? ' oggi' : '') + '">' + esc(cgGiornoIt(giorno)) + '<span>' + num(ng) + (ng === 1 ? ' report' : ' report') + ' · ' + num(Object.keys(cg2).length) + (Object.keys(cg2).length === 1 ? ' cliente' : ' clienti') + '</span></div>');
       }
       var v = x.v, tx = cgTesto(v).replace(/\s+/g, ' ').trim();
-      h.push('<button class="cg-v t-' + x.t + '" data-cid="' + esc(x.c.id) + '">' +
+      h.push('<div class="cg-w"><button class="cg-ed" data-ev="' + esc(v.id) + '" data-cid="' + esc(x.c.id) + '" title="Apri, modifica o elimina">&#9998;</button>' +
+        '<button class="cg-v t-' + x.t + '" data-cid="' + esc(x.c.id) + '">' +
         '<div class="cg-v-t"><span class="cg-o">' + esc(v.o || '') + '</span><span class="cg-tp">' + esc(CG_NOMI[x.t]) + '</span>' +
         (v.dir ? '<span class="dir ' + esc(v.dir) + '">' + (v.dir === 'out' ? 'inviata' : 'ricevuta') + '</span>' : '') + pillEsito(v.e) + '</div>' +
         '<div class="cg-nm">' + esc(x.c.nome) + (x.c.prov ? ' <i>' + esc(x.c.prov) + '</i>' : '') + '</div>' +
         (v.t ? '<div class="cg-ti">' + esc(v.t) + '</div>' : '') +
         (tx ? '<div class="cg-tx">' + esc(tx) + '</div>' : '') +
-        (v.ref ? '<div class="cg-rf">' + esc(v.ref) + '</div>' : '') + '</button>');
+        (v.ref ? '<div class="cg-rf">' + esc(v.ref) + '</div>' : '') + '</button></div>');
     });
     h.push('</div>');
     if (L.length > mostra.length) h.push('<div class="az"><button class="btn" id="cg-piu">Mostra altre ' + num(Math.min(200, L.length - mostra.length)) + ' voci (ne restano ' + num(L.length - mostra.length) + ')</button></div>');
@@ -2551,6 +2568,7 @@ function disegnaCron() {
   $$('[data-tipo]', box).forEach(function (b) { b.addEventListener('click', function () { CG.tipo = b.dataset.tipo; CG.quante = 200; disegnaCron(); }); });
   var q = $('#cg-q'); q.addEventListener('input', function () { CG.q = q.value; CG.quante = 200; var p2 = q.selectionStart; disegnaCron(); var n2 = $('#cg-q'); n2.focus(); try { n2.setSelectionRange(p2, p2); } catch (e) {} });
   $$('.cg-v', box).forEach(function (b) { b.addEventListener('click', function () { apriScheda(b.dataset.cid); }); });
+  $$('.cg-ed', box).forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); modificaEvento(b.dataset.cid, b.dataset.ev); }); });
   var pi = $('#cg-piu'); if (pi) pi.addEventListener('click', function () { CG.quante += 200; disegnaCron(); });
   cxPrepara(box);
 }
@@ -2735,7 +2753,7 @@ function apriScheda(id) {
       h.push('<div class="ref"><b>' + esc(r.nome || '—') + '</b><div class="ru">' + esc([r.ruolo, r.note || r.nota].filter(Boolean).join(' · ')) + '</div><div class="az">' + (tn ? '<a href="tel:' + esc(tn) + '">&#9742; ' + esc(r.tel) + '</a>' : '') + (cn ? '<a href="tel:' + esc(cn) + '">&#128241; ' + esc(r.cell || r.cellulare) + '</a>' : '') + (r.email ? '<a href="mailto:' + esc(r.email) + '">&#9993; ' + esc(r.email) + '</a>' : '') + '</div></div>'); });
     h.push('</div></div>'); }
   /* cronologia */
-  h.push('<div class="sz sz-cron"><h3>Cronologia<span class="pill">' + num(ev.length) + '</span></h3><div class="c">');
+  h.push('<div class="sz sz-cron"><h3>Report<span class="pill">' + num(ev.length) + '</span></h3><div class="c">');
   h.push('<details id="sc-nuovo"><summary class="btn mini" style="display:inline-block;list-style:none;background:var(--sz-cron);color:#fff;border-color:var(--sz-cron)">+ Registra evento</summary><div class="form" style="margin:10px 0 6px">');
   h.push(dettaturaHtml());
   h.push('<div class="due"><label>Data <input type="date" id="ev-d" value="' + og + '"></label><label>Ora <input type="time" id="ev-o" value="' + ora() + '"></label></div>');
@@ -3900,6 +3918,102 @@ function fabSpostabile(b) {
   b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   fabPosApplica(b);
 }
+/* ============================================================
+   DETTATURA DA QUALSIASI SCHERMATA — il tasto fluttuante con il microfono.
+   Registra, fa trascrivere dal ponte, capisce di quale cliente si parla e apre
+   il suo modulo del report già compilato. Il salvataggio resta sempre a mano.
+   ============================================================ */
+var DETT_PRE = null;
+function vbar(testo, conAnnulla) {
+  var b = $('#vbar'); if (!b) return;
+  if (testo === false) { b.classList.remove('on'); return; }
+  $('#vbar-t').innerHTML = testo;
+  $('#vbar-x').style.display = conAnnulla === false ? 'none' : '';
+  b.classList.add('on');
+}
+/* dal nome detto al cliente in archivio: confronto senza accenti né forme societarie */
+function nomeNudo(t) {
+  return senzaAccenti(t).replace(/\b(s\.?r\.?l\.?|s\.?p\.?a\.?|s\.?n\.?c\.?|s\.?a\.?s\.?|soc\.?|societa|impresa|ditta|di|&|e|c\.?)\b/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function clienteDaNome(nome) {
+  var x = nomeNudo(nome); if (x.length < 3) return '';
+  var T = lista(), mig = '', punti = 0;
+  T.forEach(function (c) {
+    var y = nomeNudo(c.nome); if (!y) return;
+    var p = 0;
+    if (y === x) p = 100;
+    else if (y.indexOf(x) === 0 || x.indexOf(y) === 0) p = 80;
+    else if (y.indexOf(x) >= 0 || x.indexOf(y) >= 0) p = 60;
+    else {
+      var px = x.split(' ').filter(function (w) { return w.length > 2; });
+      var com = px.filter(function (w) { return y.indexOf(w) >= 0; }).length;
+      if (px.length && com) p = Math.round(40 * com / px.length);
+    }
+    if (p > punti) { punti = p; mig = c.id; }
+  });
+  return punti >= 55 ? mig : '';
+}
+function reportDaVoce(cid, r) {
+  DETT_PRE = r;
+  apriReportCliente(cid, {});
+  setTimeout(function () {
+    var d = $('#sc-nuovo'); if (d) d.open = true;
+    var txt = $('#dett-txt'), sunto = $('#dett-sunto');
+    if (txt) txt.textContent = r.testo || '';
+    dettaturaRiempi(r, sunto);
+    var box = $('#dett'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    DETT_PRE = null;
+  }, 700);
+}
+function scegliClientePerVoce(r) {
+  var f = el('div', 'foglio att-f');
+  function chiudi() { f.remove(); }
+  f.innerHTML = '<div class="fg"><h4>Per quale cliente è questo report?</h4>' +
+    '<div class="riga-o" style="color:var(--tenue);font-size:calc(12.5px * var(--scala))">' + esc((r.testo || '').slice(0, 160)) + '…</div>' +
+    '<div class="att-c"><label>Cliente</label><input type="search" id="vc-cerca" placeholder="Nome del cliente…" autocomplete="off" value="' + esc(r.cliente || '') + '"><div class="att-sugg" id="vc-sugg"></div></div>' +
+    '<div class="az"><button class="btn" id="vc-ann">Annulla</button></div></div>';
+  document.body.appendChild(f);
+  function cerca() {
+    var t = $('#vc-cerca', f).value.trim().toLowerCase();
+    var l = t.length >= 2 ? attTrova(t) : [];
+    $('#vc-sugg', f).innerHTML = l.length
+      ? l.map(function (x) { return '<button data-c="' + esc(x.c.id) + '">' + esc(x.c.nome) + (x.c.prov ? '<span> · ' + esc(x.c.prov) + '</span>' : '') + '</button>'; }).join('')
+      : '<div class="vuoto">' + (t.length >= 2 ? 'Nessun cliente con questo nome.' : 'Scrivi almeno due lettere.') + '</div>';
+    $$('#vc-sugg button', f).forEach(function (b) { b.addEventListener('click', function () { var cid = b.dataset.c; chiudi(); reportDaVoce(cid, r); }); });
+  }
+  $('#vc-cerca', f).addEventListener('input', cerca);
+  $('#vc-ann', f).addEventListener('click', chiudi);
+  cerca();
+  setTimeout(function () { var e = $('#vc-cerca', f); if (e) { e.focus(); e.select(); } }, 120);
+}
+function dettaturaVolante() {
+  var b = $('#fab-voce');
+  if (REG.attivo) { registraFerma(); return; }
+  if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4000); return; }
+  if (!registraDisponibile()) { toast('Questo telefono non registra l\'audio', 4000); return; }
+  b.classList.add('reg');
+  vbar('<b>Registro…</b> 0:00 — tocca il microfono per finire');
+  registraAvvia(
+    function (sec) { vbar('<b>Registro…</b> ' + durata(sec) + ' — tocca il microfono per finire'); },
+    function (blob, sec) {
+      b.classList.remove('reg');
+      if (!blob || blob.size < 1200 || sec < 1) { vbar(false); toast('Registrazione troppo breve'); return; }
+      vbar('Trascrivo l\'audio di ' + durata(sec) + '…', false);
+      audioAlPonte(blob, clienteContesto()).then(function (r) {
+        vbar(false);
+        var cid = clienteContesto() || clienteDaNome(r.cliente);
+        if (cid && DB.contatti[cid]) reportDaVoce(cid, r); else scegliClientePerVoce(r);
+      }, function (e) {
+        vbar(false);
+        toast('Trascrizione non riuscita: ' + String(e.message || e).slice(0, 60), 5000);
+      });
+    },
+    function (err) {
+      b.classList.remove('reg'); vbar(false);
+      toast(err === 'NotAllowedError' ? 'Permesso al microfono negato' : 'Microfono non disponibile', 4000);
+    }
+  );
+}
 function aggiornaFab() {
   var f = $('#fab'); if (!f) return;
   f.classList.add('on');
@@ -3907,14 +4021,22 @@ function aggiornaFab() {
   var c = clienteContesto() ? DB.contatti[clienteContesto()] : null;
   f.title = c ? 'Aggiungi per ' + c.nome : 'Visita, telefonata o mail da programmare, oppure il report di una cosa già fatta';
   f.classList.toggle('mirato', !!c);
+  var v = $('#fab-voce');
+  if (v) {
+    v.classList.toggle('on', pontePronto());
+    v.classList.toggle('sopra', document.body.classList.contains('sc-aperta'));
+    v.title = c ? 'Detta il report per ' + c.nome : 'Detta un report da qualsiasi schermata';
+  }
 }
 $('#fab').addEventListener('click', function () {
   if (this.dataset.spostato) return;
   attForm({ cid: clienteContesto(), d: (vista === 'cal' && CAL.sel) ? CAL.sel : oggi() });
 });
 $('#fab-ind').addEventListener('click', function () { if (this.dataset.spostato) return; tornaIndietro(); });
-fabSpostabile($('#fab')); fabSpostabile($('#fab-ind'));
-window.addEventListener('resize', function () { fabPosApplica($('#fab')); fabPosApplica($('#fab-ind')); });
+$('#fab-voce').addEventListener('click', function () { if (this.dataset.spostato) return; dettaturaVolante(); });
+$('#vbar-x').addEventListener('click', function () { if (REG.attivo) { REG.pezzi = []; registraFerma(); } vbar(false); $('#fab-voce').classList.remove('reg'); toast('Dettatura annullata'); });
+fabSpostabile($('#fab')); fabSpostabile($('#fab-ind')); fabSpostabile($('#fab-voce'));
+window.addEventListener('resize', function () { fabPosApplica($('#fab')); fabPosApplica($('#fab-ind')); fabPosApplica($('#fab-voce')); });
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
