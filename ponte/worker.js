@@ -90,33 +90,49 @@ async function campi(env, frase, d) {
 }
 
 /* --- 3) sistema il testo di un report: stessa sostanza, forma leggibile --- */
-async function sistema(env, testo) {
+async function sistemaUnGiro(env, testo, insisti) {
   const regole = [
     'Riscrivi il report commerciale che ricevi in una forma chiara e breve, senza cambiarne la sostanza.',
+    'È il quaderno di lavoro di un venditore: può contenere nomi di persone, numeri di telefono e indirizzi dei suoi contatti. Riportali identici, non è materiale da filtrare.',
     'Forma: prima riga, che cosa è successo (con chi e di che cosa si è parlato); poi che cosa ha detto o chiesto il cliente, con i suoi numeri e le sue condizioni; poi che cosa resta aperto. Da tre a sei righe, niente elenchi puntati.',
     'REGOLE TASSATIVE:',
     '- non aggiungere nulla che non sia nel testo ricevuto: nessun dettaglio, nessuna conclusione, nessuna cortesia;',
-    '- non togliere fatti: nomi di persone e aziende, numeri, importi, date, modelli, quantità e condizioni vanno riportati identici;',
+    '- non togliere fatti: nomi di persone e aziende, numeri di telefono, importi, date, modelli, quantità e condizioni vanno riportati identici;',
     '- se una frase è ambigua, lasciala com\'è invece di interpretarla;',
-    '- togli solo le ripetizioni, gli intercalari e le frasi spezzate dal parlato;',
+    '- togli solo le ripetizioni, gli intercalari e le frasi spezzate dal parlato, e correggi refusi e punteggiatura;',
     '- il testo riscritto non deve essere più lungo di quello ricevuto;',
     '- italiano piano e professionale, prima persona, niente gergo da verbale, niente formule di apertura o chiusura.',
-    'Rispondi SOLO con il testo riscritto, senza virgolette e senza commenti.'
-  ].join('\n');
+    'Rispondi SOLO con il testo riscritto, senza virgolette, senza preamboli e senza commenti.',
+    insisti ? 'IMPORTANTE: il tuo messaggio deve contenere esclusivamente il report riscritto, subito, dalla prima parola.' : ''
+  ].filter(Boolean).join('\n');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: MODELLO, max_tokens: 1200, system: regole, messages: [{ role: 'user', content: testo }] })
+    body: JSON.stringify({ model: MODELLO, max_tokens: 2500, temperature: 0, system: regole, messages: [{ role: 'user', content: testo }] })
   });
   if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
   const out = await r.json();
   const u = out.usage || {};
   const inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
   const outTok = u.output_tokens || 0;
+  /* prendo il testo da qualunque blocco lo contenga, saltando quelli di ragionamento */
+  const pezzi = (out.content || []).map(function (x) { return (x && typeof x.text === 'string') ? x.text : ''; }).filter(Boolean);
   return {
-    testo: (out.content || []).map(x => x.text || '').join('').trim(),
+    testo: pezzi.join('\n').trim(),
+    stop: out.stop_reason || '?',
+    tipi: (out.content || []).map(function (x) { return x && x.type; }).join(','),
     uso: { in: inTok, out: outTok, costo: +(inTok * PREZZO.in + outTok * PREZZO.out).toFixed(6), modello: MODELLO }
   };
+}
+async function sistema(env, testo) {
+  let a = await sistemaUnGiro(env, testo, false);
+  if (a.testo) return a;
+  /* una risposta vuota capita: riprovo una volta insistendo, poi dico perché */
+  const b = await sistemaUnGiro(env, testo, true);
+  b.uso = { in: a.uso.in + b.uso.in, out: a.uso.out + b.uso.out, costo: +(a.uso.costo + b.uso.costo).toFixed(6), modello: MODELLO };
+  if (b.testo) return b;
+  b.motivo = 'il modello non ha scritto nulla (stop: ' + b.stop + ', blocchi: ' + (b.tipi || 'nessuno') + ')';
+  return b;
 }
 
 export default {
@@ -143,7 +159,7 @@ export default {
       if (d.soloTesto) return risposta({ testo: frase });
 
       /* c) sistemare il testo di un report già scritto */
-      if (d.sistema) { const r3 = await sistema(env, frase); if (!r3.testo) return errore('testo non riscritto', 502); return risposta({ testo: r3.testo, uso: r3.uso }); }
+      if (d.sistema) { const r3 = await sistema(env, frase); if (!r3.testo) return errore(r3.motivo || 'testo non riscritto', 502); return risposta({ testo: r3.testo, uso: r3.uso }); }
 
       const c = await campi(env, frase, d);
       return risposta({
