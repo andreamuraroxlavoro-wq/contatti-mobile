@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.63.1';
+var APP_VER = '1.63.2';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -4498,7 +4498,11 @@ function chatDiciTu(testo) {
     var t = r.testo || '';
     CHAT.storia.push({ r: 'a', t: t });
     chatRiga('app', t);
-    if (r.cliente) { var c2 = clienteDaNome(r.cliente); if (c2 && c2 !== CHAT.cid) { CHAT.cid = c2; chatChi(); } }
+    if (r.cliente) {
+      var c2 = clienteDaNome(r.cliente);
+      if (c2 && c2 !== CHAT.cid) { CHAT.cid = c2; chatChi(); }
+      else if (!c2) chatRiga('app', '(«' + r.cliente + '» non lo trovo in archivio: cercalo e aprilo, poi riprova.)');
+    }
     if (r.azione) chatProposta(r.azione);
     if (guidaVoce()) parla(t);
   }, function (e) {
