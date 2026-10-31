@@ -91,24 +91,27 @@ async function campi(env, frase, d) {
 
 /* --- 3) sistema il testo di un report: stessa sostanza, forma leggibile --- */
 async function sistemaUnGiro(env, testo, insisti) {
+  const breve = testo.length < 700;
   const regole = [
-    'Riscrivi il report commerciale che ricevi in una forma chiara e breve, senza cambiarne la sostanza.',
-    'È il quaderno di lavoro di un venditore: può contenere nomi di persone, numeri di telefono e indirizzi dei suoi contatti. Riportali identici, non è materiale da filtrare.',
-    'Forma: prima riga, che cosa è successo (con chi e di che cosa si è parlato); poi che cosa ha detto o chiesto il cliente, con i suoi numeri e le sue condizioni; poi che cosa resta aperto. Da tre a sei righe, niente elenchi puntati.',
-    'REGOLE TASSATIVE:',
-    '- non aggiungere nulla che non sia nel testo ricevuto: nessun dettaglio, nessuna conclusione, nessuna cortesia;',
-    '- non togliere fatti: nomi di persone e aziende, numeri di telefono, importi, date, modelli, quantità e condizioni vanno riportati identici;',
-    '- se una frase è ambigua, lasciala com\'è invece di interpretarla;',
-    '- togli solo le ripetizioni, gli intercalari e le frasi spezzate dal parlato, e correggi refusi e punteggiatura;',
-    '- il testo riscritto non deve essere più lungo di quello ricevuto;',
-    '- italiano piano e professionale, prima persona, niente gergo da verbale, niente formule di apertura o chiusura.',
+    'Riscrivi il testo che ricevi in una forma piu chiara e corretta, SENZA cambiarne la sostanza, la struttura e la lunghezza.',
+    'NON e un riassunto. Il testo riscritto deve contenere tutto quello che c\'e nell\'originale: se l\'originale ha dieci paragrafi, il tuo ne ha dieci.',
+    'E il quaderno di lavoro di un venditore: puo contenere nomi di persone, numeri di telefono e indirizzi dei suoi contatti. Riportali identici, non e materiale da filtrare.',
+    'CHE COSA PUOI FARE: correggere refusi, punteggiatura, accordi e parole spezzate dal parlato; togliere ripetizioni e intercalari; sciogliere le frasi contorte; rendere il testo scorrevole.',
+    'CHE COSA NON DEVI FARE: riassumere, accorciare, togliere paragrafi o frasi, unire paragrafi diversi, cambiare l\'ordine, cambiare chi parla o a chi si parla, trasformare una lettera o una mail in un resoconto, aggiungere informazioni, cortesie o conclusioni che non ci sono.',
+    'Se il testo e una lettera, una mail o un\'offerta (ha un destinatario, un saluto, una firma o dei titoli di sezione), resta tale e quale: tieni intestazione, saluti, titoli, firma e recapiti al loro posto.',
+    'Riporta identici: nomi di persone e aziende, numeri di telefono, importi, date, modelli, quantita, condizioni, indirizzi, indirizzi di posta, siti e i segnaposto fra parentesi graffe come {ragione_sociale}.',
+    'Se una frase e ambigua, lasciala com\'e invece di interpretarla.',
+    breve
+      ? 'Il testo e una nota breve: rendila un report scorrevole in prima persona, senza elenchi puntati, conservando tutti i fatti. Non aggiungere formule di apertura o di chiusura.'
+      : 'Mantieni la lunghezza e l\'impaginazione: il testo riscritto deve essere lungo quanto quello ricevuto (fra il 90% e il 115%), con gli stessi a capo e le stesse righe vuote fra i paragrafi.',
+    'Italiano piano e professionale; mantieni la persona (prima, seconda o terza) e il tono dell\'originale.',
     'Rispondi SOLO con il testo riscritto, senza virgolette, senza preamboli e senza commenti.',
-    insisti ? 'IMPORTANTE: il tuo messaggio deve contenere esclusivamente il report riscritto, subito, dalla prima parola.' : ''
+    insisti ? 'IMPORTANTE: la tua risposta precedente non andava bene perche era troppo corta o vuota. Riscrivi TUTTO il testo dall\'inizio alla fine, paragrafo per paragrafo, senza saltarne nessuno, e scrivi solo il testo riscritto dalla prima parola.' : ''
   ].filter(Boolean).join('\n');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: MODELLO, max_tokens: 2500, system: regole, messages: [{ role: 'user', content: testo }] })
+    body: JSON.stringify({ model: MODELLO, max_tokens: 8000, system: regole, messages: [{ role: 'user', content: testo }] })
   });
   if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
   const out = await r.json();
@@ -124,14 +127,22 @@ async function sistemaUnGiro(env, testo, insisti) {
     uso: { in: inTok, out: outTok, costo: +(inTok * PREZZO.in + outTok * PREZZO.out).toFixed(6), modello: MODELLO }
   };
 }
+/* il testo riscritto non puo essere molto piu corto: sarebbe un riassunto, non una riscrittura */
+function troppoCorto(orig, nuovo) {
+  if (!nuovo) return false;
+  const soglia = orig.length < 700 ? 0.45 : 0.80;
+  return nuovo.length < orig.length * soglia;
+}
 async function sistema(env, testo) {
   let a = await sistemaUnGiro(env, testo, false);
-  if (a.testo) return a;
-  /* una risposta vuota capita: riprovo una volta insistendo, poi dico perché */
+  if (a.testo && !troppoCorto(testo, a.testo)) return a;
+  /* risposta vuota o riassunta: riprovo una volta insistendo, poi dico perche */
   const b = await sistemaUnGiro(env, testo, true);
   b.uso = { in: a.uso.in + b.uso.in, out: a.uso.out + b.uso.out, costo: +(a.uso.costo + b.uso.costo).toFixed(6), modello: MODELLO };
-  if (b.testo) return b;
-  b.motivo = 'il modello non ha scritto nulla (stop: ' + b.stop + ', blocchi: ' + (b.tipi || 'nessuno') + ')';
+  if (b.testo && !troppoCorto(testo, b.testo)) return b;
+  if (!b.testo) { b.motivo = 'il modello non ha scritto nulla (stop: ' + b.stop + ', blocchi: ' + (b.tipi || 'nessuno') + ')'; b.testo = ''; return b; }
+  b.motivo = 'il modello ha riassunto invece di riscrivere (da ' + testo.length + ' a ' + b.testo.length + ' caratteri): testo lasciato com\'era';
+  b.testo = '';
   return b;
 }
 
@@ -146,7 +157,7 @@ export default {
 
     try {
       /* a) è arrivato dell'audio: prima lo trascrivo */
-      let frase = String(d.frase || '').slice(0, 4000);
+      let frase = String(d.frase || '').slice(0, d.sistema ? 24000 : 4000);
       let trascritto = '';
       if (d.audio) {
         trascritto = await trascrivi(env, String(d.audio), d.lingua, d.nomi);
