@@ -879,7 +879,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.55.1';
+var APP_VER = '1.55.2';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3499,25 +3499,47 @@ function dettaturaAggancia(id) {
 }
 /* riempie i campi del modulo e dice che cosa ha capito; non salva niente */
 function dettaturaRiempi(r, sunto) {
-  var messi = [];
+  var messi = [], saltati = [], rimandati = [];
+  /* un campo gia compilato non si sovrascrive mai da solo: lo propongo e decidi tu */
   function metti(sel, val, eti) {
     if (!val) return; var e = $(sel); if (!e) return;
+    var ades = String(e.value || '').trim();
+    if (ades && ades !== String(val).trim()) { saltati.push(eti); rimandati.push({ sel: sel, val: val }); return; }
     e.value = val; e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito');
     messi.push(eti);
   }
   metti('#ev-c', r.c, 'Canale <b>' + esc(r.c) + '</b>');
   metti('#ev-e', r.e, 'Tipo Azione <b>' + esc(r.e) + '</b>');
   metti('#ev-t', r.t, 'Titolo');
-  metti('#ev-n', r.n, 'Nota');
-  if (r.r) { var ri = $('#ev-r'); if (ri) { ri.value = r.r; evRicTocco = true; ri.classList.remove('capito'); void ri.offsetWidth; ri.classList.add('capito'); messi.push('Richiamo <b>' + esc(dataIt(r.r)) + '</b>');
-    var n2 = $('#ev-rnota'); if (n2) { n2.innerHTML = 'il richiamo in scheda diventa <b>' + esc(dataIt(r.r)) + '</b>'; n2.classList.add('on'); } } }
+  /* la nota non si butta via: se c'e gia qualcosa, la dettatura si aggiunge in fondo */
+  var no = $('#ev-n'), primaNota = no ? no.value : '', aggiunto = false;
+  if (no && r.n) {
+    if (no.value.trim()) { no.value = no.value.replace(/\s*$/, '') + '\n\n' + r.n; aggiunto = true; messi.push('Nota <b>aggiunta in fondo</b> (quella di prima resta)'); }
+    else { no.value = r.n; messi.push('Nota'); }
+    no.classList.remove('capito'); void no.offsetWidth; no.classList.add('capito');
+    no.scrollTop = no.scrollHeight;
+  }
+  if (r.r) { var ri = $('#ev-r');
+    if (ri && ri.value && ri.value !== r.r) { saltati.push('Richiamo <b>' + esc(dataIt(r.r)) + '</b>'); rimandati.push({ sel: '#ev-r', val: r.r, ric: true }); }
+    else if (ri) { ri.value = r.r; evRicTocco = true; ri.classList.remove('capito'); void ri.offsetWidth; ri.classList.add('capito'); messi.push('Richiamo <b>' + esc(dataIt(r.r)) + '</b>');
+      var n2 = $('#ev-rnota'); if (n2) { n2.innerHTML = 'il richiamo in scheda diventa <b>' + esc(dataIt(r.r)) + '</b>'; n2.classList.add('on'); } } }
   if (r.passo) { var sp = $('#sc-passo'); if (sp && !sp.value.trim()) { sp.value = r.passo; sp.classList.remove('capito'); void sp.offsetWidth; sp.classList.add('capito'); messi.push('Prossimo passo (da salvare nel riquadro Situazione)'); } }
   if (!sunto) return;
   var coda = r.via === 'ponte' ? ' <span class="nulla">(trascritto e letto dal ponte)</span>' : (r.via === 'locale' && r.errore ? ' <span class="nulla">Ponte non raggiunto, ho letto la frase da solo.</span>' : '');
   if (r.cliente) coda = ' <span class="nulla">Cliente nominato: ' + esc(r.cliente) + '.</span>' + coda;
-  sunto.innerHTML = messi.length
+  var h = messi.length
     ? 'Ho capito: ' + messi.join(' · ') + '.' + coda
     : '<span class="nulla">Non ho riconosciuto n&eacute; azione n&eacute; data: ho lasciato tutto nella nota, compila a mano.</span>' + coda;
+  if (aggiunto) h += '<div class="riga-o" style="margin-top:8px"><button type="button" class="btn mini" id="dett-sost">Sostituisci la nota</button> <button type="button" class="btn mini" id="dett-ann">Annulla l\'aggiunta</button></div>';
+  if (saltati.length) h += '<div class="riga-o" style="margin-top:8px"><span class="nulla">Non ho toccato ' + saltati.join(', ') + ': erano gi&agrave; compilati.</span> <button type="button" class="btn mini" id="dett-forza">Usa quelli dettati</button></div>';
+  sunto.innerHTML = h;
+  var bs = $('#dett-sost', sunto), ba = $('#dett-ann', sunto), bf = $('#dett-forza', sunto);
+  if (bs) bs.addEventListener('click', function () { no.value = r.n; bs.remove(); if (ba) ba.remove(); toast('Nota sostituita con la dettatura'); });
+  if (ba) ba.addEventListener('click', function () { no.value = primaNota; ba.remove(); if (bs) bs.remove(); toast('Aggiunta annullata'); });
+  if (bf) bf.addEventListener('click', function () {
+    rimandati.forEach(function (x) { var e = $(x.sel); if (!e) return; e.value = x.val; if (x.ric) { evRicTocco = true; var n3 = $('#ev-rnota'); if (n3) { n3.innerHTML = 'il richiamo in scheda diventa <b>' + esc(dataIt(x.val)) + '</b>'; n3.classList.add('on'); } } e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito'); });
+    bf.remove(); toast('Campi aggiornati con la dettatura');
+  });
 }
 /* appiglio per il banco di prova: la dettatura si collauda senza microfono */
 window.CM_DETT = { leggiFrase: leggiFrase, capisciFrase: capisciFrase, riempi: dettaturaRiempi, pulisci: ripulisciDoppioni, avvia: voceAvvia, punteggia: punteggia, segni: segniDettati };
