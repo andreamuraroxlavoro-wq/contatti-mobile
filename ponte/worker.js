@@ -154,6 +154,36 @@ async function sistema(env, testo) {
   return b;
 }
 
+/* --- 4) la voce: la frase letta da una voce neurale (OpenAI), con ricaduta sul telefono --- */
+const VOCE_MODELLO = 'gpt-4o-mini-tts';
+const VOCE_RISERVA = 'tts-1';
+const VOCE_PREZZO = 15 / 1000000;   /* dollari per carattere: stima buona per il conto dei consumi */
+const VOCE_TONO = 'Parla in italiano, con tono cordiale e naturale, come un collega che guida un amico mentre guida l\'auto. Ritmo tranquillo, pause vere alla punteggiatura, mai robotico. Le domande suonano come domande.';
+async function vocePonte(env, testo, nome) {
+  if (!env.OPENAI_API_KEY) throw new Error('manca la chiave della voce (OPENAI_API_KEY)');
+  const t = String(testo || '').slice(0, 600);
+  if (!t) throw new Error('niente da leggere');
+  const voce = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse'].indexOf(nome) >= 0 ? nome : 'coral';
+  async function giro(modello, conTono) {
+    const corpo = { model: modello, voice: voce, input: t, response_format: 'mp3' };
+    if (conTono) corpo.instructions = VOCE_TONO;
+    const r = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.OPENAI_API_KEY },
+      body: JSON.stringify(corpo)
+    });
+    if (!r.ok) throw new Error('voce: ' + r.status + ' ' + (await r.text()).slice(0, 160));
+    return new Uint8Array(await r.arrayBuffer());
+  }
+  let buf;
+  try { buf = await giro(VOCE_MODELLO, true); }
+  catch (e) { buf = await giro(VOCE_RISERVA, false); }
+  let b = '';
+  const PEZZO = 0x8000;
+  for (let i = 0; i < buf.length; i += PEZZO) b += String.fromCharCode.apply(null, buf.subarray(i, i + PEZZO));
+  return { audio: btoa(b), caratteri: t.length, costo: +(t.length * VOCE_PREZZO).toFixed(6) };
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors() });
@@ -166,6 +196,13 @@ export default {
     try {
       /* a) è arrivato dell'audio: prima lo trascrivo */
       let frase = String(d.frase || '').slice(0, d.sistema ? 24000 : 4000);
+
+      /* a) la voce: leggi questa frase (non passa dalla trascrizione) */
+      if (d.voce) {
+        const v = await vocePonte(env, typeof d.voce === 'string' ? d.voce : frase, d.vocenome);
+        return risposta({ audio: v.audio, uso: { in: 0, out: 0, costo: v.costo, modello: 'voce', caratteri: v.caratteri } });
+      }
+
       let trascritto = '';
       if (d.audio) {
         trascritto = await trascrivi(env, String(d.audio), d.lingua, d.nomi);
