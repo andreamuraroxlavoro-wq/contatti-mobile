@@ -854,7 +854,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.51.0';
+var APP_VER = '1.52.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3206,49 +3206,194 @@ function capisciFrase(testo) {
   return frasePonte(testo).catch(function (e) { var l = leggiFrase(testo); l.via = 'locale'; l.errore = e.message || String(e); return l; });
 }
 
+/* --- registrazione dell'audio: la via buona, quando il ponte c'è ---
+   Il telefono non interpreta più nulla: registra e basta. A trascrivere è il ponte,
+   che restituisce il testo già punteggiato e i campi del report. --- */
+var REG = { mr: null, pezzi: [], stream: null, t0: 0, timer: null, attivo: false };
+var REG_MAX = 240;   /* secondi: oltre, chiudo da solo per non mandare file enormi */
+function registraDisponibile() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }
+function registraChiudiStream() {
+  if (REG.timer) { clearInterval(REG.timer); REG.timer = null; }
+  try { if (REG.stream) REG.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+  REG.stream = null; REG.attivo = false;
+}
+function registraAvvia(suTempo, suFine, suErrore) {
+  if (!registraDisponibile()) { suErrore('no'); return; }
+  navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (st) {
+    REG.stream = st; REG.pezzi = []; REG.attivo = true;
+    var tipi = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'], tipo = '';
+    tipi.forEach(function (t) { if (!tipo && window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) tipo = t; });
+    var mr;
+    try { mr = tipo ? new MediaRecorder(st, { mimeType: tipo, audioBitsPerSecond: 32000 }) : new MediaRecorder(st); }
+    catch (e) { mr = new MediaRecorder(st); }
+    REG.mr = mr;
+    mr.ondataavailable = function (e) { if (e.data && e.data.size) REG.pezzi.push(e.data); };
+    mr.onstop = function () {
+      var b = new Blob(REG.pezzi, { type: (mr.mimeType || 'audio/webm').split(';')[0] });
+      registraChiudiStream();
+      suFine(b, Math.round((Date.now() - REG.t0) / 1000));
+    };
+    mr.start(1000);
+    REG.t0 = Date.now();
+    REG.timer = setInterval(function () {
+      var s = Math.round((Date.now() - REG.t0) / 1000);
+      suTempo(s);
+      if (s >= REG_MAX) registraFerma();
+    }, 500);
+  }, function (e) { REG.attivo = false; suErrore((e && e.name) || 'permesso'); });
+}
+function registraFerma() { try { if (REG.mr && REG.mr.state !== 'inactive') REG.mr.stop(); else registraChiudiStream(); } catch (e) { registraChiudiStream(); } }
+function durata(s) { var m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
+function blobBase64(b) {
+  return new Promise(function (ris, rif) {
+    var fr = new FileReader();
+    fr.onload = function () { var d = String(fr.result); ris(d.slice(d.indexOf(',') + 1)); };
+    fr.onerror = function () { rif(new Error('audio illeggibile')); };
+    fr.readAsDataURL(b);
+  });
+}
+/* i nomi che aiutano la trascrizione a non storpiare le aziende: quelli che ho davanti e quelli caldi */
+function nomiPerVoce(idScheda) {
+  var fuori = {}, l = [], og = oggi();
+  function metti(c) { if (c && c.nome && !fuori[c.id]) { fuori[c.id] = 1; l.push(c.nome); } }
+  if (idScheda && DB.contatti[idScheda]) metti(DB.contatti[idScheda]);
+  var T = lista();
+  T.filter(function (c) { var r = sit(c.id).richiamo; return r && r <= calSomma(og, 30); })
+   .sort(function (a, b) { return (sit(a.id).richiamo || '').localeCompare(sit(b.id).richiamo || ''); })
+   .forEach(metti);
+  Object.keys(DB.eventi).map(function (k) { return DB.eventi[k]; })
+    .sort(function (a, b) { return String(b.d || '').localeCompare(String(a.d || '')); })
+    .slice(0, 80).forEach(function (v) { metti(DB.contatti[v.cid]); });
+  T.filter(function (c) { return !!DB.pratiche[c.id]; }).forEach(metti);
+  return l.slice(0, 140);
+}
+/* manda l'audio al ponte e torna con testo e campi */
+function audioAlPonte(blob, idScheda) {
+  var P = ponteDati();
+  if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+  return blobBase64(blob).then(function (b64) {
+    var intestazioni = { 'Content-Type': 'application/json' };
+    if (P.tok) intestazioni['X-Token'] = P.tok;
+    return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({
+      audio: b64, lingua: 'it', oggi: oggi(), esiti: ESITI(), canali: CANALI(), nomi: nomiPerVoce(idScheda)
+    }) });
+  }).then(function (res) {
+    return res.json().catch(function () { throw new Error('ponte: risposta illeggibile'); }).then(function (d) {
+      if (!res.ok || d.errore) throw new Error(d.errore || ('ponte: ' + res.status));
+      return d;
+    });
+  }).then(function (d) {
+    usoSegna(d.uso);
+    var esiti = ESITI(), canali = CANALI();
+    return {
+      testo: d.testo || '',
+      c: canali.indexOf(d.canale) >= 0 ? d.canale : '',
+      e: esiti.indexOf(d.esito) >= 0 ? d.esito : '',
+      r: /^\d{4}-\d{2}-\d{2}$/.test(d.richiamo || '') ? d.richiamo : '',
+      t: String(d.titolo || '').slice(0, 90),
+      n: String(d.nota || d.testo || ''),
+      passo: String(d.passo || ''),
+      cliente: String(d.cliente || ''),
+      via: 'ponte'
+    };
+  });
+}
+/* conto dei consumi: token e spesa stimata, mese per mese */
+function usoMese() { return new Date().toISOString().slice(0, 7); }
+function usoLetto() { try { return JSON.parse(localStorage.getItem('cm.uso') || '{}') || {}; } catch (e) { return {}; } }
+function usoSegna(u) {
+  if (!u) return;
+  var tutti = usoLetto(), m = usoMese(), v = tutti[m] || { in: 0, out: 0, costo: 0, volte: 0 };
+  v.in += (+u.in || 0); v.out += (+u.out || 0); v.costo += (+u.costo || 0); v.volte++;
+  tutti[m] = v;
+  try { localStorage.setItem('cm.uso', JSON.stringify(tutti)); } catch (e) {}
+}
+
 /* --- la barra del microfono dentro il modulo del report --- */
 function dettaturaHtml() {
   return '<div class="dett" id="dett">' +
     '<div class="dett-az"><button type="button" class="dett-bt" id="dett-bt">' + ICO_MIC + '<span id="dett-et">Detta il report</span></button><span class="dett-sp"></span>' +
     '<button type="button" class="btn mini" id="dett-pul">Pulisci</button></div>' +
-    '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale». Il microfono resta acceso finch&eacute; non lo tocchi di nuovo: ogni pausa chiude la frase con il punto.</span></div>' +
+    '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale». Il microfono resta acceso finch&eacute; non lo tocchi di nuovo.</span></div>' +
     '<div class="dett-sunto" id="dett-sunto"></div>' +
     '<div class="dett-aiuto">Quello che capisco finisce nei campi qui sotto, che si accendono un attimo: controlla e correggi prima di toccare <b>Registra</b>. Niente viene salvato da solo. <span style="opacity:.6">(dettatura v' + APP_VER + ')</span></div>' +
     '</div>';
 }
 function dettaturaAggancia(id) {
   var bt = $('#dett-bt'); if (!bt) return;
-  if (bt.dataset.pronto) return; bt.dataset.pronto = '1';   /* due agganci = due ascolti insieme = testo doppio */
-  var et = $('#dett-et'), txt = $('#dett-txt'), sunto = $('#dett-sunto');
-  if (!voceDisponibile()) {
-    bt.disabled = true; et.textContent = 'Microfono non disponibile';
+  if (bt.dataset.pronto) return; bt.dataset.pronto = '1';
+  var txt = $('#dett-txt'), sunto = $('#dett-sunto');
+  var conPonte = pontePronto() && registraDisponibile();   /* la via buona: registro e faccio trascrivere */
+  if (!conPonte && !voceDisponibile()) {
+    bt.disabled = true; bt.innerHTML = ICO_MIC + '<span id="dett-et">Microfono non disponibile</span>';
     txt.innerHTML = '<span class="prov">Questo browser non detta. Usa il tasto microfono della tastiera dentro il campo Nota: il risultato è lo stesso.</span>';
     return;
   }
   var detto = '';
-  function spegni() { bt.classList.remove('on'); bt.innerHTML = ICO_MIC + '<span id="dett-et">Detta il report</span>'; et = $('#dett-et'); }
-  function accendi() { bt.classList.add('on'); bt.innerHTML = ICO_STOP + '<span id="dett-et">Sto ascoltando… tocca per finire</span>'; et = $('#dett-et'); }
-  /* il microfono resta acceso anche nelle pause: si spegne solo quando lo tocchi */
+  function etichetta(testo, acceso) {
+    bt.classList.toggle('on', !!acceso);
+    bt.innerHTML = (acceso ? ICO_STOP : ICO_MIC) + '<span id="dett-et">' + esc(testo) + '</span>';
+  }
+  function aRiposo() { etichetta('Detta il report', false); }
   $('#dett-pul').addEventListener('click', function () {
     detto = ''; txt.innerHTML = '<span class="prov">Tocca il microfono e racconta.</span>'; sunto.innerHTML = '';
   });
-  bt.addEventListener('click', function () {
-    if (VOCE.voluto || VOCE.acceso) { voceFerma(); return; }
-    accendi(); sunto.innerHTML = '';
+
+  /* --- via B: il riconoscimento del telefono (riserva, e unica strada senza ponte) --- */
+  function conTelefono(perche) {
+    if (!voceDisponibile()) { txt.innerHTML = '<span class="prov">Trascrizione non riuscita' + (perche ? ' (' + esc(perche) + ')' : '') + ' e questo browser non detta. Scrivi la nota a mano.</span>'; aRiposo(); return; }
+    if (perche) sunto.innerHTML = '<span class="nulla">Ponte non raggiunto (' + esc(perche) + '): uso il microfono del telefono.</span>';
+    etichetta('Sto ascoltando… tocca per finire', true);
     voceAvvia(
       function (fermo, prov) { detto = fermo; txt.innerHTML = esc(fermo) + (prov ? ' <span class="prov">' + esc(prov) + '</span>' : ''); txt.scrollTop = txt.scrollHeight; },
       function (fermo) {
-        spegni(); detto = (fermo || detto || '').trim();
+        aRiposo(); detto = (fermo || detto || '').trim();
         if (!detto) { sunto.innerHTML = '<span class="nulla">Non ho sentito nulla.</span>'; return; }
         txt.textContent = detto;
         sunto.innerHTML = '<span class="nulla">Sto capendo…</span>';
         capisciFrase(detto).then(function (r) { dettaturaRiempi(r, sunto); });
       },
       function (err) {
-        spegni();
-        txt.innerHTML = '<span class="prov">' + (err === 'not-allowed' ? 'Permesso al microfono negato: concedilo nelle impostazioni del sito.' : err === 'no-speech' ? 'Non ho sentito nulla, riprova.' : 'Microfono non disponibile adesso (serve la rete). Usa il microfono della tastiera nel campo Nota.') + '</span>';
+        aRiposo();
+        txt.innerHTML = '<span class="prov">' + (err === 'not-allowed' ? 'Permesso al microfono negato: concedilo nelle impostazioni del sito.' : err === 'no-speech' ? 'Non ho sentito nulla, riprova.' : 'Microfono non disponibile adesso.') + '</span>';
       }
     );
+  }
+
+  /* --- via A: registro l'audio e lo faccio trascrivere dal ponte --- */
+  function conRegistratore() {
+    sunto.innerHTML = '';
+    txt.innerHTML = '<span class="prov">Parla pure: registro tutto, anche le pause. Tocca il tasto quando hai finito.</span>';
+    etichetta('Registro… 0:00 — tocca per finire', true);
+    registraAvvia(
+      function (sec) { etichetta('Registro… ' + durata(sec) + ' — tocca per finire', true); },
+      function (blob, sec) {
+        if (!blob || blob.size < 1200 || sec < 1) { aRiposo(); txt.innerHTML = '<span class="prov">Registrazione troppo breve.</span>'; return; }
+        etichetta('Trascrivo…', false);
+        txt.innerHTML = '<span class="prov">Audio di ' + esc(durata(sec)) + ' in trascrizione…</span>';
+        audioAlPonte(blob, id).then(function (r) {
+          aRiposo();
+          detto = r.testo || '';
+          txt.textContent = detto || '(niente)';
+          if (!detto) { sunto.innerHTML = '<span class="nulla">Dall\'audio non è uscito nulla.</span>'; return; }
+          dettaturaRiempi(r, sunto);
+        }, function (e) {
+          aRiposo();
+          conTelefono(String(e.message || e).slice(0, 60));
+        });
+      },
+      function (err) {
+        aRiposo();
+        if (err === 'NotAllowedError' || err === 'permesso') { txt.innerHTML = '<span class="prov">Permesso al microfono negato: concedilo nelle impostazioni del sito e riprova.</span>'; return; }
+        conTelefono('microfono: ' + err);
+      }
+    );
+  }
+
+  bt.addEventListener('click', function () {
+    if (REG.attivo) { registraFerma(); return; }
+    if (VOCE.voluto || VOCE.acceso) { voceFerma(); return; }
+    if (pontePronto() && registraDisponibile()) conRegistratore(); else conTelefono('');
   });
 }
 /* riempie i campi del modulo e dice che cosa ha capito; non salva niente */
@@ -3267,9 +3412,11 @@ function dettaturaRiempi(r, sunto) {
     var n2 = $('#ev-rnota'); if (n2) { n2.innerHTML = 'il richiamo in scheda diventa <b>' + esc(dataIt(r.r)) + '</b>'; n2.classList.add('on'); } } }
   if (r.passo) { var sp = $('#sc-passo'); if (sp && !sp.value.trim()) { sp.value = r.passo; sp.classList.remove('capito'); void sp.offsetWidth; sp.classList.add('capito'); messi.push('Prossimo passo (da salvare nel riquadro Situazione)'); } }
   if (!sunto) return;
+  var coda = r.via === 'ponte' ? ' <span class="nulla">(trascritto e letto dal ponte)</span>' : (r.via === 'locale' && r.errore ? ' <span class="nulla">Ponte non raggiunto, ho letto la frase da solo.</span>' : '');
+  if (r.cliente) coda = ' <span class="nulla">Cliente nominato: ' + esc(r.cliente) + '.</span>' + coda;
   sunto.innerHTML = messi.length
-    ? 'Ho capito: ' + messi.join(' · ') + '.' + (r.via === 'locale' && r.errore ? ' <span class="nulla">Ponte non raggiunto, ho letto la frase da solo.</span>' : '')
-    : '<span class="nulla">Non ho riconosciuto n&eacute; azione n&eacute; data: ho lasciato tutto nella nota, compila a mano.</span>';
+    ? 'Ho capito: ' + messi.join(' · ') + '.' + coda
+    : '<span class="nulla">Non ho riconosciuto n&eacute; azione n&eacute; data: ho lasciato tutto nella nota, compila a mano.</span>' + coda;
 }
 /* appiglio per il banco di prova: la dettatura si collauda senza microfono */
 window.CM_DETT = { leggiFrase: leggiFrase, capisciFrase: capisciFrase, riempi: dettaturaRiempi, pulisci: ripulisciDoppioni, avvia: voceAvvia, punteggia: punteggia, segni: segniDettati };
@@ -3319,11 +3466,20 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Scegli quali tabelle di numeri compaiono nella scheda <b>Cruscotto</b> e in che ordine: la spunta le accende, la maniglia le sposta. Almeno una resta sempre accesa.</span></div>');
   h.push('<div class="kpi-ord" id="cru-ord"></div></div>');
   h.push('<div class="opz" id="op-ponte"><h2>Assistente vocale</h2>');
-  h.push('<div class="riga-o"><span>Il microfono nel modulo del report funziona sempre. Qui si collega, se c\'&egrave;, il <b>ponte AI</b>: la frase dettata passa di l&igrave; e i campi vengono compilati meglio. Senza ponte legge la frase l\'app, che riconosce azione, data e prossimo passo.</span></div>');
+  h.push('<div class="riga-o"><span>Con il <b>ponte</b> collegato, il tasto <b>Detta il report</b> registra l\'audio e lo fa trascrivere dall\'intelligenza artificiale: testo pulito, gi&agrave; punteggiato, nomi dei clienti riconosciuti, e i campi compilati da soli. Senza ponte l\'app usa il microfono del telefono e legge la frase da sola, senza costi. Se il ponte non risponde, la riserva parte da sola.</span></div>');
   h.push('<div class="riga-o"><span>Indirizzo del ponte</span><span class="sp"></span><input id="pn-url" type="url" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.url') || '') + '" placeholder="https://…"></div>');
   h.push('<div class="riga-o"><span>Parola d\'ordine</span><span class="sp"></span><input id="pn-tok" type="password" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.tok') || '') + '" placeholder="token"></div>');
   h.push('<div class="az"><button class="btn" id="pn-prova">Prova il ponte</button><button class="btn peri" id="pn-tog">Togli</button></div>');
   h.push('<div class="riga-o" id="pn-esito" style="color:var(--tenue);font-size:calc(12.5px * var(--scala))"><span>' + (pontePronto() ? 'Ponte configurato.' : 'Nessun ponte: la frase viene letta dall\'app, senza costi e senza rete.') + '</span></div></div>');
+  (function () {
+    var u = usoLetto()[usoMese()] || { in: 0, out: 0, costo: 0, volte: 0 };
+    var eur = u.costo * 0.87, tetto = 17 * 0.87;
+    h.push('<div class="opz" id="op-uso"><h2>Consumi del mese</h2>');
+    h.push('<div class="riga-o"><span>Dettature passate dal ponte</span><span class="sp"></span><b>' + num(u.volte) + '</b></div>');
+    h.push('<div class="riga-o"><span>Token (in entrata · in uscita)</span><span class="sp"></span>' + num(u.in) + ' · ' + num(u.out) + '</div>');
+    h.push('<div class="riga-o"><span>Spesa stimata</span><span class="sp"></span><b' + (eur > tetto * 0.7 ? ' style="color:var(--rosso)"' : '') + '>' + eur.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €</b></div>');
+    h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Stima su questo dispositivo, al cambio di 1,15 $ per euro; il conto ufficiale è quello della console di Anthropic, dove il tetto mensile è di 17 $' + (eur > tetto * 0.7 ? ' — <b style="color:var(--rosso)">ti stai avvicinando al tetto</b>' : '') + '.</span></div></div>');
+  })();
   h.push('<div class="opz" id="op-sync"><h2>Sincronizzazione con GESTIONE CONTATTI</h2>');
   h.push('<div class="riga-o"><span>Servizio</span><span class="sp"></span><select id="sy-tipo" class="chip"><option value=""' + (!m.tipo ? ' selected' : '') + '>Nessuno</option><option value="drive"' + (m.tipo === 'drive' ? ' selected' : '') + '>Google Drive</option><option value="server"' + (m.tipo === 'server' ? ' selected' : '') + '>Server personale</option></select></div>');
   h.push('<div class="riga-o" id="sy-url-r" style="display:' + (m.tipo === 'server' ? '' : 'none') + '"><input id="sy-url" type="url" class="chip" style="flex:1" value="' + esc(m.serverUrl || '') + '" placeholder="https://server:8787"></div>');
