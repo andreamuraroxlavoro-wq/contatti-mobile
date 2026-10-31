@@ -879,7 +879,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.55.0';
+var APP_VER = '1.55.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3375,9 +3375,12 @@ function confrontoTesto(prima, dopo, quando) {
   function chiudi() { f.remove(); document.body.classList.remove('me-aperto'); }
   var persi = numeriPersi(prima, dopo);
   var piuLungo = dopo.length > prima.length * 1.25;
+  var calo = Math.round((1 - dopo.length / Math.max(1, prima.length)) * 100);
+  var piuCorto = calo >= 10;
   f.innerHTML = '<div class="fg"><h4>Testo sistemato</h4>' +
     (persi.length ? '<div class="nota rosso" style="margin-bottom:10px">Attenzione: nel testo nuovo non compaiono <b>' + esc(persi.join(', ')) + '</b>. Controlla prima di usarlo.</div>' : '') +
     (piuLungo ? '<div class="nota" style="margin-bottom:10px">Il testo nuovo è più lungo dell\'originale: leggilo con attenzione.</div>' : '') +
+    (piuCorto ? '<div class="nota rosso" style="margin-bottom:10px">Attenzione: il testo nuovo è più corto dell\'originale del <b>' + calo + '%</b>. Controlla che non manchi nulla prima di usarlo.</div>' : '') +
     '<div class="cfr"><div class="cfr-t">Prima</div><div class="cfr-p">' + esc(prima) + '</div></div>' +
     '<div class="cfr"><div class="cfr-t cfr-d">Dopo</div><textarea id="cfr-dopo" rows="9">' + esc(dopo) + '</textarea></div>' +
     '<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))">Puoi correggere il testo nuovo qui sopra prima di usarlo. L\'originale resta finché non tocchi «Usa questo».</div>' +
