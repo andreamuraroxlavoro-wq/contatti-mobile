@@ -131,6 +131,17 @@ html[data-theme="scuro"] #dett-sist,html[data-theme="scuro"] #me-sist{color:#241
 .ia-seg{display:inline-flex;align-items:center;gap:6px;font-size:calc(11.5px * var(--scala));color:var(--ambra);border:1px solid color-mix(in srgb,var(--ambra) 45%,transparent);background:color-mix(in srgb,var(--ambra) 12%,transparent);border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}
 .ia-seg span{color:var(--tenue)}
 .ia-seg.sx{margin-left:0;margin-right:5px}
+/* pillola lampeggiante: l'app sta lavorando, bisogna attendere */
+.lav{display:none}
+.lav.on{display:inline-flex;align-items:center;gap:8px;background:var(--ambra);color:#fff;border-radius:999px;padding:8px 15px;margin:8px 0 2px;font-size:calc(13px * var(--scala));font-weight:700;animation:lampeggia 1.15s ease-in-out infinite;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.lav.on::before{content:'';width:9px;height:9px;border-radius:50%;background:#fff;flex:0 0 auto}
+.lav.on.reg{background:var(--rosso)}
+html[data-theme="scuro"] .lav.on{color:#241c05}
+html[data-theme="scuro"] .lav.on::before{background:#241c05}
+html[data-theme="scuro"] .lav.on.reg{color:#fff}
+html[data-theme="scuro"] .lav.on.reg::before{background:#fff}
+@keyframes lampeggia{0%,100%{opacity:1}50%{opacity:.4}}
+@media (prefers-reduced-motion:reduce){.lav.on{animation:none}}
 .cg-ed{position:absolute;right:8px;top:8px;border:1px solid var(--bordo);background:var(--carta);color:var(--tenue);border-radius:10px;padding:6px 10px;font:inherit;font-size:calc(12px * var(--scala));z-index:2}
 .cg-ed:active{background:var(--sfondo2)}
 .cg-v-t{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:calc(12px * var(--scala));color:var(--tenue)}
@@ -269,6 +280,10 @@ summary::-webkit-details-marker{display:none}
 .vbar.on{display:flex}
 .vbar b{color:var(--rosso)}
 .vbar #vbar-t{flex:1;min-width:0}
+.vbar.on.reg,.vbar.on.lav{animation:lampeggia 1.15s ease-in-out infinite}
+.vbar.on.lav{border-color:var(--ambra);box-shadow:0 10px 30px rgba(0,0,0,.24),0 0 0 2px color-mix(in srgb,var(--ambra) 45%,transparent)}
+.vbar.on.lav b{color:var(--ambra)}
+.vbar.on.reg{box-shadow:0 10px 30px rgba(0,0,0,.24),0 0 0 2px color-mix(in srgb,var(--rosso) 45%,transparent)}
 .vbar .vb-x{flex:0 0 auto}
 .nc-voce{border:1px solid var(--bordo);border-left:4px solid var(--sz-cron);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:calc(13px * var(--scala));line-height:1.45;background:var(--carta)}
 .nc-voce .nc-ok{margin-top:6px;color:var(--sz-cron)}
@@ -886,7 +901,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.56.2';
+var APP_VER = '1.57.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2508,6 +2523,12 @@ function cgTipo(v) {
 }
 var CG_NOMI = { visita: 'Visita', telefonata: 'Telefonata', mail: 'Mail', report: 'Report', azione: 'Cambio di Tipo Azione' };
 function cgTesto(v) { return v.h ? htmlATesto(v.h) : String(v.n || ''); }
+/* pillola lampeggiante: dice che l'app sta lavorando e bisogna aspettare */
+function lavAccendi(testo, rosso, box) {
+  var e = $('.lav', box || document); if (!e) return;
+  e.textContent = testo; e.className = 'lav on' + (rosso ? ' reg' : '');
+}
+function lavSpegni(box) { var e = $('.lav', box || document); if (!e) return; e.className = 'lav'; e.textContent = ''; }
 /* segno dei testi passati dall'assistente: la stessa stellina del tasto «Sistema il testo» */
 var SEGNO_IA = '\u2726';
 function quandoIA(iso) {
@@ -2944,7 +2965,7 @@ function modificaEvento(cid, vid) {
     '<div class="due"><label>Giorno <input type="date" id="me-d" value="' + esc(v.d || '') + '"></label><label>Ora <input type="time" id="me-o" value="' + esc(v.o || '') + '"></label></div>' +
     '<label>Titolo <input type="text" id="me-t" value="' + esc(v.t || '') + '" placeholder="es. Visita in sede"></label>' +
     '<label>' + (mail ? 'Nota' : 'Testo del report') + ' <textarea id="me-n" rows="9">' + esc(mail ? (v.n || '') : (v.n || htmlATesto(v.h))) + '</textarea></label>' +
-    (mail ? '' : '<div class="az" style="margin-bottom:8px"><button class="btn" id="me-sist">&#10022; Sistema il testo</button><span class="ia-seg" id="me-ia" style="display:none"></span></div>') +
+    (mail ? '' : '<div class="az" style="margin-bottom:8px"><button class="btn" id="me-sist">&#10022; Sistema il testo</button><span class="ia-seg" id="me-ia" style="display:none"></span><span class="lav"></span></div>') +
     '<div class="az"><button class="btn elim" id="me-del">Elimina</button><button class="btn" id="me-ann">Annulla</button><button class="btn pri" id="me-ok">Salva</button></div></div>';
   document.body.appendChild(f); document.body.classList.add('me-aperto');
   var iaMod = v.ia || '';
@@ -3420,13 +3441,15 @@ function sistemaAggancia(idTasto, prendi, metti) {
     var t = String(prendi() || '').trim();
     if (t.length < 15) { toast('Scrivi o detta prima il report'); return; }
     var eti = b.textContent; b.disabled = true; b.textContent = 'Sistemo…';
+    var box = b.closest('.dett') || b.closest('.fg') || b.parentNode;
+    lavAccendi('Sto sistemando il testo — attendi', false, box);
     sistemaAlPonte(t).then(function (nuovo) {
-      b.disabled = false; b.textContent = eti;
+      b.disabled = false; b.textContent = eti; lavSpegni(box);
       if (!nuovo) { toast('Il ponte non ha restituito nulla'); return; }
       if (nuovo.trim() === t) { toast('Il testo era già in ordine'); return; }
       confrontoTesto(t, nuovo, function (scelto) { metti(scelto); toast('Testo sistemato'); });
     }, function (e) {
-      b.disabled = false; b.textContent = eti;
+      b.disabled = false; b.textContent = eti; lavSpegni(box);
       toast('Non riesco a sistemarlo: ' + String(e.message || e).slice(0, 60), 5000);
     });
   });
@@ -3438,6 +3461,7 @@ function dettaturaHtml() {
     '<div class="dett-az"><button type="button" class="dett-bt" id="dett-bt">' + ICO_MIC + '<span id="dett-et">Detta il report</span></button><span class="dett-sp"></span>' +
     '<button type="button" class="btn mini" id="dett-sist">&#10022; Sistema il testo</button>' +
     '<button type="button" class="btn mini" id="dett-pul">Pulisci</button></div>' +
+    '<div class="lav" id="dett-lav"></div>' +
     '<div class="dett-txt" id="dett-txt"><span class="prov">Tocca il microfono e racconta: «ho chiamato, offerta inviata, richiamare gioved&igrave;, mi ha chiesto il prezzo del noleggio trimestrale». Il microfono resta acceso finch&eacute; non lo tocchi di nuovo.</span></div>' +
     '<div class="dett-sunto" id="dett-sunto"></div>' +
     '<div class="ia-seg" id="ev-ia" style="display:none"></div>' +
@@ -3469,17 +3493,19 @@ function dettaturaAggancia(id) {
     if (!voceDisponibile()) { txt.innerHTML = '<span class="prov">Trascrizione non riuscita' + (perche ? ' (' + esc(perche) + ')' : '') + ' e questo browser non detta. Scrivi la nota a mano.</span>'; aRiposo(); return; }
     if (perche) sunto.innerHTML = '<span class="nulla">Ponte non raggiunto (' + esc(perche) + '): uso il microfono del telefono.</span>';
     etichetta('Sto ascoltando… tocca per finire', true);
+    lavAccendi('Sto ascoltando — tocca di nuovo per finire', true);
     voceAvvia(
       function (fermo, prov) { detto = fermo; txt.innerHTML = esc(fermo) + (prov ? ' <span class="prov">' + esc(prov) + '</span>' : ''); txt.scrollTop = txt.scrollHeight; },
       function (fermo) {
         aRiposo(); detto = (fermo || detto || '').trim();
-        if (!detto) { sunto.innerHTML = '<span class="nulla">Non ho sentito nulla.</span>'; return; }
+        if (!detto) { lavSpegni(); sunto.innerHTML = '<span class="nulla">Non ho sentito nulla.</span>'; return; }
         txt.textContent = detto;
         sunto.innerHTML = '<span class="nulla">Sto capendo…</span>';
-        capisciFrase(detto).then(function (r) { dettaturaRiempi(r, sunto); });
+        lavAccendi('Compilo i campi — attendi');
+        capisciFrase(detto).then(function (r) { lavSpegni(); dettaturaRiempi(r, sunto); }, function () { lavSpegni(); });
       },
       function (err) {
-        aRiposo();
+        aRiposo(); lavSpegni();
         txt.innerHTML = '<span class="prov">' + (err === 'not-allowed' ? 'Permesso al microfono negato: concedilo nelle impostazioni del sito.' : err === 'no-speech' ? 'Non ho sentito nulla, riprova.' : 'Microfono non disponibile adesso.') + '</span>';
       }
     );
@@ -3490,20 +3516,22 @@ function dettaturaAggancia(id) {
     sunto.innerHTML = '';
     txt.innerHTML = '<span class="prov">Parla pure: registro tutto, anche le pause. Tocca il tasto quando hai finito.</span>';
     etichetta('Registro… 0:00 — tocca per finire', true);
+    lavAccendi('Registrazione in corso — tocca di nuovo per finire', true);
     registraAvvia(
       function (sec) { etichetta('Registro… ' + durata(sec) + ' — tocca per finire', true); },
       function (blob, sec) {
-        if (!blob || blob.size < 1200 || sec < 1) { aRiposo(); txt.innerHTML = '<span class="prov">Registrazione troppo breve.</span>'; return; }
+        if (!blob || blob.size < 1200 || sec < 1) { aRiposo(); lavSpegni(); txt.innerHTML = '<span class="prov">Registrazione troppo breve.</span>'; return; }
         etichetta('Trascrivo…', false);
+        lavAccendi('Trascrivo e compilo i campi — attendi, non chiudere');
         txt.innerHTML = '<span class="prov">Audio di ' + esc(durata(sec)) + ' in trascrizione…</span>';
         audioAlPonte(blob, id).then(function (r) {
-          aRiposo();
+          aRiposo(); lavSpegni();
           detto = r.testo || '';
           txt.textContent = detto || '(niente)';
           if (!detto) { sunto.innerHTML = '<span class="nulla">Dall\'audio non è uscito nulla.</span>'; return; }
           dettaturaRiempi(r, sunto);
         }, function (e) {
-          aRiposo();
+          aRiposo(); lavSpegni();
           conTelefono(String(e.message || e).slice(0, 60));
         });
       },
@@ -4054,12 +4082,13 @@ function fabSpostabile(b) {
    il suo modulo del report già compilato. Il salvataggio resta sempre a mano.
    ============================================================ */
 var DETT_PRE = null;
-function vbar(testo, conAnnulla) {
+function vbar(testo, conAnnulla, stato) {
   var b = $('#vbar'); if (!b) return;
-  if (testo === false) { b.classList.remove('on'); return; }
+  if (testo === false) { b.className = 'vbar'; return; }
   $('#vbar-t').innerHTML = testo;
   $('#vbar-x').style.display = conAnnulla === false ? 'none' : '';
-  b.classList.add('on');
+  /* lampeggia mentre registra (rosso) e mentre elabora (ambra): si vede che deve finire */
+  b.className = 'vbar on' + (stato === 'reg' ? ' reg' : stato === 'lav' ? ' lav' : '');
 }
 /* dal nome detto al cliente in archivio: confronto senza accenti né forme societarie */
 function nomeNudo(t) {
@@ -4166,13 +4195,13 @@ function dettaturaVolante() {
   if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4000); return; }
   if (!registraDisponibile()) { toast('Questo telefono non registra l\'audio', 4000); return; }
   b.classList.add('reg');
-  vbar('<b>Registro…</b> 0:00 — tocca il microfono per finire');
+  vbar('<b>Registro…</b> 0:00 — tocca il microfono per finire', true, 'reg');
   registraAvvia(
-    function (sec) { vbar('<b>Registro…</b> ' + durata(sec) + ' — tocca il microfono per finire'); },
+    function (sec) { vbar('<b>Registro…</b> ' + durata(sec) + ' — tocca il microfono per finire', true, 'reg'); },
     function (blob, sec) {
       b.classList.remove('reg');
       if (!blob || blob.size < 1200 || sec < 1) { vbar(false); toast('Registrazione troppo breve'); return; }
-      vbar('Trascrivo l\'audio di ' + durata(sec) + '…', false);
+      vbar('<b>Trascrivo</b> l\'audio di ' + durata(sec) + ' — attendi', false, 'lav');
       audioAlPonte(blob, clienteContesto()).then(function (r) {
         vbar(false);
         if (r.tipo === 'cliente') { clienteDaVoce(r); return; }
