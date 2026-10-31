@@ -108,7 +108,7 @@ async function sistemaUnGiro(env, testo, insisti) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: MODELLO, max_tokens: 2500, temperature: 0, system: regole, messages: [{ role: 'user', content: testo }] })
+    body: JSON.stringify({ model: MODELLO, max_tokens: 2500, system: regole, messages: [{ role: 'user', content: testo }] })
   });
   if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
   const out = await r.json();
