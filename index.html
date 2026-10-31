@@ -925,7 +925,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.61.2';
+var APP_VER = '1.62.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2797,7 +2797,7 @@ function apriScheda(id) {
   if (!schedaId) scrollV[vista] = window.scrollY; schedaId = id;
   var k = sit(id), q = DB.pratiche[id], ev = eventiDi(id), S = $('#scheda'), h = [];
   var og = oggi();
-  h.push('<div class="sc-top"><button class="ind" id="sc-chiudi" title="Indietro">&#8249;</button><div class="tt"><b>' + esc(c.nome) + '</b><span>' + [c.prov, c.cat, c.fonte === 'assodimi' ? 'Socio Assodimi' : ''].filter(Boolean).map(esc).join(' · ') + '</span></div><button class="ind" id="sc-mod" title="Modifica anagrafica"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' + barre(c) + '</div>');
+  h.push('<div class="sc-top"><button class="ind" id="sc-chiudi" title="Indietro">&#8249;</button><div class="tt"><b>' + esc(c.nome) + '</b><span>' + [c.prov, c.cat, c.fonte === 'assodimi' ? 'Socio Assodimi' : ''].filter(Boolean).map(esc).join(' · ') + '</span></div><button class="ind" id="sc-riass" title="Riassunto del cliente"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M4 5h16"/><path d="M4 10h16"/><path d="M4 15h10"/><path d="M4 20h7"/></svg></button><button class="ind" id="sc-mod" title="Modifica anagrafica"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' + barre(c) + '</div>');
   if (DB.modificheContatti[id]) h.push('<div class="nota" style="margin-bottom:10px;border-left:4px solid var(--ambra)">Modifiche fatte dal telefono in attesa di arrivare al Mac.</div>');
   /* situazione (modificabile) */
   h.push('<div class="sz sz-sit"><h3>Situazione' + (k.richiamo ? '<span class="pill" style="' + (k.richiamo < og ? 'background:var(--rosso-chiaro);color:var(--rosso)' : '') + '">&#8635; ' + dataIt(k.richiamo) + '</span>' : '') + '</h3><div class="c form">');
@@ -2861,6 +2861,7 @@ function apriScheda(id) {
   if (c.allegati) h.push('<div class="sz sz-file"><h3>Allegati<span class="pill">' + num(c.allegati) + '</span></h3><div class="c"><div class="nota">' + num(c.allegati) + ' allegat' + (c.allegati === 1 ? 'o' : 'i') + ' archiviat' + (c.allegati === 1 ? 'o' : 'i') + ' su GESTIONE CONTATTI (Mac): non viaggiano sul telefono.</div></div></div>');
   S.innerHTML = h.join(''); S.classList.add('on'); S.scrollTop = 0;
   $('#sc-mod').addEventListener('click', function () { formModifica(id); });
+  var br = $('#sc-riass'); if (br) br.addEventListener('click', function () { mostraRiassunto(id); });
   $$('#scheda .ev-mod').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); modificaEvento(id, b.dataset.ev); }); });
   $('#sc-chiudi').addEventListener('click', function () { if (history.state && history.state.scheda) history.back(); else chiudiScheda(); });
   var nv = $('#sc-naviga'); if (nv) nv.addEventListener('click', function (ev) { ev.preventDefault(); naviga(c); });
@@ -3286,7 +3287,7 @@ function ponteDati() { try { return { url: (localStorage.getItem('cm.ponte.url')
 function frasePonte(testo) {
   var P = ponteDati();
   if (!P.url) return Promise.reject(new Error('ponte non configurato'));
-  var corpo = { frase: testo, oggi: oggi(), esiti: ESITI(), canali: CANALI() };
+  var corpo = { frase: testo, oggi: oggi(), esiti: ESITI(), canali: CANALI(), modello: modelloTesti() };
   var intestazioni = { 'Content-Type': 'application/json' };
   if (P.tok) intestazioni['X-Token'] = P.tok;
   return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify(corpo) })
@@ -3379,7 +3380,7 @@ function audioAlPonte(blob, idScheda) {
     var intestazioni = { 'Content-Type': 'application/json' };
     if (P.tok) intestazioni['X-Token'] = P.tok;
     return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({
-      audio: b64, lingua: 'it', oggi: oggi(), esiti: ESITI(), canali: CANALI(), nomi: nomiPerVoce(idScheda)
+      audio: b64, lingua: 'it', oggi: oggi(), esiti: ESITI(), canali: CANALI(), nomi: nomiPerVoce(idScheda), modello: modelloTesti()
     }) });
   }).then(function (res) {
     return res.json().catch(function () { throw new Error('ponte: risposta illeggibile'); }).then(function (d) {
@@ -3426,7 +3427,7 @@ function sistemaAlPonte(testo) {
   if (!P.url) return Promise.reject(new Error('ponte non configurato'));
   var intestazioni = { 'Content-Type': 'application/json' };
   if (P.tok) intestazioni['X-Token'] = P.tok;
-  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ frase: testo, sistema: true, oggi: oggi() }) })
+  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ frase: testo, sistema: true, oggi: oggi(), modello: modelloTesti() }) })
     .then(function (res) { return res.json().then(function (d) { if (!res.ok || d.errore) throw new Error(d.errore || ('ponte: ' + res.status)); usoSegna(d.uso); return String(d.testo || ''); }); });
 }
 /* controllo di sicurezza: nessun numero del testo originale deve sparire.
@@ -3675,6 +3676,7 @@ function disegnaAltro() {
   h.push('<div class="kpi-ord" id="cru-ord"></div></div>');
   h.push('<div class="opz" id="op-ponte"><h2>Assistente vocale</h2>');
   h.push('<div class="riga-o"><span>Con il <b>ponte</b> collegato, il tasto <b>Detta il report</b> registra l\'audio e lo fa trascrivere dall\'intelligenza artificiale: testo pulito, gi&agrave; punteggiato, nomi dei clienti riconosciuti, e i campi compilati da soli. Senza ponte l\'app usa il microfono del telefono e legge la frase da sola, senza costi. Se il ponte non risponde, la riserva parte da sola. Dal tasto rosso <b>Dillo a voce</b> del «+» parte il pilota vocale: dici una frase sola e l\'app capisce se &egrave; un report o un\'attivit&agrave; da mettere in calendario, per quale cliente e quando, chiede solo quello che manca e ti fa confermare. Puoi anche dire «inserisci un nuovo cliente» e dettare ragione sociale, indirizzo, telefono, mail e partita IVA.</span></div>');
+  h.push('<div class="riga-o"><span>Modello per capire e riassumere<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">Sonnet: pi&ugrave; preciso sui racconti disordinati, circa 0,01 € a dettatura. Haiku: venti volte pi&ugrave; economico, circa 0,0005 €, basta quasi sempre.</span></span><span class="sp"></span><select id="pn-mod" class="chip"><option value="claude-sonnet-5-5"' + (modelloTesti() === 'claude-sonnet-5-5' ? ' selected' : '') + '>Sonnet — pi&ugrave; preciso</option><option value="claude-haiku-5-5"' + (modelloTesti() === 'claude-haiku-5-5' ? ' selected' : '') + '>Haiku — pi&ugrave; economico</option></select></div>');
   h.push('<div class="riga-o"><span>Guida a voce<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">le domande del pilota vengono lette ad alta voce</span></span><span class="sp"></span><input type="checkbox" id="pn-guida" style="width:26px;height:26px"' + (guidaVoce() ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Voce naturale dal ponte<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">voce neurale invece di quella del telefono; ogni frase si sente una volta sola a pagamento, poi resta salvata qui</span></span><span class="sp"></span><input type="checkbox" id="pn-vocen" style="width:26px;height:26px"' + (voceNeurale() ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Quale voce</span><span class="sp"></span><select id="pn-vocenome" class="chip">' + VOCI.map(function (v) { return '<option value="' + esc(v[0]) + '"' + (voceNome() === v[0] ? ' selected' : '') + '>' + esc(v[1]) + '</option>'; }).join('') + '</select></div>');
@@ -3733,6 +3735,8 @@ function disegnaAltro() {
     }
     u.addEventListener('change', function () { salvaPonte(); toast('Ponte salvato'); });
     t.addEventListener('change', salvaPonte);
+    var md = $('#pn-mod');
+    if (md) md.addEventListener('change', function () { modelloTestiSegna(md.value); toast('Da ora uso ' + modelloNome(md.value)); });
     var gv = $('#pn-guida');
     if (gv) gv.addEventListener('change', function () { guidaVoceSegna(gv.checked); toast(gv.checked ? 'Guida a voce accesa' : 'Guida a voce spenta'); if (gv.checked) parla('Guida a voce accesa.'); });
     var vn = $('#pn-vocen');
@@ -4256,6 +4260,68 @@ function clienteDaVoce(r) {
   }, 300);
 }
 /* ============================================================
+   RIASSUNTO DEL CLIENTE — i suoi dati passano al ponte, che risponde in quattro o cinque frasi.
+   Si legge a schermo e, se la guida a voce è accesa, si ascolta.
+   ============================================================ */
+function modelloTesti() { try { return localStorage.getItem('cm.modello') === 'claude-haiku-5-5' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5'; } catch (e) { return 'claude-sonnet-5-5'; } }
+function modelloTestiSegna(m) { try { localStorage.setItem('cm.modello', m); } catch (e) {} }
+function modelloNome(m) { return (m || modelloTesti()) === 'claude-haiku-5-5' ? 'Haiku' : 'Sonnet'; }
+/* la scheda del cliente in forma compatta: solo quello che serve a capire a che punto siamo */
+function datiPerRiassunto(cid) {
+  var c = DB.contatti[cid]; if (!c) return null;
+  var k = sit(cid), og = oggi();
+  var ev = eventiDi(cid).slice(0, 12).map(function (v) {
+    return { giorno: v.d, ora: v.o || '', canale: v.c || '', tipoAzione: v.e || '', titolo: v.t || '', testo: String(v.n || htmlATesto(v.h || '')).slice(0, 900) };
+  });
+  var att = attDi(cid).filter(function (a) { return !a.fatto; }).slice(0, 8).map(function (a) {
+    return { che: attTipo(a.tipo).nome, giorno: a.d, ora: a.o || (a.oraLibera ? 'orario libero' : ''), nota: a.nota || '' };
+  });
+  var pr = Object.keys(DB.pratiche || {}).map(function (x) { return DB.pratiche[x]; })
+    .filter(function (q) { return q && q.cid === cid; })
+    .map(function (q) { return { tipo: (tipoP(q) || {}).nome || '', stato: q.stato || '', data: q.data || '', nota: q.nota || '' }; });
+  return {
+    oggi: og,
+    cliente: { nome: c.nome, categoria: c.cat || '', provincia: c.prov || '', sede: c.sede || '', sito: c.sito || '', note: String(c.note || '').slice(0, 900), profilo: String(c.profilo || '').slice(0, 1200) },
+    situazione: { tipoAzione: k.esito || '', ultimoContatto: k.data || '', canale: k.canale || '', referente: k.referente || '', richiamo: k.richiamo || '', prossimoPasso: k.passo || '' },
+    pratiche: pr,
+    inProgramma: att,
+    ultimiReport: ev
+  };
+}
+function riassuntoAlPonte(cid, domanda, perVoce) {
+  var P = ponteDati();
+  if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+  var dati = datiPerRiassunto(cid);
+  if (!dati) return Promise.reject(new Error('cliente non trovato'));
+  var intestazioni = { 'Content-Type': 'application/json' };
+  if (P.tok) intestazioni['X-Token'] = P.tok;
+  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ riassunto: true, dati: dati, domanda: domanda || '', perVoce: !!perVoce, modello: modelloTesti() }) })
+    .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
+    .then(function (d) { usoSegna(d.uso); return d.testo || ''; });
+}
+/* il foglio del riassunto: testo grande, tasto per risentirlo, tasto per chiudere */
+function mostraRiassunto(cid) {
+  var c = DB.contatti[cid]; if (!c) return;
+  if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4500); return; }
+  var f = el('div', 'foglio att-f me-f');
+  function chiudi() { zittisci(); f.remove(); document.body.classList.remove('me-aperto'); }
+  f.innerHTML = '<div class="fg"><h4>' + esc(c.nome) + '</h4>' +
+    '<div class="pil-dom" id="ri-t" style="font-size:calc(16px * var(--scala));line-height:1.5">Sto guardando la scheda e gli ultimi report…</div>' +
+    '<div class="riga-o" id="ri-n" style="color:var(--tenue);font-size:calc(12px * var(--scala))"></div>' +
+    '<div class="az"><button class="btn" id="ri-voce" style="display:none">&#128266; Rileggi</button><button class="btn pri" id="ri-x">Chiudi</button></div></div>';
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  $('#ri-x', f).addEventListener('click', chiudi);
+  riassuntoAlPonte(cid, '', guidaVoce()).then(function (t) {
+    $('#ri-t', f).innerHTML = esc(t).replace(/\n+/g, '<br><br>');
+    var u = usoLetto()[usoMese()] || {};
+    $('#ri-n', f).textContent = 'Riassunto dai tuoi dati con ' + modelloNome() + '. Spesa del mese: ' + ((u.costo || 0) * 0.87).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €.';
+    var bv = $('#ri-voce', f); bv.style.display = ''; bv.addEventListener('click', function () { parla(t); });
+    if (guidaVoce()) parla(t);
+  }, function (e) {
+    $('#ri-t', f).innerHTML = '<span style="color:var(--rosso)">Non sono riuscito a fare il riassunto: ' + esc(String(e.message || e).slice(0, 120)) + '</span>';
+  });
+}
+/* ============================================================
    PILOTA VOCALE — «Dillo a voce · ti guido io»
    Una frase sola: l'app capisce se e' un report o un'attivita' da mettere in calendario,
    per quale cliente e quando. Quello che manca lo chiede un passo per volta, scritto a schermo
@@ -4442,7 +4508,7 @@ function pilPasso1() {
   $('#pil-pass', PIL.f).textContent = 'Passo 1 di 2';
   var d = 'Che cosa devi registrare?';
   pilScrivi('<b>' + d + '</b>',
-    'Parla come parleresti a un collega: «report della visita da Perin, tutto a posto, lo richiamo gioved&igrave;» oppure «fissami una visita da Elettrosistema marted&igrave; alle dieci e mezza».',
+    'Parla come parleresti a un collega: «report della visita da Perin, tutto a posto, lo richiamo gioved&igrave;», «fissami una visita da Elettrosistema marted&igrave; alle dieci e mezza», oppure «parlami di Elettrosistema» per il riassunto del cliente.',
     [{ id: 'ann', n: 'Annulla', f: pilChiudi }], 'Tocca e parla');
   pilMic('Tocca e parla', function () {
     if (REG.attivo) { registraFerma(); return; }
@@ -4465,6 +4531,14 @@ function pilPasso1() {
           PIL.esito = r.e || ''; PIL.canale = r.c || '';
           PIL.richiamo = r.r || ''; PIL.passo = r.passo || '';
           PIL.d = r.quando || ''; PIL.o = r.ora || '';
+          /* non è un report né un'attività: è una domanda su un cliente */
+          var dom = senzaAccenti(PIL.testo);
+          if (/\b(parlami di|riassunto|riassumi|come siamo messi|a che punto siamo|raccontami di|situazione di)\b/.test(dom)) {
+            var nomeChiesto = PIL.testo.replace(/.*?(parlami di|riassunto di|riassunto|riassumi|come siamo messi con|a che punto siamo con|raccontami di|situazione di)\s*/i, '').trim();
+            var cidR = PIL.cid || clienteDaNome(nomeChiesto || r.cliente || '');
+            if (cidR) { pilChiudi(); mostraRiassunto(cidR); return; }
+            PIL.nome = nomeChiesto || r.cliente || ''; PIL.tipo = 'riassunto'; pilChiediCliente(); return;
+          }
           if (PIL.tipo === 'cliente') { pilChiudi(); clienteDaVoce(r); return; }
           if (!PIL.cid && r.cliente) { PIL.nome = r.cliente; var c = clienteDaNome(r.cliente); if (c) PIL.cid = c; }
           pilProssimo();
@@ -4478,7 +4552,7 @@ function pilPasso1() {
     );
   });
   dillo('p1',
-    'Dimmi che cosa devi registrare. Raccontamelo come lo diresti a un collega: per esempio, report della visita da Perin, tutto a posto, lo richiamo giovedì. Oppure: fissami una visita da Elettrosistema martedì alle dieci e mezza. Tocca il tasto del microfono, parla, e quando hai finito toccalo di nuovo.',
+    'Dimmi che cosa devi registrare. Raccontamelo come lo diresti a un collega: per esempio, report della visita da Perin, tutto a posto, lo richiamo giovedì. Oppure: fissami una visita da Elettrosistema martedì alle dieci e mezza. Puoi anche chiedermi un riassunto, dicendo: parlami di Elettrosistema. Tocca il tasto del microfono, parla, e quando hai finito toccalo di nuovo.',
     'Che cosa devi registrare? Tocca il microfono e parla.');
 }
 /* che cosa manca ancora? */
@@ -4486,6 +4560,7 @@ function pilProssimo() {
   if (!PIL) return;
   if (!PIL.tipo) return pilChiediTipo();
   if (!PIL.cid) return pilChiediCliente();
+  if (PIL.tipo === 'riassunto') { var c0 = PIL.cid; pilChiudi(); mostraRiassunto(c0); return; }
   if (PIL.tipo !== 'report' && !PIL.d) return pilChiediQuando();
   if (PIL.tipo === 'report' && !String(PIL.nota || '').trim()) return pilChiediRacconto();
   pilConferma();
