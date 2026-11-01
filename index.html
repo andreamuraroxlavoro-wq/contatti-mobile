@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.70.0';
+var APP_VER = '1.70.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3840,7 +3840,7 @@ function applicaRemoti(mod, del) {
   var n = 0;
   cacheTx = {}; cacheNum = {}; cacheAtt = null;
   var primaG = JSON.stringify(gruppiL());
-  ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'config'].forEach(function (c) {
+  ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'config'].forEach(function (c) {
     (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
   });
