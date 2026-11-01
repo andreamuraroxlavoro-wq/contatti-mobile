@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.69.0';
+var APP_VER = '1.70.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3711,6 +3711,14 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span style="color:var(--tenue);font-size:calc(12.5px * var(--scala))">Frasi che scrivi una volta e che l\'app ricorda per sempre: valgono quando sistema un testo, quando fa un riassunto e quando parlate. Per esempio: «nei report non usare la parola cantiere», «nei riassunti dimmi prima le cifre», «i richiami mettili sempre di mattina».</span></div>');
   h.push('<div id="pn-reg-l">' + regoleHtml() + '</div>');
   h.push('<div class="riga-o"><input id="pn-reg-n" type="text" class="chip" style="flex:1" placeholder="scrivi una regola…" maxlength="300"><button class="btn pri" id="pn-reg-a">Aggiungi</button></div></div>');
+  /* il quaderno: quello che gli ho raccontato */
+  h.push('<div class="opz" id="op-appunti"><h2>Il quaderno</h2>');
+  h.push('<div class="riga-o"><span style="color:var(--tenue);font-size:calc(12.5px * var(--scala))">Quello che racconti all\'assistente e vuoi che resti: gli appunti su un cliente lo seguono nella sua scheda, quelli generali li ritrova cercando. Si scrivono anche a voce, dicendo «segnati che…».</span></div>');
+  h.push('<div id="pn-app-l">' + appuntiHtml('') + '</div>');
+  h.push('<div class="riga-o"><input id="pn-app-c" type="search" class="chip" style="flex:1" placeholder="cerca fra gli appunti…"></div>');
+  h.push('<div class="riga-o"><input id="pn-app-t" type="text" class="chip" style="flex:1" placeholder="titolo" maxlength="120"></div>');
+  h.push('<div class="riga-o"><textarea id="pn-app-x" rows="3" style="flex:1;font:inherit;font-size:calc(14.5px * var(--scala));padding:8px;border-radius:10px;border:1px solid var(--bordo);background:var(--campo);color:var(--testo)" placeholder="che cosa devo ricordare" maxlength="1200"></textarea></div>');
+  h.push('<div class="az"><button class="btn pri" id="pn-app-a">Aggiungi appunto</button></div></div>');
   (function () {
     var u = usoLetto()[usoMese()] || { in: 0, out: 0, costo: 0, volte: 0 };
     var eur = u.costo * 0.87, tetto = 17 * 0.87;
@@ -3760,6 +3768,7 @@ function disegnaAltro() {
     u.addEventListener('change', function () { salvaPonte(); toast('Ponte salvato'); });
     t.addEventListener('change', salvaPonte);
     regoleAggancia();
+    appuntiAggancia();
     var md = $('#pn-mod');
     if (md) md.addEventListener('change', function () { modelloTestiSegna(md.value); toast('Da ora uso ' + modelloNome(md.value)); });
     var gv = $('#pn-guida');
@@ -3842,7 +3851,7 @@ function avviaSync() {
   if (!window.SyncMotore) return;
   SY = SyncMotore({
     nome: 'gc', dbNome: 'contatti_mobile_sync', clientId: GC_CLIENT_ID,
-    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
+    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
     dopo: function (info) { if (info.applicati) { toast('Aggiornati ' + num(info.applicati) + ' record dal Mac'); if (schedaId) apriScheda(schedaId); else mostraVista(vista, true); } else if (vista === 'altro') disegnaAltro(); },
@@ -4331,6 +4340,71 @@ function datiCalendario() {
 }
 
 /* ============================================================
+   IL QUADERNO — quello che Andrea racconta all'assistente e vuole che resti.
+   Due tipi: l'appunto su un cliente (sta nella sua scheda e lo segue sempre)
+   e l'appunto generale (titolo libero, lo si ritrova cercando).
+   Si scrivono a voce o a mano, si aggiornano, e niente si salva senza conferma.
+   ============================================================ */
+function appArchivio() { if (!DB.appunti) DB.appunti = {}; return DB.appunti; }
+function appTutti() { var A = appArchivio(); return Object.keys(A).map(function (k) { return A[k]; }).filter(function (x) { return x && x.testo; }); }
+function appDi(cid) { return appTutti().filter(function (x) { return x.cid === cid; }).sort(function (a, b) { return (b._m || 0) - (a._m || 0); }); }
+function appGenerali() { return appTutti().filter(function (x) { return !x.cid; }).sort(function (a, b) { return (b._m || 0) - (a._m || 0); }); }
+function appSalva(a) {
+  if (!a.id) { a.id = uid('n_'); a.creato = oggi(); }
+  a._m = Date.now(); a.agg = oggi();
+  appArchivio()[a.id] = a; salva();
+  return a;
+}
+function appElimina(id) { var A = appArchivio(); if (!A[id]) return false; delete A[id]; salva(); return true; }
+/* ricerca per parole: conta quante parole della domanda compaiono nel titolo e nel testo */
+function appCerca(q, cid, limite) {
+  var par = senzaAccenti(String(q || '')).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+    .filter(function (w) { return w.length > 2 && !CHAT_SALTA[w]; });
+  var l = cid ? appDi(cid) : appTutti();
+  if (!par.length) return l.slice(0, limite || 10).map(appRiga);
+  var pt = l.map(function (x) {
+    var tit = senzaAccenti(x.titolo || ''), tes = senzaAccenti(x.testo || '');
+    var p = 0;
+    par.forEach(function (w) { if (tit.indexOf(w) >= 0) p += 3; else if (tes.indexOf(w) >= 0) p += 1; });
+    return { x: x, p: p };
+  }).filter(function (y) { return y.p > 0; }).sort(function (a, b) { return b.p - a.p || (b.x._m || 0) - (a.x._m || 0); });
+  return pt.slice(0, limite || 10).map(function (y) { return appRiga(y.x); });
+}
+function appuntiHtml(filtro) {
+  var l = filtro ? appCerca(filtro, '', 30).map(function (r) { return appArchivio()[r.id]; }).filter(Boolean) : appTutti().sort(function (a, b) { return (b._m || 0) - (a._m || 0); }).slice(0, 30);
+  if (!l.length) return '<div class="riga-o"><span style="color:var(--tenue)">' + (filtro ? 'Nessun appunto con queste parole.' : 'Il quaderno è vuoto.') + '</span></div>';
+  return l.map(function (x) {
+    var c = x.cid ? DB.contatti[x.cid] : null;
+    return '<div class="riga-o" style="align-items:flex-start"><span><b>' + esc(x.titolo || (c ? c.nome : 'Appunto')) + '</b>' +
+      (c ? '<span style="color:var(--sz-cron)"> · ' + esc(c.nome) + '</span>' : '') +
+      '<br><span style="color:var(--tenue);font-size:calc(13px * var(--scala))">' + esc(String(x.testo).slice(0, 200)) + '</span>' +
+      '<br><span style="color:var(--tenue);font-size:calc(11.5px * var(--scala))">' + esc(dataIt(x.agg || x.creato || '')) + '</span></span>' +
+      '<span class="sp"></span><button class="btn mini peri" data-app="' + esc(x.id) + '">Togli</button></div>';
+  }).join('');
+}
+function appuntiAggancia() {
+  var cont = $('#pn-app-l'); if (!cont) return;
+  function ridisegna() { cont.innerHTML = appuntiHtml(($('#pn-app-c') || {}).value || ''); aggancia(); }
+  function aggancia() {
+    $$('button[data-app]', cont).forEach(function (b) {
+      b.addEventListener('click', function () { if (appElimina(b.dataset.app)) { ridisegna(); toast('Appunto tolto'); } });
+    });
+  }
+  aggancia();
+  var cerca = $('#pn-app-c'); if (cerca) cerca.addEventListener('input', ridisegna);
+  var bt = $('#pn-app-a');
+  if (bt) bt.addEventListener('click', function () {
+    var tx = $('#pn-app-x'), ti = $('#pn-app-t');
+    if (!tx.value.trim()) { toast('Scrivi che cosa devo ricordare'); return; }
+    appSalva({ cid: '', titolo: ti.value.trim(), testo: tx.value.trim() });
+    tx.value = ''; ti.value = ''; ridisegna(); toast('Appunto aggiunto');
+  });
+}
+function appRiga(x) {
+  var c = x.cid ? DB.contatti[x.cid] : null;
+  return { id: x.id, titolo: x.titolo || '', testo: x.testo || '', cliente: c ? c.nome : '', aggiornato: x.agg || x.creato || '' };
+}
+/* ============================================================
    LE MIE REGOLE — la memoria lunga dell'app. Frasi che Andrea si scrive una volta
    («nei report non usare la parola cantiere», «nei riassunti dimmi prima i soldi»)
    e che viaggiano con ogni richiesta al ponte. Il modello resta uguale: e' l'app che si ricorda.
@@ -4411,6 +4485,7 @@ function datiPerRiassunto(cid) {
     cliente: { nome: c.nome, categoria: c.cat || '', provincia: c.prov || '', sede: c.sede || '', sito: c.sito || '', note: String(c.note || '').slice(0, 900), profilo: String(c.profilo || '').slice(0, 1200) },
     situazione: { tipoAzione: k.esito || '', ultimoContatto: k.data || '', canale: k.canale || '', referente: k.referente || '', richiamo: k.richiamo || '', prossimoPasso: k.passo || '' },
     pratiche: pr,
+    appuntiSulCliente: appDi(cid).map(function (x) { return { titolo: x.titolo || '', testo: x.testo, aggiornato: x.agg || x.creato || '' }; }),
     inProgramma: att,
     reportTotali: tuttiEv.length,
     reportNonInclusi: saltati,
@@ -4570,6 +4645,38 @@ function eseguiAttrezzo(nome, a) {
     r.quanti = { inProgramma: r.inProgramma.length, arretrati: (r.arretrati || []).length, richiami: (r.richiami || []).length };
     return r;
   }
+  if (nome === 'cerca_appunti') {
+    var cidA = a.cliente ? clienteDaNome(a.cliente) : '';
+    if (a.cliente && !cidA) return { quanti: 0, appunti: [], motivo: 'Non trovo nessun cliente con questo nome: ' + String(a.cliente) };
+    var trovati = appCerca(a.testo || '', cidA, Math.min(Math.max(+a.limite || 8, 1), 25));
+    return { quanti: trovati.length, inArchivio: appTutti().length, appunti: trovati };
+  }
+  if (nome === 'salva_appunto' || nome === 'aggiorna_appunto' || nome === 'cancella_appunto') {
+    if (nome === 'cancella_appunto') {
+      var vec0 = appArchivio()[a.id || ''];
+      if (!vec0) return { propostaMostrata: false, motivo: 'Non trovo questo appunto: cercalo prima con cerca_appunti e usa il suo id.' };
+      chatPropostaScrittura({ tipo: 'appCancella', id: vec0.id }, 'Cancellare questo appunto?',
+        [['Titolo', vec0.titolo || '—'], ['Testo', String(vec0.testo).slice(0, 160)]]);
+      return { propostaMostrata: true, inAttesaDiConferma: true };
+    }
+    if (nome === 'aggiorna_appunto') {
+      var vec = appArchivio()[a.id || ''];
+      if (!vec) return { propostaMostrata: false, motivo: 'Non trovo questo appunto: cercalo prima con cerca_appunti e usa il suo id.' };
+      var tNuovo = String(a.testo || vec.testo).slice(0, 1200), tiNuovo = String(a.titolo || vec.titolo || '').slice(0, 120);
+      chatPropostaScrittura({ tipo: 'appAgg', id: vec.id, titolo: tiNuovo, testo: tNuovo }, 'Aggiornare l\'appunto?',
+        [['Titolo', tiNuovo], ['Prima', String(vec.testo).slice(0, 160)], ['Adesso', tNuovo.slice(0, 160)]]);
+      return { propostaMostrata: true, inAttesaDiConferma: true, prima: vec.testo };
+    }
+    if (!String(a.testo || '').trim()) return { propostaMostrata: false, motivo: 'Mi serve il testo dell\'appunto.' };
+    var cidN = a.cliente ? clienteDaNome(a.cliente) : '';
+    if (a.cliente && !cidN) return { propostaMostrata: false, motivo: 'Non trovo nessun cliente con questo nome: ' + String(a.cliente) + '. Se e\' un appunto generale non mettere il cliente.' };
+    /* c'e' gia' qualcosa di simile? lo dico, cosi' puo' proporre un aggiornamento invece di un doppione */
+    var simili = appCerca((a.titolo || '') + ' ' + a.testo, cidN, 3);
+    chatPropostaScrittura({ tipo: 'appNuovo', cid: cidN, titolo: String(a.titolo || '').slice(0, 120), testo: String(a.testo).slice(0, 1200) },
+      'Me lo segno?', [['Dove', cidN ? 'Nella scheda di ' + DB.contatti[cidN].nome : 'Appunti generali'],
+        ['Titolo', String(a.titolo || '—').slice(0, 120)], ['Testo', String(a.testo).slice(0, 200)]]);
+    return { propostaMostrata: true, inAttesaDiConferma: true, giaSimili: simili };
+  }
   if (nome === 'clienti_vicini') {
     var p0 = a.quiOra ? posMe : puntoDiPartenza(a.vicinoA || '');
     if (!p0) return { trovato: false, motivo: a.quiOra
@@ -4641,7 +4748,8 @@ function nomeAttrezzo(n) {
     : n === 'quanti_clienti' ? 'Sto contando…'
     : n === 'scheda_cliente' ? 'Sto aprendo la scheda…'
     : n === 'agenda' ? 'Sto guardando l\'agenda…'
-    : n === 'clienti_vicini' ? 'Sto guardando chi hai vicino…' : 'Sto guardando…';
+    : n === 'clienti_vicini' ? 'Sto guardando chi hai vicino…'
+    : n === 'cerca_appunti' ? 'Sto cercando fra i tuoi appunti…' : 'Sto guardando…';
 }
 
 /* ============================================================
@@ -4936,6 +5044,17 @@ function chatEsegui(o) {
     nome = DB.contatti[o.cid] ? DB.contatti[o.cid].nome : '';
     return 'Richiamo di ' + nome + ' messo ' + dataParlata(o.giorno) + '.';
   }
+  if (o.tipo === 'appNuovo') {
+    var na = appSalva({ cid: o.cid || '', titolo: o.titolo || '', testo: o.testo });
+    nome = o.cid && DB.contatti[o.cid] ? DB.contatti[o.cid].nome : '';
+    return o.cid ? 'Segnato nella scheda di ' + nome + '.' : 'Segnato fra gli appunti.';
+  }
+  if (o.tipo === 'appAgg') {
+    var va = appArchivio()[o.id]; if (!va) return 'Non trovo più quell\'appunto.';
+    va.titolo = o.titolo || va.titolo; va.testo = o.testo; appSalva(va);
+    return 'Appunto aggiornato.';
+  }
+  if (o.tipo === 'appCancella') { return appElimina(o.id) ? 'Appunto cancellato.' : 'Non trovo più quell\'appunto.'; }
   if (o.tipo === 'tipoCliente') {
     salvaTipoCli(o.cid, o.valore);
     nome = DB.contatti[o.cid] ? DB.contatti[o.cid].nome : '';
