@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.67.1';
+var APP_VER = '1.69.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1826,6 +1826,7 @@ function disegnaOggi() {
   sel.concat(['scaduti', 'oggi']).forEach(function (id) { if (dati[id]) return; var k = kpiDi(id); if (k) dati[id] = k.calc(L, og) || []; });
   var n = dati.scaduti.length + dati.oggi.length; var tn = $('#tn-oggi'); tn.style.display = n ? '' : 'none'; tn.textContent = n;
   var h = ['<h1 class="tit">' + new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) + '</h1>'];
+  h.push('<button type="button" class="btn pri" id="og-brief" style="width:100%;margin:0 0 12px;min-height:46px">&#9788; Raccontami la giornata</button>');
   h.push('<div class="kpis">' + sel.map(function (id) { var k = kpiDi(id);
     return '<button class="kpi" data-k="' + esc(id) + '" style="--c:' + k.col + '"><div class="et">' + kpiIco(id) + '<span>' + esc(k.nome) + '</span></div><div class="nm">' + num(dati[id].length) + '</div></button>';
   }).join('') + '</div>');
@@ -1841,6 +1842,7 @@ function disegnaOggi() {
     else l.forEach(function (c) { d.appendChild(rigaContatto(c)); });
     cnt.appendChild(d); sez.appendChild(cnt); box.appendChild(sez);
   });
+  var bb = $('#og-brief'); if (bb) bb.addEventListener('click', mostraBriefing);
   $$('#v-oggi .kpi').forEach(function (b) { b.addEventListener('click', function () { var e = $('#kpi-' + b.dataset.k); if (e) { e.scrollIntoView({ behavior: 'smooth', block: 'start' }); evidenziaSez(e); } }); });
 }
 
@@ -4507,6 +4509,34 @@ function rigaCliente(c) {
     prossimoPasso: k.passo || '', pratica: pr ? ((tipoP(pr) || {}).nome || '') + ' ' + (pr.stato || '') : ''
   };
 }
+/* da dove si parte per il giro: un cliente, un comune scritto nelle sedi, o dove sei adesso */
+function puntoDiPartenza(dove) {
+  var q = senzaAccenti(String(dove || '')).trim();
+  if (!q) return null;
+  var cid = clienteDaNome(dove);
+  if (cid && DB.contatti[cid] && DB.contatti[cid].lat) {
+    var c0 = DB.contatti[cid];
+    return { lat: +c0.lat, lng: +c0.lng, come: 'dalla sede di ' + c0.nome };
+  }
+  /* un comune: prendo le coordinate del primo contatto che ha quel comune nella sede */
+  var tr = null;
+  lista().forEach(function (c) {
+    if (tr || !c.lat) return;
+    var sede = senzaAccenti(String(c.sede || '') + ' ' + String(c.prov || ''));
+    if (sede.indexOf(q) >= 0) tr = { lat: +c.lat, lng: +c.lng, come: 'da ' + dove + ' (coordinate prese da ' + c.nome + ')' };
+  });
+  return tr;
+}
+function posizioneAttuale() {
+  return new Promise(function (ris) {
+    if (posMe) return ris(posMe);
+    if (!navigator.geolocation) return ris(null);
+    navigator.geolocation.getCurrentPosition(
+      function (p) { posMe = { lat: p.coords.latitude, lng: p.coords.longitude }; ris(posMe); },
+      function () { ris(null); },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 });
+  });
+}
 function eseguiAttrezzo(nome, a) {
   a = a || {};
   if (nome === 'quanti_clienti') {
@@ -4539,6 +4569,29 @@ function eseguiAttrezzo(nome, a) {
     if (a.fatti) r.fatti = c0.fattiUltimi30Giorni.filter(function (x) { return x.giorno >= da && x.giorno <= fin; });
     r.quanti = { inProgramma: r.inProgramma.length, arretrati: (r.arretrati || []).length, richiami: (r.richiami || []).length };
     return r;
+  }
+  if (nome === 'clienti_vicini') {
+    var p0 = a.quiOra ? posMe : puntoDiPartenza(a.vicinoA || '');
+    if (!p0) return { trovato: false, motivo: a.quiOra
+      ? 'Non ho la posizione del telefono: chiedigli di aprire la mappa e toccare «Dove sono», oppure digli di dirti da quale citta\' parte.'
+      : 'Non riesco a capire da dove partire: dimmi il nome di un cliente o di un comune dove ho gia\' qualcuno.' };
+    var raggio = Math.min(Math.max(+a.raggioKm || 30, 1), 200);
+    var vicini = lista().filter(function (c) { return c.lat && c.lng; }).map(function (c) {
+      return { c: c, km: distKm(p0.lat, p0.lng, +c.lat, +c.lng) };
+    }).filter(function (x) { return x.km <= raggio; });
+    if (a.soloNonSentitiDaGiorni) vicini = vicini.filter(function (x) {
+      var g = giorniDaData(sit(x.c.id).data); return g === null || g >= a.soloNonSentitiDaGiorni;
+    });
+    if (a.soloConRichiamo) vicini = vicini.filter(function (x) { return !!sit(x.c.id).richiamo; });
+    if (a.ordina === 'ultimoContatto') vicini.sort(function (x, y) { return String(sit(x.c.id).data || '').localeCompare(String(sit(y.c.id).data || '')); });
+    else vicini.sort(function (x, y) { return x.km - y.km; });
+    var lim2 = Math.min(Math.max(+a.limite || 10, 1), 40);
+    return {
+      partenza: p0.come || 'dalla tua posizione', raggioKm: raggio, quanti: vicini.length,
+      clienti: vicini.slice(0, lim2).map(function (x) {
+        var r = rigaCliente(x.c); r.distanzaKm = Math.round(x.km * 10) / 10; return r;
+      })
+    };
   }
   if (nome === 'apri_scheda') {
     var ci = clienteDaNome(a.nome || '');
@@ -4587,7 +4640,8 @@ function nomeAttrezzo(n) {
   return n === 'cerca_clienti' ? 'Sto cercando in archivio…'
     : n === 'quanti_clienti' ? 'Sto contando…'
     : n === 'scheda_cliente' ? 'Sto aprendo la scheda…'
-    : n === 'agenda' ? 'Sto guardando l\'agenda…' : 'Sto guardando…';
+    : n === 'agenda' ? 'Sto guardando l\'agenda…'
+    : n === 'clienti_vicini' ? 'Sto guardando chi hai vicino…' : 'Sto guardando…';
 }
 
 /* ============================================================
@@ -4781,6 +4835,9 @@ function chatGiroPonte(frase, giri, passo, avviso) {
       return r;
     }
     if (avviso) avviso(nomeAttrezzo(r.strumenti[0].nome));
+    var serveQui = r.strumenti.some(function (s) { return s.nome === 'clienti_vicini' && s.argomenti && s.argomenti.quiOra; });
+    var pronti = serveQui ? posizioneAttuale() : Promise.resolve(null);
+    return pronti.then(function () {
     var risultati = r.strumenti.map(function (s) {
       var dati;
       try { dati = eseguiAttrezzo(s.nome, s.argomenti); }
@@ -4788,6 +4845,7 @@ function chatGiroPonte(frase, giri, passo, avviso) {
       return { id: s.id, dati: dati };
     });
     return chatGiroPonte(frase, giri.concat([{ contenuto: r.contenuto, risultati: risultati }]), passo + 1, avviso);
+    });
   });
 }
 /* la proposta: scritta per intero, modificabile, e salvata solo se tocchi «Salva» */
@@ -4920,6 +4978,45 @@ function chatSalva(az) {
   else if (document.body.classList.contains('sc-aperta') && schedaId) apriScheda(schedaId);
   return true;
 }
+/* ============================================================
+   IL MATTINO — la giornata raccontata in poche frasi: impegni di oggi,
+   arretrati, richiami in ritardo e su chi vale la pena spingere.
+   ============================================================ */
+function briefingAlPonte() {
+  var P = ponteDati();
+  if (!P.url) return Promise.reject(new Error('ponte non configurato'));
+  var h = { 'Content-Type': 'application/json' };
+  if (P.tok) h['X-Token'] = P.tok;
+  return fetch(P.url, { method: 'POST', headers: h, body: JSON.stringify({
+    briefing: true, calendario: datiCalendario(), oggi: oggi(), modello: modelloTesti(), regole: regoleTesto(),
+    frase: 'Raccontami la giornata.'
+  }) })
+    .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
+    .then(function (d) { usoSegna(d.uso); return d.testo || ''; });
+}
+function mostraBriefing() {
+  if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4500); return; }
+  var f = el('div', 'foglio att-f me-f');
+  function chiudi() { zittisci(); f.remove(); document.body.classList.remove('me-aperto'); }
+  f.innerHTML = '<div class="fg"><h4>' + esc(new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })) + '</h4>' +
+    '<div class="pil-dom" id="br-t" style="font-size:calc(16px * var(--scala));line-height:1.5">Sto guardando la giornata…</div>' +
+    '<div class="riga-o" id="br-n" style="color:var(--tenue);font-size:calc(12px * var(--scala))"></div>' +
+    '<div class="az"><button class="btn" id="br-voce" style="display:none">&#128266; Rileggi</button><button class="btn" id="br-chat">Parlane con me</button><button class="btn pri" id="br-x">Chiudi</button></div></div>';
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  $('#br-x', f).addEventListener('click', chiudi);
+  $('#br-chat', f).addEventListener('click', function () { chiudi(); chatApri(''); });
+  briefingAlPonte().then(function (testo) {
+    $('#br-t', f).innerHTML = esc(testo).replace(/\n+/g, '<br><br>');
+    var c = datiCalendario();
+    $('#br-n', f).textContent = 'Oggi ' + c.inProgramma.filter(function (x) { return x.giorno === c.oggi; }).length +
+      ' in programma · ' + c.quanti.arretrati + ' arretrati · ' + c.richiami.filter(function (x) { return x.inRitardo; }).length + ' richiami in ritardo.';
+    var bv = $('#br-voce', f); bv.style.display = ''; bv.addEventListener('click', function () { parla(testo); });
+    if (guidaVoce()) parla(testo);
+  }, function (e) {
+    $('#br-t', f).innerHTML = '<span style="color:var(--rosso)">Non sono riuscito a preparare la giornata: ' + esc(String(e.message || e).slice(0, 140)) + '</span>';
+  });
+}
+
 /* ============================================================
    PILOTA VOCALE — «Dillo a voce · ti guido io»
    Una frase sola: l'app capisce se e' un report o un'attivita' da mettere in calendario,
