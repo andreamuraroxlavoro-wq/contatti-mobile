@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.64.0';
+var APP_VER = '1.65.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -4290,6 +4290,45 @@ function clienteDaVoce(r) {
   }, 300);
 }
 /* ============================================================
+   IL CALENDARIO PER L'ASSISTENTE — quello che c'e' in programma, gli arretrati,
+   i richiami e quello che e' stato fatto di recente, in forma compatta.
+   Si manda al ponte quando la domanda riguarda l'agenda.
+   ============================================================ */
+var CHI_CAL = /(agenda|calendario|appuntament|impegn|program|in programma|che cosa ho|cosa ho|che ho|cosa devo|che devo|devo fare|giornata|settimana|mese|oggi|domani|dopodomani|stamattina|stasera|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|arretrat|scadut|in ritardo|richiam|da sentire|da chiamare|da visitare|libero|prossim|quando vedo|quando sento|cosa ho fatto|che ho fatto|ultimi giorni|giro)/;
+function parlaDiCalendario(testo) { return CHI_CAL.test(senzaAccenti(String(testo || ''))); }
+function calRiga(x) {
+  var c = DB.contatti[x.cid];
+  return { giorno: x.d, ora: x.o || (x.oraLibera ? 'orario libero' : ''), che: attTipo(x.tipo).nome,
+    cliente: c ? c.nome : '(cliente tolto)', provincia: c ? (c.prov || '') : '', nota: String(x.nota || '').slice(0, 220) };
+}
+function datiCalendario() {
+  var og = oggi(), fine = calSomma(og, 60);
+  var aperte = attOrdina(attTutte().filter(function (x) { return !x.fatto; }));
+  var inProgramma = aperte.filter(function (x) { return x.d >= og && x.d <= fine; }).map(calRiga).slice(0, 150);
+  var arretrati = aperte.filter(function (x) { return x.d < og; }).map(calRiga).slice(0, 80);
+  var richiami = [];
+  Object.keys(DB.situazioni || {}).forEach(function (id) {
+    var k = DB.situazioni[id]; if (!k || !k.richiamo || k.richiamoApp) return;
+    var c = DB.contatti[id]; if (!c || k.richiamo > fine) return;
+    richiami.push({ giorno: k.richiamo, cliente: c.nome, tipoAzione: k.esito || '', prossimoPasso: k.passo || '', inRitardo: k.richiamo < og });
+  });
+  richiami.sort(function (a, b) { return a.giorno.localeCompare(b.giorno); });
+  var da = calSomma(og, -30), fatti = [];
+  Object.keys(DB.eventi || {}).forEach(function (k) {
+    var v = DB.eventi[k]; if (!v || !v.d || v.d < da || v.d > og) return;
+    var c = DB.contatti[v.cid];
+    fatti.push({ giorno: v.d, ora: v.o || '', canale: v.c || '', tipoAzione: v.e || '', cliente: c ? c.nome : '', testo: String(v.n || htmlATesto(v.h || '')).slice(0, 300) });
+  });
+  fatti.sort(function (a, b) { return (b.giorno + (b.ora || '')).localeCompare(a.giorno + (a.ora || '')); });
+  return {
+    oggi: og, finoAl: fine,
+    inProgramma: inProgramma, arretrati: arretrati, richiami: richiami.slice(0, 100),
+    fattiUltimi30Giorni: fatti.slice(0, 60),
+    quanti: { inProgramma: inProgramma.length, arretrati: arretrati.length, richiami: richiami.length }
+  };
+}
+
+/* ============================================================
    LE MIE REGOLE — la memoria lunga dell'app. Frasi che Andrea si scrive una volta
    («nei report non usare la parola cantiere», «nei riassunti dimmi prima i soldi»)
    e che viaggiano con ogni richiesta al ponte. Il modello resta uguale: e' l'app che si ricorda.
@@ -4584,6 +4623,8 @@ function chatAlPonte(frase) {
   if (P.tok) h['X-Token'] = P.tok;
   var corpo = { conversa: true, frase: frase, storia: CHAT.storia.slice(-12, -1), oggi: oggi(), modello: modelloTesti(), regole: regoleTesto() };
   if (CHAT.cid) corpo.dati = datiPerRiassunto(CHAT.cid);
+  /* la domanda riguarda l'agenda: gli passo il calendario vero, non solo la scheda */
+  if (parlaDiCalendario(frase) || CHAT.calendario) { corpo.calendario = datiCalendario(); CHAT.calendario = true; }
   return fetch(P.url, { method: 'POST', headers: h, body: JSON.stringify(corpo) })
     .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
     .then(function (d) { usoSegna(d.uso); return d; });
