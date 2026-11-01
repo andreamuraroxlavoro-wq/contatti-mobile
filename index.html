@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.66.0';
+var APP_VER = '1.67.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -4298,7 +4298,7 @@ var CHI_CAL = /(agenda|calendario|appuntament|impegn|program|in programma|che co
 function parlaDiCalendario(testo) { return CHI_CAL.test(senzaAccenti(String(testo || ''))); }
 function calRiga(x) {
   var c = DB.contatti[x.cid];
-  return { giorno: x.d, ora: x.o || (x.oraLibera ? 'orario libero' : ''), che: attTipo(x.tipo).nome,
+  return { id: x.id, giorno: x.d, ora: x.o || (x.oraLibera ? 'orario libero' : ''), che: attTipo(x.tipo).nome,
     cliente: c ? c.nome : '(cliente tolto)', provincia: c ? (c.prov || '') : '', nota: String(x.nota || '').slice(0, 220) };
 }
 function datiCalendario() {
@@ -4539,6 +4539,47 @@ function eseguiAttrezzo(nome, a) {
     if (a.fatti) r.fatti = c0.fattiUltimi30Giorni.filter(function (x) { return x.giorno >= da && x.giorno <= fin; });
     r.quanti = { inProgramma: r.inProgramma.length, arretrati: (r.arretrati || []).length, richiami: (r.richiami || []).length };
     return r;
+  }
+  if (nome === 'apri_scheda') {
+    var ci = clienteDaNome(a.nome || '');
+    if (!ci) return { fatto: false, motivo: 'Non trovo nessun cliente con questo nome: ' + String(a.nome || '') };
+    var nm = DB.contatti[ci].nome;
+    chatChiudi(); apriScheda(ci);
+    return { fatto: true, aperta: nm };
+  }
+  /* --- gli attrezzi che cambiano qualcosa non cambiano niente da soli:
+         preparano una proposta e aspettano il tasto «Salva» --- */
+  if (nome === 'sposta_appuntamento' || nome === 'segna_fatto' || nome === 'annulla_appuntamento') {
+    var ap = attArchivio()[a.id || ''];
+    if (!ap) return { propostaMostrata: false, motivo: 'Non trovo questo appuntamento: chiedi prima l\'agenda e usa l\'id che ti da\'.' };
+    var cl = DB.contatti[ap.cid], quale = attTipo(ap.tipo).nome + ' da ' + (cl ? cl.nome : '') + ' del ' + dataIt(ap.d) + (ap.o ? ' alle ' + ap.o : '');
+    if (nome === 'sposta_appuntamento') {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a.giorno || '')) return { propostaMostrata: false, motivo: 'Mi serve il giorno nuovo in forma AAAA-MM-GG.' };
+      chatPropostaScrittura({ tipo: 'sposta', id: ap.id, giorno: a.giorno, ora: /^\d{2}:\d{2}$/.test(a.ora || '') ? a.ora : '' },
+        'Spostare l\'appuntamento?', [['Che cosa', quale], ['Nuovo giorno', dataIt(a.giorno) + (a.ora ? ' alle ' + a.ora : ' · orario libero')]]);
+    } else if (nome === 'segna_fatto') {
+      chatPropostaScrittura({ tipo: 'fatto', id: ap.id }, 'Segnare come fatto?', [['Che cosa', quale]]);
+    } else {
+      chatPropostaScrittura({ tipo: 'annulla', id: ap.id }, 'Togliere dal calendario?', [['Che cosa', quale]]);
+    }
+    return { propostaMostrata: true, inAttesaDiConferma: true, quale: quale };
+  }
+  if (nome === 'fissa_richiamo') {
+    var cr = clienteDaNome(a.cliente || '');
+    if (!cr) return { propostaMostrata: false, motivo: 'Non trovo nessun cliente con questo nome: ' + String(a.cliente || '') };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(a.giorno || '')) return { propostaMostrata: false, motivo: 'Mi serve il giorno in forma AAAA-MM-GG.' };
+    chatPropostaScrittura({ tipo: 'richiamo', cid: cr, giorno: a.giorno, passo: String(a.prossimoPasso || '').slice(0, 300) },
+      'Fissare il richiamo?', [['Cliente', DB.contatti[cr].nome], ['Richiamo', dataIt(a.giorno)]].concat(a.prossimoPasso ? [['Prossimo passo', String(a.prossimoPasso).slice(0, 120)]] : []));
+    return { propostaMostrata: true, inAttesaDiConferma: true };
+  }
+  if (nome === 'cambia_tipo_cliente') {
+    var ct = clienteDaNome(a.cliente || '');
+    if (!ct) return { propostaMostrata: false, motivo: 'Non trovo nessun cliente con questo nome: ' + String(a.cliente || '') };
+    var tp = String(a.tipo || '').toUpperCase().trim();
+    if (TIPI_CLI.indexOf(tp) < 0) return { propostaMostrata: false, motivo: 'Tipo non valido. Quelli buoni sono: ' + TIPI_CLI.join(', ') };
+    chatPropostaScrittura({ tipo: 'tipoCliente', cid: ct, valore: tp },
+      'Cambiare il tipo del cliente?', [['Cliente', DB.contatti[ct].nome], ['Da', tipoCli(ct)], ['A', tp]]);
+    return { propostaMostrata: true, inAttesaDiConferma: true };
   }
   return { errore: 'attrezzo sconosciuto: ' + nome };
 }
@@ -4792,6 +4833,57 @@ function chatPropostaRegola(regola) {
       c.remove();
     });
   });
+}
+/* la proposta di una modifica: scritta per intero, e si fa solo se tocchi «Salva» */
+function chatPropostaScrittura(ordine, titolo, righe) {
+  if (!CHAT) return;
+  var c = el('div', 'ch-m ch-prop');
+  c.innerHTML = '<h5>' + esc(titolo) + '</h5><div class="pil-ri">' +
+    righe.map(function (r) { return '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1] || '—') + '</b></div>'; }).join('') + '</div>' +
+    '<div class="az"><button class="btn pri" data-k="ok">Salva</button><button class="btn" data-k="no">Lascia stare</button></div>';
+  var l = $('#ch-l', CHAT.f); l.appendChild(c); l.scrollTop = l.scrollHeight;
+  $$('button', c).forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.k === 'no') { c.remove(); chatRiga('app', 'Va bene, lascio tutto com\'era.'); return; }
+      var esito = chatEsegui(ordine);
+      if (esito) { c.remove(); chatRiga('app', esito); if (guidaVoce()) parla(esito); }
+    });
+  });
+}
+function chatEsegui(o) {
+  var ap, k, nome;
+  if (o.tipo === 'sposta') {
+    ap = attArchivio()[o.id]; if (!ap) return 'Non trovo più quell\'appuntamento.';
+    ap.d = o.giorno;
+    if (o.ora) { ap.o = o.ora; delete ap.oraLibera; } else { delete ap.o; ap.oraLibera = 1; }
+    attSalva(ap);
+    nome = DB.contatti[ap.cid] ? DB.contatti[ap.cid].nome : '';
+    return 'Spostato: ' + attTipo(ap.tipo).nome + ' da ' + nome + ' ' + dataParlata(ap.d) + (ap.o ? ' ' + oraParlata(ap.o) : '') + '.';
+  }
+  if (o.tipo === 'fatto') {
+    ap = attArchivio()[o.id]; if (!ap) return 'Non trovo più quell\'appuntamento.';
+    attSegnaFatta(o.id, true);
+    return 'Segnato come fatto.';
+  }
+  if (o.tipo === 'annulla') {
+    ap = attArchivio()[o.id]; if (!ap) return 'Non trovo più quell\'appuntamento.';
+    attElimina(o.id);
+    return 'Tolto dal calendario.';
+  }
+  if (o.tipo === 'richiamo') {
+    k = Object.assign({ id: o.cid }, DB.situazioni[o.cid] || {});
+    k.richiamo = o.giorno; delete k.richiamoApp;
+    if (o.passo) k.passo = o.passo;
+    k._m = Date.now(); DB.situazioni[o.cid] = k; salva();
+    nome = DB.contatti[o.cid] ? DB.contatti[o.cid].nome : '';
+    return 'Richiamo di ' + nome + ' messo ' + dataParlata(o.giorno) + '.';
+  }
+  if (o.tipo === 'tipoCliente') {
+    salvaTipoCli(o.cid, o.valore);
+    nome = DB.contatti[o.cid] ? DB.contatti[o.cid].nome : '';
+    return nome + ' è ora ' + o.valore + '.';
+  }
+  return 'Non ho capito che cosa dovevo fare.';
 }
 function chatSalva(az) {
   var cid = az._cid || CHAT.cid;
