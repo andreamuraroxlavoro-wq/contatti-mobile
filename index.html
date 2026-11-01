@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.71.1';
+var APP_VER = '1.72.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3703,6 +3703,8 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Guida a voce<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">le domande del pilota vengono lette ad alta voce</span></span><span class="sp"></span><input type="checkbox" id="pn-guida" style="width:26px;height:26px"' + (guidaVoce() ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Voce naturale dal ponte<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">voce neurale invece di quella del telefono; ogni frase si sente una volta sola a pagamento, poi resta salvata qui</span></span><span class="sp"></span><input type="checkbox" id="pn-vocen" style="width:26px;height:26px"' + (voceNeurale() ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Quale voce</span><span class="sp"></span><select id="pn-vocenome" class="chip">' + VOCI.map(function (v) { return '<option value="' + esc(v[0]) + '"' + (voceNome() === v[0] ? ' selected' : '') + '>' + esc(v[1]) + '</option>'; }).join('') + '</select></div>');
+  h.push('<div class="riga-o"><span>Come deve parlare<br><span style="color:var(--tenue);font-size:calc(12px * var(--scala))">scrivilo con parole tue: «calmo e discorsivo», «svelto e deciso», «come un collega veneto tranquillo». Lascia vuoto per il tono normale.</span></span></div>');
+  h.push('<div class="riga-o"><input id="pn-vocetono" type="text" class="chip" style="flex:1" maxlength="300" placeholder="tono normale" value="' + esc(voceTono()) + '"></div>');
   h.push('<div class="riga-o"><span>Velocit&agrave; della voce</span><span class="sp"></span><b id="pn-vele">' + voceVelTesto() + '</b></div>');
   h.push('<div class="riga-o"><input type="range" id="pn-vel" min="0.8" max="1.6" step="0.05" value="' + voceVel() + '" style="flex:1"></div>');
   h.push('<div class="az"><button class="btn pri" id="pn-vocep">Prova la voce</button><button class="btn" id="pn-vocer">Rifai le frasi salvate</button></div>');
@@ -3780,9 +3782,11 @@ function disegnaAltro() {
     var vn = $('#pn-vocen');
     if (vn) vn.addEventListener('change', function () { voceNeuraleSegna(vn.checked); toast(vn.checked ? 'Voce naturale accesa' : 'Uso la voce del telefono'); });
     var vnm = $('#pn-vocenome');
-    if (vnm) vnm.addEventListener('change', function () { try { localStorage.setItem('cm.voceNome', vnm.value); } catch (e) {} parla('Ciao Andrea, sono io che ti guido. Per quale cliente registriamo?'); });
+    if (vnm) vnm.addEventListener('change', function () { try { localStorage.setItem('cm.voceNome', vnm.value); } catch (e) {} parla(FRASE_PROVA); });
+    var vtn = $('#pn-vocetono');
+    if (vtn) vtn.addEventListener('change', function () { voceTonoSegna(vtn.value); toast(vtn.value.trim() ? 'Tono aggiornato' : 'Tono normale'); parla(FRASE_PROVA); });
     var vp2 = $('#pn-vocep');
-    if (vp2) vp2.addEventListener('click', function () { parla('Ciao Andrea, sono io che ti guido. Per quale cliente registriamo?'); });
+    if (vp2) vp2.addEventListener('click', function () { parla(FRASE_PROVA); });
     var vl = $('#pn-vel'), vle = $('#pn-vele');
     if (vl) {
       vl.addEventListener('input', function () { if (vle) vle.textContent = voceVelTesto(parseFloat(vl.value)); });
@@ -5187,7 +5191,24 @@ function voceNome() { try { return localStorage.getItem('cm.voceNome') || 'coral
 function voceVel() { var v = parseFloat(localStorage.getItem('cm.voceVel') || '1.15'); return (isNaN(v) || v < 0.7 || v > 1.8) ? 1.15 : v; }
 function voceVelSegna(v) { try { localStorage.setItem('cm.voceVel', String(v)); } catch (e) {} }
 function voceVelTesto(v) { return (v || voceVel()).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '×'; }
-var VOCI = [['coral', 'Coral — calda, femminile'], ['sage', 'Sage — pacata, femminile'], ['nova', 'Nova — chiara, femminile'], ['ash', 'Ash — calda, maschile'], ['verse', 'Verse — espressiva, maschile'], ['alloy', 'Alloy — neutra']];
+var VOCI = [
+  ['marin', 'Marin — la più naturale, femminile (consigliata)'],
+  ['cedar', 'Cedar — la più naturale, maschile (consigliata)'],
+  ['ballad', 'Ballad — espressiva e morbida, femminile'],
+  ['verse', 'Verse — espressiva, maschile'],
+  ['coral', 'Coral — calda, femminile'],
+  ['sage', 'Sage — pacata, femminile'],
+  ['nova', 'Nova — chiara, femminile'],
+  ['shimmer', 'Shimmer — brillante, femminile'],
+  ['fable', 'Fable — narrativa, maschile'],
+  ['ash', 'Ash — calda, maschile'],
+  ['echo', 'Echo — asciutta, maschile'],
+  ['onyx', 'Onyx — profonda, maschile'],
+  ['alloy', 'Alloy — neutra']
+];
+var FRASE_PROVA = 'Ciao Andrea. Con ACES siamo alla stretta finale: l\'offerta per tre torri, milleottocento euro al mese, è ferma da due giorni. Ti fisso il richiamo martedì 3 novembre alle 10 e mezza?';
+function voceTono() { try { return localStorage.getItem('cm.voceTono') || ''; } catch (e) { return ''; } }
+function voceTonoSegna(v) { try { localStorage.setItem('cm.voceTono', String(v || '').slice(0, 300)); } catch (e) {} }
 var AUDIO_IN_CORSO = null;
 /* ogni volta che si zittisce, il gettone cambia: la frase che stava arrivando dal ponte
    si accorge di essere vecchia e non parte piu' */
@@ -5200,7 +5221,9 @@ function zittisci() {
 /* le frasi del pilota sono poche e sempre uguali: la prima volta le fa dire al ponte,
    poi restano sul telefono e si sentono subito, senza rete e senza costo */
 function chiaveFrase(t) {
-  var x = voceNome() + '|' + t, h = 5381, i;
+  /* la chiave tiene conto anche del tono: se cambi «come deve parlare»,
+     la frase si rifa' invece di uscire con la voce di prima */
+  var x = voceNome() + '|' + voceTono() + '|' + t, h = 5381, i;
   for (i = 0; i < x.length; i++) h = ((h * 33) ^ x.charCodeAt(i)) >>> 0;
   return 'voce:' + h.toString(36) + ':' + x.length;
 }
@@ -5212,7 +5235,7 @@ function audioFrase(t, tieni) {
     if (!P.url) return Promise.reject(new Error('ponte non configurato'));
     var intestazioni = { 'Content-Type': 'application/json' };
     if (P.tok) intestazioni['X-Token'] = P.tok;
-    return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ voce: t, vocenome: voceNome() }) })
+    return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ voce: t, vocenome: voceNome(), vocetono: voceTono() }) })
       .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
       .then(function (d) {
         if (!d.audio) throw new Error('voce vuota');
@@ -5239,7 +5262,7 @@ function suonaBase64(b64, dopo) {
 }
 /* legge la domanda ad alta voce; se la voce e' spenta o non c'e', si va avanti lo stesso */
 function parla(testo, dopo) {
-  var t = String(testo || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  var t = perLaVoce(testo).replace(/\s+/g, ' ').trim();
   if (!t || !guidaVoce()) { if (dopo) setTimeout(dopo, 50); return; }
   zittisci();
   var gt = VOCE_GETTONE;
@@ -5268,6 +5291,40 @@ function parla(testo, dopo) {
     return;
   }
   parlaSistema(t, dopo);
+}
+/* prima di darla alla voce, la frase si prepara per essere DETTA e non letta:
+   i simboli diventano parole, le sigle puntate si leggono di fila, le date e gli orari
+   si dicono come si dicono. Senza questo, anche la voce piu' bella suona da macchina. */
+var MESI_V = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+function perLaVoce(testo) {
+  var x = String(testo || '');
+  x = x.replace(/<[^>]*>/g, ' ');
+  /* date 03/11/2026 e 3-11-2026 */
+  x = x.replace(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/g, function (m, g, me, a) {
+    var i = +me - 1; return MESI_V[i] ? (+g === 1 ? 'primo' : +g) + ' ' + MESI_V[i] + ' ' + a : m;
+  });
+  /* orari 10:30 -> «10 e 30», 10:00 -> «10» */
+  x = x.replace(/\b(\d{1,2}):(\d{2})\b/g, function (m, h, mi) {
+    if (mi === '00') return h;
+    if (mi === '30') return h + ' e mezza';
+    if (mi === '15') return h + ' e un quarto';
+    return h + ' e ' + (+mi);
+  });
+  /* importi: 1.800 € -> «milleottocento euro» lo fa gia' la voce, ma il simbolo no */
+  x = x.replace(/€\s?/g, ' euro ').replace(/\s?€/g, ' euro ');
+  x = x.replace(/\b(\d+(?:[.,]\d+)?)\s*%/g, '$1 per cento');
+  /* sigle puntate: A.C.E.S. -> ACES, cosi' non le scandisce una lettera per volta con la pausa */
+  x = x.replace(/\b(?:[A-Za-z]\.){2,}/g, function (m) { return m.replace(/\./g, ''); });
+  /* abbreviazioni e simboli che a voce non si dicono */
+  /* la forma societaria non si dice: «la visita da ACES», non «da ACES esse erre elle» */
+  x = x.replace(/\s+(S\.?\s?R\.?\s?L\.?|S\.?\s?P\.?\s?A\.?|S\.?N\.?C\.?|S\.?A\.?S\.?|SRLS)\b\.?/gi, '');
+  x = x.replace(/\bP\.?\s?IVA\b/gi, 'partita IVA').replace(/\bn[°º]\s?/gi, 'numero ');
+  x = x.replace(/\bkm\b/g, 'chilometri').replace(/\bmq\b/g, 'metri quadri').replace(/\bh24\b/gi, 'ventiquattro ore su ventiquattro');
+  x = x.replace(/\bca\.\s/gi, 'circa ').replace(/\becc\.\s?/gi, 'eccetera ').replace(/\bes\.\s?/gi, 'per esempio ');
+  x = x.replace(/[*_#`>|]/g, ' ').replace(/\s*[-–—]\s/g, ', ');
+  x = x.replace(/\.{3,}/g, '.').replace(/\s{2,}/g, ' ');
+  x = x.replace(/\s+([,.;:!?])/g, '$1').replace(/([,.;:!?]){2,}/g, '$1');
+  return x.trim();
 }
 /* la risposta lunga si legge a pezzi: si spezza alla fine di una frase, mai a meta' parola.
    Cosi' la voce parte subito e intanto si prepara il pezzo dopo. */
