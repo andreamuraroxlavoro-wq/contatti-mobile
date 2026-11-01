@@ -156,6 +156,10 @@ html[data-theme="scuro"] #dett-sist,html[data-theme="scuro"] #me-sist{color:#241
 .ch-prop h5{margin:0 0 8px;font-size:calc(14px * var(--scala));text-transform:uppercase;letter-spacing:.06em;color:var(--tenue)}
 .ch-prop textarea{width:100%;margin-top:8px;font:inherit;font-size:calc(14.5px * var(--scala));padding:8px;border-radius:10px;border:1px solid var(--bordo);background:var(--campo);color:var(--testo)}
 .ch-prop .az{display:flex;gap:8px;margin-top:10px}
+.ch-cmd{display:flex;justify-content:center;margin-top:10px;min-height:0}
+.ch-cmd .btn{min-width:200px;justify-content:center;min-height:44px;font-size:calc(15px * var(--scala))}
+.ch-stop{background:var(--rosso);border-color:var(--rosso);color:#fff}
+.ch-ri{background:var(--campo);border-color:var(--bordo);color:var(--testo)}
 .ch-scrivi{display:flex;gap:8px;margin-top:10px}
 .ch-scrivi input{flex:1;min-width:0;font:inherit;font-size:calc(15px * var(--scala));padding:10px 12px;border-radius:12px;border:1px solid var(--bordo);background:var(--campo);color:var(--testo)}
 .ch .pil-mic{margin-top:2px}
@@ -939,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.70.1';
+var APP_VER = '1.71.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -4799,10 +4803,11 @@ function chatClienteDaFrase(testo) {
 function chatApri(cid) {
   if (!pontePronto()) { toast('Prima collega il ponte: Impostazioni → Assistente vocale', 4500); return; }
   var f = el('div', 'foglio pil-f ch-f');
-  CHAT = { f: f, cid: cid || '', storia: [], occupato: false };
+  CHAT = { f: f, cid: cid || '', storia: [], occupato: false, ultimo: '', legge: false, lettura: 0 };
   f.innerHTML = '<div class="fg pil ch"><div class="pil-top"><b id="ch-chi">Parla con l\'app</b><button class="btn mini" id="ch-x">Chiudi</button></div>' +
     '<div class="ch-l" id="ch-l"></div>' +
     '<div class="pil-mic"><button type="button" id="ch-bt" class="pil-b">' + ICO_MIC + '<span id="ch-et">Tocca e parla</span></button></div>' +
+    '<div class="ch-cmd" id="ch-cmd"></div>' +
     '<div class="ch-scrivi"><input type="text" id="ch-in" placeholder="oppure scrivi qui…" autocomplete="off"><button class="btn" id="ch-man">Invia</button></div></div>';
   document.body.appendChild(f); document.body.classList.add('me-aperto');
   $('#ch-x', f).addEventListener('click', chatChiudi);
@@ -4810,11 +4815,42 @@ function chatApri(cid) {
   $('#ch-man', f).addEventListener('click', chatDaTastiera);
   $('#ch-in', f).addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); chatDaTastiera(); } });
   chatChi();
-  var ap = chatNomeCliente()
-    ? 'Dimmi pure: stiamo parlando di ' + chatNomeCliente() + '.'
-    : 'Dimmi pure. Posso raccontarti come siamo messi con un cliente, registrare un report o metterti una cosa in calendario.';
+  var ap = 'Ciao Andrea, dimmi pure!';
   chatRiga('app', ap);
-  if (guidaVoce()) parla(ap);
+  chatParla(ap);
+}
+/* la lettura della risposta, con i suoi due comandi: mentre legge «Interrompi», poi «Rileggi» */
+function chatParla(testo) {
+  if (!CHAT) return;
+  CHAT.ultimo = testo;
+  if (!guidaVoce()) { chatComandi(); return; }
+  var gt = ++CHAT.lettura;
+  CHAT.legge = true; chatComandi();
+  parla(testo, function () {
+    if (!CHAT || gt !== CHAT.lettura) return;
+    CHAT.legge = false; chatComandi();
+  });
+}
+function chatFerma() {
+  if (!CHAT) return;
+  CHAT.lettura++; zittisci();
+  CHAT.legge = false; chatComandi();
+}
+function chatComandi() {
+  if (!CHAT) return;
+  var b = $('#ch-cmd', CHAT.f); if (!b) return;
+  if (REG.attivo) { b.innerHTML = ''; return; }
+  if (CHAT.legge) {
+    b.innerHTML = '<button type="button" class="btn ch-stop" id="ch-ferma">&#9632; Interrompi</button>';
+    $('#ch-ferma', b).addEventListener('click', chatFerma);
+    return;
+  }
+  if (CHAT.ultimo) {
+    b.innerHTML = '<button type="button" class="btn ch-ri" id="ch-ri">&#128266; Rileggi</button>';
+    $('#ch-ri', b).addEventListener('click', function () { chatParla(CHAT.ultimo); });
+    return;
+  }
+  b.innerHTML = '';
 }
 function chatChiudi() {
   if (!CHAT) return;
@@ -4838,6 +4874,7 @@ function chatRiga(chi, testo, classe) {
 function chatOccupato(si, etichetta) {
   if (!CHAT) return;
   CHAT.occupato = si;
+  chatComandi();
   var b = $('#ch-bt', CHAT.f); if (b) b.disabled = si && etichetta !== 'Ho finito';
   var e = $('#ch-et', CHAT.f); if (e) e.textContent = etichetta || 'Tocca e parla';
   var m = $('#ch-man', CHAT.f); if (m) m.disabled = !!si;
@@ -4854,7 +4891,7 @@ function chatMic() {
   if (!CHAT) return;
   if (REG.attivo) { registraFerma(); return; }
   if (!registraDisponibile()) { toast('Questo telefono non registra l\'audio', 4000); return; }
-  zittisci();
+  chatFerma();
   chatOccupato(true, 'Ho finito');
   var b = $('#ch-bt', CHAT.f); b.classList.add('reg');
   registraAvvia(
@@ -4911,7 +4948,7 @@ function chatDiciTu(testo) {
     }
     if (r.regola) chatPropostaRegola(r.regola);
     if (r.azione) chatProposta(r.azione);
-    if (guidaVoce()) parla(t);
+    chatParla(t);
   }, function (e) {
     if (!CHAT) return;
     if (pensa) pensa.remove();
@@ -5012,7 +5049,7 @@ function chatPropostaScrittura(ordine, titolo, righe) {
     b.addEventListener('click', function () {
       if (b.dataset.k === 'no') { c.remove(); chatRiga('app', 'Va bene, lascio tutto com\'era.'); return; }
       var esito = chatEsegui(ordine);
-      if (esito) { c.remove(); chatRiga('app', esito); if (guidaVoce()) parla(esito); }
+      if (esito) { c.remove(); chatRiga('app', esito); chatParla(esito); }
     });
   });
 }
@@ -5080,7 +5117,7 @@ function chatSalva(az) {
     toast('Report registrato per ' + nome);
     var fr = 'Fatto. Report registrato per ' + nome + '.';
     chatRiga('app', fr); CHAT.storia.push({ r: 'a', t: fr });
-    if (guidaVoce()) parla(fr);
+    chatParla(fr);
     if (document.body.classList.contains('sc-aperta') && schedaId === cid) apriScheda(cid);
     return true;
   }
@@ -5091,7 +5128,7 @@ function chatSalva(az) {
   toast(pilTipoNome(az.tipo) + ' in calendario: ' + dataIt(a.d) + (a.o ? ' alle ' + a.o : ''));
   var f2 = 'Fatto. ' + pilTipoNome(az.tipo) + ' da ' + nome + ' in calendario ' + dataParlata(a.d) + (a.o ? ' ' + oraParlata(a.o) : '') + '.';
   chatRiga('app', f2); CHAT.storia.push({ r: 'a', t: f2 });
-  if (guidaVoce()) parla(f2);
+  chatParla(f2);
   if (vista === 'cal') { CAL.sel = a.d; CAL.rif = a.d; disegnaCal(); }
   else if (vista === 'oggi') disegnaOggi();
   else if (document.body.classList.contains('sc-aperta') && schedaId) apriScheda(schedaId);
@@ -5152,7 +5189,11 @@ function voceVelSegna(v) { try { localStorage.setItem('cm.voceVel', String(v)); 
 function voceVelTesto(v) { return (v || voceVel()).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '×'; }
 var VOCI = [['coral', 'Coral — calda, femminile'], ['sage', 'Sage — pacata, femminile'], ['nova', 'Nova — chiara, femminile'], ['ash', 'Ash — calda, maschile'], ['verse', 'Verse — espressiva, maschile'], ['alloy', 'Alloy — neutra']];
 var AUDIO_IN_CORSO = null;
+/* ogni volta che si zittisce, il gettone cambia: la frase che stava arrivando dal ponte
+   si accorge di essere vecchia e non parte piu' */
+var VOCE_GETTONE = 0;
 function zittisci() {
+  VOCE_GETTONE++;
   try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
   try { if (AUDIO_IN_CORSO) { AUDIO_IN_CORSO.pause(); AUDIO_IN_CORSO = null; } } catch (e) {}
 }
@@ -5201,8 +5242,11 @@ function parla(testo, dopo) {
   var t = String(testo || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t || !guidaVoce()) { if (dopo) setTimeout(dopo, 50); return; }
   zittisci();
+  var gt = VOCE_GETTONE;
   if (voceNeurale() && pontePronto()) {
-    audioFrase(t).then(function (b64) { suonaBase64(b64, dopo); }, function () { parlaSistema(t, dopo); });
+    audioFrase(t).then(
+      function (b64) { if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; } suonaBase64(b64, dopo); },
+      function () { if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; } parlaSistema(t, dopo); });
     return;
   }
   parlaSistema(t, dopo);
