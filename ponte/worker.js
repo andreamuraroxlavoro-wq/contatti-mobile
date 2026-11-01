@@ -288,6 +288,8 @@ async function conversa(env, d, frase) {
     d.attrezzi ? 'HAI DEGLI ATTREZZI per guardare nell\'archivio: cerca_clienti, quanti_clienti, scheda_cliente e agenda. Quando la domanda riguarda dati che non hai gia\' davanti, usali invece di dire che non sai: una ricerca costa poco. Non inventare mai nomi, numeri o date che non siano usciti da un attrezzo o dai dati qui sotto. Un attrezzo per volta, e quando hai quello che ti serve rispondi.' : '',
     d.attrezzi ? 'Quando elenchi dei clienti: al massimo cinque alla volta, con il motivo in mezza riga (da quanto non lo senti, che cosa resta da fare), poi di\' quanti sono in tutto e chiedi se vuole il resto.' : '',
     d.attrezzi ? 'Gli attrezzi che cominciano con sposta, segna, annulla, fissa o cambia NON eseguono niente: preparano una proposta che compare sullo schermo con i tasti Salva e Lascia stare. Dopo averli chiamati, di\' in una frase che cosa hai proposto e che aspetti la sua conferma; non dire mai che hai gia\' fatto o salvato qualcosa.' : '',
+    d.attrezzi ? 'IL QUADERNO. Quando lui dice «segnati che», «ricordati che», «tieni presente che» o ti racconta una cosa che varra\' anche domani, prima cerca con cerca_appunti se c\'e\' gia\' qualcosa su quell\'argomento: se c\'e\' usa aggiorna_appunto, se non c\'e\' usa salva_appunto. Scegli tu un titolo di tre o quattro parole e scrivi l\'appunto in modo che si capisca anche fra sei mesi, non come l\'ha buttato li\'.' : '',
+    d.attrezzi ? 'Un appunto riguarda un cliente solo se parla di quel cliente: tutto il resto (procedure, prezzi, concorrenti, abitudini sue) e\' un appunto generale. Gli appunti gia\' presi su un cliente li trovi nella sua scheda, sotto appuntiSulCliente: usali come gli altri dati. Quando una domanda tocca cose che potrebbe averti raccontato, guarda nel quaderno prima di rispondere che non sai.' : '',
     d.attrezzi ? 'Per le domande sulla torre e sui prezzi chiama prodotto_security_tower e rispondi con quei dati: non andare a memoria e non inventare prezzi. I prezzi sono di listino e vanno detti come tali; se lui ti chiede un conto (tre torri per due mesi) fallo e mostra la fascia che hai usato.' : '',
     d.attrezzi ? 'Per il giro visite usa clienti_vicini: se lui dice dove sara\' («giovedi\' sono a Treviso») mettilo in vicinoA; se dice «qui», «adesso», «in zona» usa quiOra. Racconta i primi cinque con la distanza e da quanto non li sente, poi di\' quanti sono in tutto.' : '',
     d.attrezzi ? 'Per spostare, segnare fatto o annullare ti serve l\'id dell\'appuntamento: chiamalo prima con agenda e prendi l\'id da li\'. Non inventare mai un id.' : '',
@@ -442,6 +444,26 @@ const ATTREZZI = [
     }
   }
 ,
+  {
+    name: 'cerca_appunti',
+    description: 'Cerca nel quaderno: gli appunti che Andrea ti ha dettato nel tempo, generali o legati a un cliente. Usalo quando la domanda tocca qualcosa che potrebbe avergli gia\' raccontato (procedure sue, abitudini di un cliente, decisioni prese, concorrenti), e prima di salvare un appunto nuovo per vedere se ce n\'e\' gia\' uno sullo stesso argomento.',
+    input_schema: { type: 'object', properties: { testo: { type: 'string', description: 'le parole da cercare' }, cliente: { type: 'string', description: 'per cercare solo fra gli appunti di quel cliente' }, limite: { type: 'integer' } } }
+  },
+  {
+    name: 'salva_appunto',
+    description: 'PROPONE di segnare un appunto nuovo. NON lo salva: prepara la proposta e la persona conferma. Se riguarda un cliente metti il suo nome in cliente, altrimenti lascialo vuoto e sara\' un appunto generale. Prima di usarlo cerca con cerca_appunti: se esiste gia\' un appunto sullo stesso argomento, proponi un aggiornamento invece di un doppione.',
+    input_schema: { type: 'object', properties: { titolo: { type: 'string', description: 'tre o quattro parole che dicono di che cosa parla' }, testo: { type: 'string', description: 'l\'appunto, scritto in modo che si capisca anche fra sei mesi' }, cliente: { type: 'string' } }, required: ['testo'] }
+  },
+  {
+    name: 'aggiorna_appunto',
+    description: 'PROPONE di cambiare un appunto che c\'e\' gia\'. NON lo cambia: la persona conferma vedendo il prima e il dopo. Serve l\'id, che trovi con cerca_appunti.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' }, titolo: { type: 'string' }, testo: { type: 'string' } }, required: ['id', 'testo'] }
+  },
+  {
+    name: 'cancella_appunto',
+    description: 'PROPONE di cancellare un appunto. NON lo cancella: la persona conferma. Serve l\'id, che trovi con cerca_appunti.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] }
+  },
   {
     name: 'prodotto_security_tower',
     description: 'La scheda della SECURITY TOWER e il listino di noleggio: struttura, energia e autonomia, elettronica di gestione e 4G, telecamere, servizi collegati, prezzi delle fasce di noleggio e condizioni. Usalo per ogni domanda su come e\' fatta la torre, che cosa comprende e quanto costa, invece di andare a memoria.',
