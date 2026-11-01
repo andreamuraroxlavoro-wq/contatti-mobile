@@ -112,7 +112,7 @@ async function campi(env, frase, d) {
 }
 
 /* --- 3) sistema il testo di un report: stessa sostanza, forma leggibile --- */
-async function sistemaUnGiro(env, testo, insisti, modello) {
+async function sistemaUnGiro(env, testo, insisti, modello, regolePers) {
   const breve = testo.length < 700;
   const regole = [
     'Riscrivi il testo che ricevi in una forma piu chiara e corretta, SENZA cambiarne la sostanza, la struttura e la lunghezza.',
@@ -128,7 +128,8 @@ async function sistemaUnGiro(env, testo, insisti, modello) {
       : 'Mantieni la lunghezza e l\'impaginazione: il testo riscritto deve essere lungo quanto quello ricevuto (fra il 90% e il 115%), con gli stessi a capo e le stesse righe vuote fra i paragrafi.',
     'Italiano piano e professionale; mantieni la persona (prima, seconda o terza) e il tono dell\'originale.',
     'Rispondi SOLO con il testo riscritto, senza virgolette, senza preamboli e senza commenti.',
-    insisti ? 'IMPORTANTE: la tua risposta precedente non andava bene perche era troppo corta o vuota. Riscrivi TUTTO il testo dall\'inizio alla fine, paragrafo per paragrafo, senza saltarne nessuno, e scrivi solo il testo riscritto dalla prima parola.' : ''
+    insisti ? 'IMPORTANTE: la tua risposta precedente non andava bene perche era troppo corta o vuota. Riscrivi TUTTO il testo dall\'inizio alla fine, paragrafo per paragrafo, senza saltarne nessuno, e scrivi solo il testo riscritto dalla prima parola.' : '',
+    regolePers || ''
   ].filter(Boolean).join('\n');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -155,11 +156,11 @@ function troppoCorto(orig, nuovo) {
   const soglia = orig.length < 700 ? 0.45 : 0.80;
   return nuovo.length < orig.length * soglia;
 }
-async function sistema(env, testo, modello) {
-  let a = await sistemaUnGiro(env, testo, false, modello);
+async function sistema(env, testo, modello, regolePers) {
+  let a = await sistemaUnGiro(env, testo, false, modello, regolePers);
   if (a.testo && !troppoCorto(testo, a.testo)) return a;
   /* risposta vuota o riassunta: riprovo una volta insistendo, poi dico perche */
-  const b = await sistemaUnGiro(env, testo, true, modello);
+  const b = await sistemaUnGiro(env, testo, true, modello, regolePers);
   b.uso = { in: a.uso.in + b.uso.in, out: a.uso.out + b.uso.out, costo: +(a.uso.costo + b.uso.costo).toFixed(6), modello: modello || MODELLO };
   if (b.testo && !troppoCorto(testo, b.testo)) return b;
   if (!b.testo) { b.motivo = 'il modello non ha scritto nulla (stop: ' + b.stop + ', blocchi: ' + (b.tipi || 'nessuno') + ')'; b.testo = ''; return b; }
@@ -180,7 +181,8 @@ async function riassunto(env, d) {
     'REGOLE: usa SOLO quello che c\'e\' nei dati, non inventare mai fatti, date, importi o impegni; se un\'informazione manca dillo in mezza riga invece di riempire il vuoto; niente elenchi puntati, solo frasi; niente formule di apertura o chiusura.',
     'Date in forma italiana (3 novembre 2026). Importi in euro con la virgola per i decimali.',
     perVoce ? 'Il testo verra\' letto ad alta voce mentre la persona guida: frasi brevi, nessuna sigla da sillabare, nessun simbolo, massimo 90 parole.' : '',
-    domanda ? 'Rispondi prima di tutto a questa domanda del venditore: ' + domanda : ''
+    domanda ? 'Rispondi prima di tutto a questa domanda del venditore: ' + domanda : '',
+    regolePersona(d)
   ].filter(Boolean).join('\n');
   const modello = modelloDi(d);
   const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -194,6 +196,12 @@ async function riassunto(env, d) {
   return { testo: testo, uso: contoUso(out, modello) };
 }
 
+/* le regole che la persona si e' scritta nelle impostazioni: valgono per ogni richiesta */
+function regolePersona(d) {
+  const r = String((d && d.regole) || '').trim().slice(0, 4000);
+  if (!r) return '';
+  return 'REGOLE DI ANDREA (se le e\' scritte lui, valgono sempre e vengono prima delle preferenze generiche; se una regola contraddice i dati, seguono i dati):\n' + r;
+}
 /* il nome dell'azienda della scheda, per dirlo al modello senza fargli cercare */
 function nomeScheda(dati) {
   try { return String((dati.cliente && dati.cliente.nome) || 'questo cliente'); } catch (e) { return 'questo cliente'; }
@@ -202,7 +210,7 @@ function nomeScheda(dati) {
    Se arrivasse comunque del JSON (anche troncato a meta'), si recupera il solo campo «risposta»
    invece di mostrare le graffe alla persona. */
 function leggiRisposta(grezzo) {
-  let testo = String(grezzo || '').trim(), azione = null, cliente = '';
+  let testo = String(grezzo || '').trim(), azione = null, cliente = '', regola = '';
   if (testo.slice(0, 1) === '{') {
     let o = null;
     try { o = JSON.parse(testo); } catch (e) { o = null; }
@@ -210,7 +218,8 @@ function leggiRisposta(grezzo) {
       return {
         testo: String(o.risposta || '').trim(),
         azione: (o.azione && typeof o.azione === 'object') ? o.azione : null,
-        cliente: String(o.cliente || '').slice(0, 120)
+        cliente: String(o.cliente || '').slice(0, 120),
+        regola: ''
       };
     }
     /* JSON rotto o tagliato: prendo il testo del campo «risposta» cosi' com'e' */
@@ -229,9 +238,11 @@ function leggiRisposta(grezzo) {
     }
     const c = r.match(/^\s*CLIENTE\s*:\s*(.+)$/i);
     if (c) { cliente = c[1].trim().slice(0, 120); return; }
+    const g = r.match(/^\s*REGOLA\s*:\s*(.+)$/i);
+    if (g) { regola = g[1].trim().slice(0, 300); return; }
     tenute.push(r);
   });
-  return { testo: tenute.join('\n').trim(), azione: azione, cliente: cliente };
+  return { testo: tenute.join('\n').trim(), azione: azione, cliente: cliente, regola: regola };
 }
 
 /* --- 4-bis) la conversazione: si parla, lui risponde e, se serve, propone di salvare --- */
@@ -251,6 +262,8 @@ async function conversa(env, d, frase) {
     'Nelle azioni: il report e\' una cosa gia\' fatta e non vuole la data; visita, telefonata e mail vanno in calendario e vogliono quando, e l\'ora se l\'ha detta. Lascia vuoto quello che non sai, non indovinare.',
     'Oggi e\' ' + String(d.oggi || '').slice(0, 10) + '.',
     dati ? 'ATTENZIONE: la scheda qui sotto e\' di ' + nomeScheda(dati) + ' e di nessun altro. Se lui nomina un\'azienda diversa da questa, non hai i suoi dati: dillo subito in una frase, non raccontare quello che leggi qui attribuendolo a un\'altra azienda, e chiedigli di aprire la scheda giusta.' : '',
+    'Se lui ti chiede di ricordare una sua preferenza stabile («ricordati che…», «d\'ora in poi…»), aggiungi in fondo una riga REGOLA: seguita dalla regola scritta in una frase, e nella risposta digli che gliela proponi da salvare.',
+    regolePersona(d),
     dati ? 'Scheda di ' + nomeScheda(dati) + ', in JSON:\n' + JSON.stringify(dati).slice(0, 60000) : 'Non hai la scheda di nessun cliente: se ti serve, chiedigli di quale cliente sta parlando, e non inventare dati.'
   ].filter(Boolean).join('\n');
   const storia = (Array.isArray(d.storia) ? d.storia : []).slice(-12)
@@ -267,7 +280,7 @@ async function conversa(env, d, frase) {
   const grezzo = (out.content || []).map(x => (x && typeof x.text === 'string') ? x.text : '').join('\n').trim();
   const letto = leggiRisposta(grezzo);
   const az = (letto.azione && ['report', 'visita', 'telefonata', 'mail'].indexOf(letto.azione.tipo) >= 0) ? letto.azione : null;
-  return { testo: letto.testo, azione: az, cliente: letto.cliente, uso: contoUso(out, modello) };
+  return { testo: letto.testo, azione: az, cliente: letto.cliente, regola: letto.regola || '', uso: contoUso(out, modello) };
 }
 
 /* --- 5) la voce: la frase letta da una voce neurale (OpenAI), con ricaduta sul telefono --- */
@@ -338,14 +351,14 @@ export default {
       if (d.conversa) {
         const r5 = await conversa(env, d, frase);
         if (!r5.testo) return errore('risposta vuota', 502);
-        return risposta({ testo: r5.testo, azione: r5.azione, cliente: r5.cliente, tu: frase, uso: r5.uso });
+        return risposta({ testo: r5.testo, azione: r5.azione, cliente: r5.cliente, regola: r5.regola, tu: frase, uso: r5.uso });
       }
 
       /* b) solo trascrizione, senza campi */
       if (d.soloTesto) return risposta({ testo: frase });
 
       /* c) sistemare il testo di un report già scritto */
-      if (d.sistema) { const r3 = await sistema(env, frase, modelloDi(d)); if (!r3.testo) return errore(r3.motivo || 'testo non riscritto', 502); return risposta({ testo: r3.testo, uso: r3.uso }); }
+      if (d.sistema) { const r3 = await sistema(env, frase, modelloDi(d), regolePersona(d)); if (!r3.testo) return errore(r3.motivo || 'testo non riscritto', 502); return risposta({ testo: r3.testo, uso: r3.uso }); }
 
       const c = await campi(env, frase, d);
       const TIPI = ['report', 'visita', 'telefonata', 'mail', 'cliente'];
