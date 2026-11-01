@@ -249,6 +249,7 @@ function leggiRisposta(grezzo) {
 async function conversa(env, d, frase) {
   const modello = modelloDi(d);
   const dati = d.dati && typeof d.dati === 'object' ? d.dati : null;
+  const cal = d.calendario && typeof d.calendario === 'object' ? d.calendario : null;
   const regole = [
     'Sei l\'assistente di un venditore italiano di videosorveglianza, dentro la sua app dei contatti. State parlando: lui ti parla al microfono e la tua risposta viene letta ad alta voce.',
     'Rispondi in italiano, dandogli del tu, con frasi brevi e punteggiatura vera. Da una a tre frasi. Mai elenchi puntati, mai titoli, mai sigle da sillabare, mai simboli: solo parlato naturale.',
@@ -264,7 +265,15 @@ async function conversa(env, d, frase) {
     dati ? 'ATTENZIONE: la scheda qui sotto e\' di ' + nomeScheda(dati) + ' e di nessun altro. Se lui nomina un\'azienda diversa da questa, non hai i suoi dati: dillo subito in una frase, non raccontare quello che leggi qui attribuendolo a un\'altra azienda, e chiedigli di aprire la scheda giusta.' : '',
     'Se lui ti chiede di ricordare una sua preferenza stabile («ricordati che…», «d\'ora in poi…»), aggiungi in fondo una riga REGOLA: seguita dalla regola scritta in una frase, e nella risposta digli che gliela proponi da salvare.',
     regolePersona(d),
-    dati ? 'Scheda di ' + nomeScheda(dati) + ', in JSON:\n' + JSON.stringify(dati).slice(0, 60000) : 'Non hai la scheda di nessun cliente: se ti serve, chiedigli di quale cliente sta parlando, e non inventare dati.'
+    cal ? [
+      'CALENDARIO. Per ogni domanda su agenda, impegni, giornata, settimana, arretrati, richiami o su quello che ha fatto, usa SOLO il JSON qui sotto e nient\'altro.',
+      'Contiene: inProgramma (gli appuntamenti da oggi in avanti), arretrati (quelli passati e non ancora fatti), richiami (i clienti da risentire, con inRitardo quando il giorno e\' passato) e fattiUltimi30Giorni (i report gia\' scritti).',
+      'Quando elenchi, vai in ordine di giorno e di ora e di\' il giorno a parole (martedi 3 novembre); per oggi e domani di\' «oggi» e «domani». Nomina il cliente e l\'ora, e la nota solo se serve.',
+      'Se in un giorno non c\'e\' niente, dillo in mezza riga invece di riempire il vuoto. Non inventare mai appuntamenti, orari o clienti che non sono nel JSON.',
+      'Parlate a voce: se gli impegni sono piu\' di cinque, dì quanti sono e racconta i primi, poi chiedi se vuole il resto.',
+      'Calendario in JSON:\n' + JSON.stringify(cal).slice(0, 90000)
+    ].join('\n') : '',
+    dati ? 'Scheda di ' + nomeScheda(dati) + ', in JSON:\n' + JSON.stringify(dati).slice(0, 60000) : 'Non hai la scheda di nessun cliente: se ti chiede di un cliente, chiedigli di quale sta parlando e non inventare dati (per le domande sul calendario, invece, ti basta il calendario qui sopra).'
   ].filter(Boolean).join('\n');
   const storia = (Array.isArray(d.storia) ? d.storia : []).slice(-12)
     .map(m => ({ role: (m && m.r === 'a') ? 'assistant' : 'user', content: String((m && m.t) || '').slice(0, 4000) }))
