@@ -263,6 +263,8 @@ async function conversa(env, d, frase) {
     'Nelle azioni: il report e\' una cosa gia\' fatta e non vuole la data; visita, telefonata e mail vanno in calendario e vogliono quando, e l\'ora se l\'ha detta. Lascia vuoto quello che non sai, non indovinare.',
     'Oggi e\' ' + String(d.oggi || '').slice(0, 10) + '.',
     dati ? 'ATTENZIONE: la scheda qui sotto e\' di ' + nomeScheda(dati) + ' e di nessun altro. Se lui nomina un\'azienda diversa da questa, non hai i suoi dati: dillo subito in una frase, non raccontare quello che leggi qui attribuendolo a un\'altra azienda, e chiedigli di aprire la scheda giusta.' : '',
+    d.attrezzi ? 'HAI DEGLI ATTREZZI per guardare nell\'archivio: cerca_clienti, quanti_clienti, scheda_cliente e agenda. Quando la domanda riguarda dati che non hai gia\' davanti, usali invece di dire che non sai: una ricerca costa poco. Non inventare mai nomi, numeri o date che non siano usciti da un attrezzo o dai dati qui sotto. Un attrezzo per volta, e quando hai quello che ti serve rispondi.' : '',
+    d.attrezzi ? 'Quando elenchi dei clienti: al massimo cinque alla volta, con il motivo in mezza riga (da quanto non lo senti, che cosa resta da fare), poi di\' quanti sono in tutto e chiedi se vuole il resto.' : '',
     'Se lui ti chiede di ricordare una sua preferenza stabile («ricordati che…», «d\'ora in poi…»), aggiungi in fondo una riga REGOLA: seguita dalla regola scritta in una frase, e nella risposta digli che gliela proponi da salvare.',
     regolePersona(d),
     cal ? [
@@ -279,18 +281,96 @@ async function conversa(env, d, frase) {
     .map(m => ({ role: (m && m.r === 'a') ? 'assistant' : 'user', content: String((m && m.t) || '').slice(0, 4000) }))
     .filter(m => m.content);
   const messaggi = storia.concat([{ role: 'user', content: String(frase || '').slice(0, 4000) }]);
+  /* il giro riprende: rimetto quello che aveva gia' detto e i risultati che l'app gli ha preparato */
+  const ripresa = Array.isArray(d.giri) ? d.giri.slice(-6) : [];
+  ripresa.forEach(g => {
+    if (g && Array.isArray(g.contenuto) && g.contenuto.length) messaggi.push({ role: 'assistant', content: g.contenuto });
+    if (g && Array.isArray(g.risultati) && g.risultati.length) {
+      messaggi.push({ role: 'user', content: g.risultati.map(x => ({
+        type: 'tool_result',
+        tool_use_id: String(x.id || ''),
+        content: typeof x.dati === 'string' ? x.dati.slice(0, 60000) : JSON.stringify(x.dati).slice(0, 60000)
+      })) });
+    }
+  });
+  const corpo = { model: modello, max_tokens: 1200, system: regole, messages: messaggi };
+  if (d.attrezzi) corpo.tools = ATTREZZI;
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: modello, max_tokens: 1200, system: regole, messages: messaggi })
+    body: JSON.stringify(corpo)
   });
   if (!r.ok) throw new Error('modello: ' + r.status + ' ' + (await r.text()).slice(0, 200));
   const out = await r.json();
+  /* ha chiesto un attrezzo: torno all'app, che lo esegue sul telefono e mi richiama */
+  const chiamate = (out.content || []).filter(x => x && x.type === 'tool_use');
+  if (chiamate.length) {
+    return {
+      testo: (out.content || []).filter(x => x && x.type === 'text').map(x => x.text).join('\n').trim(),
+      attendi: true,
+      contenuto: out.content,
+      strumenti: chiamate.map(x => ({ id: x.id, nome: x.name, argomenti: x.input || {} })),
+      azione: null, cliente: '', regola: '',
+      uso: contoUso(out, modello)
+    };
+  }
   const grezzo = (out.content || []).map(x => (x && typeof x.text === 'string') ? x.text : '').join('\n').trim();
   const letto = leggiRisposta(grezzo);
   const az = (letto.azione && ['report', 'visita', 'telefonata', 'mail'].indexOf(letto.azione.tipo) >= 0) ? letto.azione : null;
   return { testo: letto.testo, azione: az, cliente: letto.cliente, regola: letto.regola || '', uso: contoUso(out, modello) };
 }
+
+/* --- 4-ter) gli attrezzi: invece di ricevere un pacchetto fisso, il modello chiede all'app.
+   L'app esegue sul telefono (dove stanno i dati) e rimanda il risultato: cosi' si arriva
+   a tutto l'archivio senza spedirlo tutto a ogni domanda. --- */
+const ATTREZZI = [
+  {
+    name: 'cerca_clienti',
+    description: 'Cerca nell\'archivio dei contatti e restituisce un elenco compatto (nome, provincia, tipo di cliente, ultima azione, data dell\'ultimo contatto, richiamo, pratica aperta). Serve per le domande d\'insieme: chi non sento da tanto, chi ha un\'offerta in sospeso, i clienti di una provincia, quelli di un certo tipo. Non restituisce i report: per quelli usa scheda_cliente.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        testo: { type: 'string', description: 'parte del nome dell\'azienda, se la domanda nomina qualcuno' },
+        provincia: { type: 'string', description: 'sigla della provincia, per esempio VI, TV, BL' },
+        regione: { type: 'string', description: 'nome della regione, per esempio Veneto' },
+        tipoCliente: { type: 'string', description: 'ATTIVO, NUOVO, INTERESSATO, CONCESSIONARIO, PARTNER STRATEGICO, NON ATTIVO, PERSO e simili' },
+        categoria: { type: 'string', description: 'Installatore, Istituto di Vigilanza, Ente pubblico, Produttore, Servizi, Cliente finale' },
+        tipoAzione: { type: 'string', description: 'l\'ultima azione segnata: Da richiamare, Offerta inviata, Visita confermata e simili' },
+        nonSentitiDaGiorni: { type: 'integer', description: 'solo i clienti il cui ultimo contatto e\' piu\' vecchio di tanti giorni' },
+        sentitiUltimiGiorni: { type: 'integer', description: 'solo i clienti sentiti negli ultimi tanti giorni' },
+        richiamiScaduti: { type: 'boolean', description: 'solo i clienti con un richiamo gia\' passato' },
+        conPraticaAperta: { type: 'boolean', description: 'solo i clienti con un\'offerta o una proposta aperta' },
+        senzaProssimoPasso: { type: 'boolean', description: 'solo i clienti senza prossimo passo scritto' },
+        ordina: { type: 'string', enum: ['nome', 'ultimoContatto', 'richiamo'], description: 'come ordinare; ultimoContatto mette per primi quelli che non senti da piu\' tempo' },
+        limite: { type: 'integer', description: 'quanti nomi restituire, al massimo 60; se vuoi solo il conteggio usa quanti_clienti' }
+      }
+    }
+  },
+  {
+    name: 'quanti_clienti',
+    description: 'Conta i clienti che rispondono ai filtri, senza elencarli. Usalo quando la domanda chiede «quanti».',
+    input_schema: { type: 'object', properties: { provincia: { type: 'string' }, regione: { type: 'string' }, tipoCliente: { type: 'string' }, categoria: { type: 'string' }, tipoAzione: { type: 'string' }, nonSentitiDaGiorni: { type: 'integer' }, sentitiUltimiGiorni: { type: 'integer' }, richiamiScaduti: { type: 'boolean' }, conPraticaAperta: { type: 'boolean' }, senzaProssimoPasso: { type: 'boolean' } } }
+  },
+  {
+    name: 'scheda_cliente',
+    description: 'La scheda completa di un cliente: anagrafica, situazione, pratiche, appuntamenti e tutti i suoi report. Usalo quando la domanda riguarda un cliente preciso e non hai gia\' la sua scheda.',
+    input_schema: { type: 'object', properties: { nome: { type: 'string', description: 'il nome dell\'azienda come l\'ha detto lui' } }, required: ['nome'] }
+  },
+  {
+    name: 'agenda',
+    description: 'Gli appuntamenti e i richiami in un periodo, piu\' gli arretrati e i report gia\' scritti. Usalo per le domande su giornata, settimana, mese, arretrati e su quello che ha fatto.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        da: { type: 'string', description: 'primo giorno, AAAA-MM-GG; se manca vale oggi' },
+        a: { type: 'string', description: 'ultimo giorno, AAAA-MM-GG; se manca vale fra trenta giorni' },
+        arretrati: { type: 'boolean', description: 'includi gli appuntamenti passati e non fatti' },
+        richiami: { type: 'boolean', description: 'includi i clienti da richiamare' },
+        fatti: { type: 'boolean', description: 'includi i report gia\' scritti nel periodo' }
+      }
+    }
+  }
+];
 
 /* --- 5) la voce: la frase letta da una voce neurale (OpenAI), con ricaduta sul telefono --- */
 const VOCE_MODELLO = 'gpt-4o-mini-tts';
@@ -347,7 +427,7 @@ export default {
         if (!trascritto) return errore('non ho capito nulla dall’audio', 422);
         frase = trascritto;
       }
-      if (!frase && !d.riassunto) return errore('niente da leggere');
+      if (!frase && !d.riassunto && !(d.conversa && Array.isArray(d.giri) && d.giri.length)) return errore('niente da leggere');
 
       /* a-bis) riassunto di un cliente */
       if (d.riassunto) {
@@ -359,7 +439,8 @@ export default {
       /* a-ter) la conversazione */
       if (d.conversa) {
         const r5 = await conversa(env, d, frase);
-        if (!r5.testo) return errore('risposta vuota', 502);
+        if (!r5.testo && !r5.attendi) return errore('risposta vuota', 502);
+        if (r5.attendi) return risposta({ testo: r5.testo, attendi: true, contenuto: r5.contenuto, strumenti: r5.strumenti, tu: frase, uso: r5.uso });
         return risposta({ testo: r5.testo, azione: r5.azione, cliente: r5.cliente, regola: r5.regola, tu: frase, uso: r5.uso });
       }
 
