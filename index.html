@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.71.0';
+var APP_VER = '1.71.1';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -5204,9 +5204,9 @@ function chiaveFrase(t) {
   for (i = 0; i < x.length; i++) h = ((h * 33) ^ x.charCodeAt(i)) >>> 0;
   return 'voce:' + h.toString(36) + ':' + x.length;
 }
-function audioFrase(t) {
+function audioFrase(t, tieni) {
   var k = chiaveFrase(t);
-  return IDB.leggi(k).then(function (b64) {
+  return (tieni === false ? Promise.resolve(null) : IDB.leggi(k)).then(function (b64) {
     if (b64) return b64;
     var P = ponteDati();
     if (!P.url) return Promise.reject(new Error('ponte non configurato'));
@@ -5217,7 +5217,7 @@ function audioFrase(t) {
       .then(function (d) {
         if (!d.audio) throw new Error('voce vuota');
         usoSegna(d.uso);
-        IDB.scrivi(k, d.audio);
+        if (tieni !== false) IDB.scrivi(k, d.audio);
         return d.audio;
       });
   });
@@ -5244,12 +5244,58 @@ function parla(testo, dopo) {
   zittisci();
   var gt = VOCE_GETTONE;
   if (voceNeurale() && pontePronto()) {
-    audioFrase(t).then(
-      function (b64) { if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; } suonaBase64(b64, dopo); },
-      function () { if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; } parlaSistema(t, dopo); });
+    var pezzi = pezziVoce(t);
+    /* le frasi fisse e brevi restano salvate sul telefono; le risposte lunghe, che non si
+       ripetono mai uguali, non riempiono la memoria */
+    var tieni = pezzi.length === 1 && t.length <= 400;
+    var i = 0, inArrivo = audioFrase(pezzi[0], tieni);
+    (function suonaPezzo() {
+      if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; }
+      inArrivo.then(function (b64) {
+        if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; }
+        var succ = (i + 1 < pezzi.length) ? audioFrase(pezzi[i + 1], tieni) : null;
+        suonaBase64(b64, function () {
+          if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; }
+          i++;
+          if (!succ) { if (dopo) dopo(); return; }
+          inArrivo = succ; suonaPezzo();
+        });
+      }, function () {
+        if (gt !== VOCE_GETTONE) { if (dopo) dopo(); return; }
+        parlaSistema(pezzi.slice(i).join(' '), dopo);
+      });
+    })();
     return;
   }
   parlaSistema(t, dopo);
+}
+/* la risposta lunga si legge a pezzi: si spezza alla fine di una frase, mai a meta' parola.
+   Cosi' la voce parte subito e intanto si prepara il pezzo dopo. */
+function pezziVoce(testo, max) {
+  max = max || 500;
+  var t = String(testo || '').trim();
+  if (t.length <= max) return [t];
+  var frasi = t.match(/[^.!?…\n]+[.!?…]*[\s\n]*/g) || [t];
+  var out = [], cur = '';
+  frasi.forEach(function (f) {
+    if ((cur + f).length > max && cur) { out.push(cur.trim()); cur = ''; }
+    if (f.length > max) {
+      /* una frase lunghissima: la spezzo sulle virgole, poi sugli spazi */
+      var parti = f.match(/[^,;]+[,;]?\s*/g) || [f];
+      parti.forEach(function (q) {
+        if ((cur + q).length > max && cur) { out.push(cur.trim()); cur = ''; }
+        while (q.length > max) {
+          var p = q.lastIndexOf(' ', max); if (p < max / 2) p = max;
+          out.push(q.slice(0, p).trim()); q = q.slice(p);
+        }
+        cur += q;
+      });
+      return;
+    }
+    cur += f;
+  });
+  if (cur.trim()) out.push(cur.trim());
+  return out.filter(Boolean);
 }
 /* la voce del telefono: riserva quando manca la rete o la voce neurale è spenta */
 function vocePreferita() {
