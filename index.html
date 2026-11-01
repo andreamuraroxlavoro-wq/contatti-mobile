@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.63.2';
+var APP_VER = '1.64.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3397,7 +3397,7 @@ function audioAlPonte(blob, idScheda) {
     var intestazioni = { 'Content-Type': 'application/json' };
     if (P.tok) intestazioni['X-Token'] = P.tok;
     return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({
-      audio: b64, lingua: 'it', oggi: oggi(), esiti: ESITI(), canali: CANALI(), nomi: nomiPerVoce(idScheda), modello: modelloTesti()
+      audio: b64, lingua: 'it', oggi: oggi(), esiti: ESITI(), canali: CANALI(), nomi: nomiPerVoce(idScheda), modello: modelloTesti(), regole: regoleTesto()
     }) });
   }).then(function (res) {
     return res.json().catch(function () { throw new Error('ponte: risposta illeggibile'); }).then(function (d) {
@@ -3444,7 +3444,7 @@ function sistemaAlPonte(testo) {
   if (!P.url) return Promise.reject(new Error('ponte non configurato'));
   var intestazioni = { 'Content-Type': 'application/json' };
   if (P.tok) intestazioni['X-Token'] = P.tok;
-  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ frase: testo, sistema: true, oggi: oggi(), modello: modelloTesti() }) })
+  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ frase: testo, sistema: true, oggi: oggi(), modello: modelloTesti(), regole: regoleTesto() }) })
     .then(function (res) { return res.json().then(function (d) { if (!res.ok || d.errore) throw new Error(d.errore || ('ponte: ' + res.status)); usoSegna(d.uso); return String(d.testo || ''); }); });
 }
 /* controllo di sicurezza: nessun numero del testo originale deve sparire.
@@ -3704,6 +3704,11 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Parola d\'ordine</span><span class="sp"></span><input id="pn-tok" type="password" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(localStorage.getItem('cm.ponte.tok') || '') + '" placeholder="token"></div>');
   h.push('<div class="az"><button class="btn" id="pn-prova">Prova il ponte</button><button class="btn peri" id="pn-tog">Togli</button></div>');
   h.push('<div class="riga-o" id="pn-esito" style="color:var(--tenue);font-size:calc(12.5px * var(--scala))"><span>' + (pontePronto() ? 'Ponte configurato.' : 'Nessun ponte: la frase viene letta dall\'app, senza costi e senza rete.') + '</span></div></div>');
+  /* le mie regole: la memoria lunga che viaggia con ogni richiesta */
+  h.push('<div class="opz" id="op-regole"><h2>Le mie regole</h2>');
+  h.push('<div class="riga-o"><span style="color:var(--tenue);font-size:calc(12.5px * var(--scala))">Frasi che scrivi una volta e che l\'app ricorda per sempre: valgono quando sistema un testo, quando fa un riassunto e quando parlate. Per esempio: «nei report non usare la parola cantiere», «nei riassunti dimmi prima le cifre», «i richiami mettili sempre di mattina».</span></div>');
+  h.push('<div id="pn-reg-l">' + regoleHtml() + '</div>');
+  h.push('<div class="riga-o"><input id="pn-reg-n" type="text" class="chip" style="flex:1" placeholder="scrivi una regola…" maxlength="300"><button class="btn pri" id="pn-reg-a">Aggiungi</button></div></div>');
   (function () {
     var u = usoLetto()[usoMese()] || { in: 0, out: 0, costo: 0, volte: 0 };
     var eur = u.costo * 0.87, tetto = 17 * 0.87;
@@ -3752,6 +3757,7 @@ function disegnaAltro() {
     }
     u.addEventListener('change', function () { salvaPonte(); toast('Ponte salvato'); });
     t.addEventListener('change', salvaPonte);
+    regoleAggancia();
     var md = $('#pn-mod');
     if (md) md.addEventListener('change', function () { modelloTestiSegna(md.value); toast('Da ora uso ' + modelloNome(md.value)); });
     var gv = $('#pn-guida');
@@ -4284,6 +4290,55 @@ function clienteDaVoce(r) {
   }, 300);
 }
 /* ============================================================
+   LE MIE REGOLE — la memoria lunga dell'app. Frasi che Andrea si scrive una volta
+   («nei report non usare la parola cantiere», «nei riassunti dimmi prima i soldi»)
+   e che viaggiano con ogni richiesta al ponte. Il modello resta uguale: e' l'app che si ricorda.
+   ============================================================ */
+function regoleLette() {
+  try { var a = JSON.parse(localStorage.getItem('cm.regole') || '[]'); return Array.isArray(a) ? a.filter(function (x) { return typeof x === 'string' && x.trim(); }) : []; }
+  catch (e) { return []; }
+}
+function regoleScrivi(a) { try { localStorage.setItem('cm.regole', JSON.stringify(a.slice(0, 40))); } catch (e) {} }
+function regoleAggiungi(testo) {
+  var r = String(testo || '').trim().replace(/\s+/g, ' ').slice(0, 300);
+  if (!r) return false;
+  var a = regoleLette();
+  if (a.some(function (x) { return senzaAccenti(x) === senzaAccenti(r); })) return false;
+  a.push(r); regoleScrivi(a); return true;
+}
+function regoleHtml() {
+  var a = regoleLette();
+  if (!a.length) return '<div class="riga-o"><span style="color:var(--tenue)">Nessuna regola per ora.</span></div>';
+  return a.map(function (x, i) {
+    return '<div class="riga-o"><span>' + esc(x) + '</span><span class="sp"></span><button class="btn mini peri" data-reg="' + i + '">Togli</button></div>';
+  }).join('');
+}
+function regoleAggancia() {
+  var cont = $('#pn-reg-l'); if (!cont) return;
+  function ridisegna() { cont.innerHTML = regoleHtml(); aggancia(); }
+  function aggancia() {
+    $$('button[data-reg]', cont).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var a = regoleLette(); a.splice(+b.dataset.reg, 1); regoleScrivi(a); ridisegna(); toast('Regola tolta');
+      });
+    });
+  }
+  aggancia();
+  var campo = $('#pn-reg-n'), bt = $('#pn-reg-a');
+  function metti() {
+    if (!campo.value.trim()) return;
+    if (regoleAggiungi(campo.value)) { campo.value = ''; ridisegna(); toast('Regola aggiunta'); }
+    else toast('Questa regola c\'era già');
+  }
+  if (bt) bt.addEventListener('click', metti);
+  if (campo) campo.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); metti(); } });
+}
+function regoleTesto() {
+  var a = regoleLette();
+  return a.length ? a.map(function (x, i) { return (i + 1) + '. ' + x; }).join('\n') : '';
+}
+
+/* ============================================================
    RIASSUNTO DEL CLIENTE — i suoi dati passano al ponte, che risponde in quattro o cinque frasi.
    Si legge a schermo e, se la guida a voce è accesa, si ascolta.
    ============================================================ */
@@ -4294,8 +4349,15 @@ function modelloNome(m) { return (m || modelloTesti()) === 'claude-haiku-5-5' ? 
 function datiPerRiassunto(cid) {
   var c = DB.contatti[cid]; if (!c) return null;
   var k = sit(cid), og = oggi();
-  var ev = eventiDi(cid).slice(0, 12).map(function (v) {
-    return { giorno: v.d, ora: v.o || '', canale: v.c || '', tipoAzione: v.e || '', titolo: v.t || '', testo: String(v.n || htmlATesto(v.h || '')).slice(0, 900) };
+  /* tutti i report, non solo gli ultimi: i dodici piu' recenti per intero,
+     i precedenti accorciati, e un tetto complessivo perche' la richiesta resti leggera e non costi troppo */
+  var tuttiEv = eventiDi(cid), usato = 0, saltati = 0, ev = [];
+  tuttiEv.forEach(function (v, i) {
+    var pieno = String(v.n || htmlATesto(v.h || ''));
+    var testo = pieno.slice(0, i < 12 ? 2500 : 700);
+    if (usato + testo.length > 120000) { saltati++; return; }
+    usato += testo.length;
+    ev.push({ giorno: v.d, ora: v.o || '', canale: v.c || '', tipoAzione: v.e || '', titolo: v.t || '', testo: testo });
   });
   var att = attDi(cid).filter(function (a) { return !a.fatto; }).slice(0, 8).map(function (a) {
     return { che: attTipo(a.tipo).nome, giorno: a.d, ora: a.o || (a.oraLibera ? 'orario libero' : ''), nota: a.nota || '' };
@@ -4309,7 +4371,9 @@ function datiPerRiassunto(cid) {
     situazione: { tipoAzione: k.esito || '', ultimoContatto: k.data || '', canale: k.canale || '', referente: k.referente || '', richiamo: k.richiamo || '', prossimoPasso: k.passo || '' },
     pratiche: pr,
     inProgramma: att,
-    ultimiReport: ev
+    reportTotali: tuttiEv.length,
+    reportNonInclusi: saltati,
+    report: ev
   };
 }
 function riassuntoAlPonte(cid, domanda, perVoce) {
@@ -4319,7 +4383,7 @@ function riassuntoAlPonte(cid, domanda, perVoce) {
   if (!dati) return Promise.reject(new Error('cliente non trovato'));
   var intestazioni = { 'Content-Type': 'application/json' };
   if (P.tok) intestazioni['X-Token'] = P.tok;
-  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ riassunto: true, dati: dati, domanda: domanda || '', perVoce: !!perVoce, modello: modelloTesti() }) })
+  return fetch(P.url, { method: 'POST', headers: intestazioni, body: JSON.stringify({ riassunto: true, dati: dati, domanda: domanda || '', perVoce: !!perVoce, modello: modelloTesti(), regole: regoleTesto() }) })
     .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
     .then(function (d) { usoSegna(d.uso); return d.testo || ''; });
 }
@@ -4503,6 +4567,7 @@ function chatDiciTu(testo) {
       if (c2 && c2 !== CHAT.cid) { CHAT.cid = c2; chatChi(); }
       else if (!c2) chatRiga('app', '(«' + r.cliente + '» non lo trovo in archivio: cercalo e aprilo, poi riprova.)');
     }
+    if (r.regola) chatPropostaRegola(r.regola);
     if (r.azione) chatProposta(r.azione);
     if (guidaVoce()) parla(t);
   }, function (e) {
@@ -4517,7 +4582,7 @@ function chatAlPonte(frase) {
   if (!P.url) return Promise.reject(new Error('ponte non configurato'));
   var h = { 'Content-Type': 'application/json' };
   if (P.tok) h['X-Token'] = P.tok;
-  var corpo = { conversa: true, frase: frase, storia: CHAT.storia.slice(-12, -1), oggi: oggi(), modello: modelloTesti() };
+  var corpo = { conversa: true, frase: frase, storia: CHAT.storia.slice(-12, -1), oggi: oggi(), modello: modelloTesti(), regole: regoleTesto() };
   if (CHAT.cid) corpo.dati = datiPerRiassunto(CHAT.cid);
   return fetch(P.url, { method: 'POST', headers: h, body: JSON.stringify(corpo) })
     .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
@@ -4549,6 +4614,21 @@ function chatProposta(az) {
       az.testo = $('textarea', c).value.trim();
       az._cid = cid;
       if (chatSalva(az)) c.remove();
+    });
+  });
+}
+/* «ricordati che…»: la regola si salva solo se la confermi */
+function chatPropostaRegola(regola) {
+  if (!CHAT) return;
+  var c = el('div', 'ch-m ch-prop');
+  c.innerHTML = '<h5>Me la segno fra le tue regole?</h5><div style="font-size:calc(15px * var(--scala))">' + esc(regola) + '</div>' +
+    '<div class="az"><button class="btn pri" data-k="ok">Sì, ricordala</button><button class="btn" data-k="no">No</button></div>';
+  var l = $('#ch-l', CHAT.f); l.appendChild(c); l.scrollTop = l.scrollHeight;
+  $$('button', c).forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.k === 'ok') { chatRiga('app', regoleAggiungi(regola) ? 'Segnata. La terrò presente ogni volta.' : 'Questa ce l\'avevo già.'); }
+      else chatRiga('app', 'Va bene, non la segno.');
+      c.remove();
     });
   });
 }
