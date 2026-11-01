@@ -605,7 +605,14 @@ const VOCE_PREZZO = 15 / 1000000;   /* dollari per carattere: stima buona per il
 const VOCE_TONO = 'Parla in italiano, con tono cordiale e naturale, come un collega che guida un amico mentre guida l\'auto. Ritmo tranquillo, pause vere alla punteggiatura, mai robotico. Le domande suonano come domande.';
 async function vocePonte(env, testo, nome) {
   if (!env.OPENAI_API_KEY) throw new Error('manca la chiave della voce (OPENAI_API_KEY)');
-  const t = String(testo || '').slice(0, 600);
+  /* il limite dell'API e' 4096 caratteri: non tagliamo piu' a 600 (si perdeva meta' risposta).
+     Se proprio si sfora, si taglia all'ultimo punto invece che a meta' parola. */
+  let t = String(testo || '').trim();
+  if (t.length > 4000) {
+    const taglio = t.slice(0, 4000);
+    const ultimo = Math.max(taglio.lastIndexOf('. '), taglio.lastIndexOf('! '), taglio.lastIndexOf('? '), taglio.lastIndexOf('\n'));
+    t = ultimo > 2000 ? taglio.slice(0, ultimo + 1) : taglio;
+  }
   if (!t) throw new Error('niente da leggere');
   const voce = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse'].indexOf(nome) >= 0 ? nome : 'coral';
   async function giro(modello, conTono) {
