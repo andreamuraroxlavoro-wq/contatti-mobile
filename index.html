@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.73.0';
+var APP_VER = '1.74.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -959,7 +959,7 @@ function normNome(t) { return String(t || '').toLowerCase().normalize('NFD').rep
 var toastT = null; function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, ms || 2200); }
 
 /* ---------- archivio locale (IndexedDB, un unico documento) ---------- */
-var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {} };
+var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} };
 var IDB = (function () {
   function db() { return new Promise(function (ris, rej) { var r = indexedDB.open('contatti_mobile', 1); r.onupgradeneeded = function (e) { e.target.result.createObjectStore('kv'); }; r.onsuccess = function (e) { ris(e.target.result); }; r.onerror = function () { rej(r.error); }; }); }
   return {
@@ -3430,15 +3430,84 @@ function audioAlPonte(blob, idScheda) {
     };
   });
 }
-/* conto dei consumi: token e spesa stimata, mese per mese */
+/* ============================================================
+   IMPOSTAZIONI PERSONALI NELL'ARCHIVIO — voce, regole, quaderno e consumi non stanno piu'
+   nella memoria del singolo telefono: viaggiano con la sincronizzazione, cosi' ogni
+   dispositivo dell'account trova gli stessi settaggi. Una riga per impostazione, ognuna
+   con la sua data: due dispositivi che cambiano cose diverse non si sovrappongono, e sui
+   consumi ogni dispositivo ha la sua riga, percio' i conti si sommano invece di coprirsi.
+   Restano sul singolo dispositivo, apposta: indirizzo e parola d'ordine del ponte (sono
+   credenziali e non vanno nell'archivio), tema, dimensione del testo, disposizione dei
+   pulsanti, filtri della mappa.
+   ============================================================ */
+function impArchivio() { if (!DB.impostazioni) DB.impostazioni = {}; return DB.impostazioni; }
+function imp(k, def) { var r = impArchivio()[k]; return (r && r.v !== undefined && r.v !== null) ? r.v : def; }
+function impSegna(k, v) { impArchivio()[k] = { id: k, v: v, _m: Date.now() }; salva(); }
+function questoDispositivo() { try { return (SY && SY.meta && SY.meta.dispositivo) || 'qui'; } catch (e) { return 'qui'; } }
+
+/* travaso una volta sola: quello che era gia' su questo telefono entra nell'archivio.
+   I record travasati portano una data vecchia (_m: 1), cosi' qualunque modifica vera
+   fatta su un altro dispositivo vince su di loro. */
+function travasoFatto() { try { return localStorage.getItem('cm.travaso.imp') === '1'; } catch (e) { return true; } }
+function travasaImpostazioni() {
+  if (travasoFatto()) return;
+  var I = impArchivio(), R = regArchivio(), C = consArchivio(), tocco = false;
+  function vecchio(k, v) { if (I[k]) return; I[k] = { id: k, v: v, _m: 1 }; tocco = true; }
+  function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  var m;
+  m = ls('cm.voceGuida');   if (m !== null) vecchio('voce.guida', m !== '0');
+  m = ls('cm.voceNeurale'); if (m !== null) vecchio('voce.neurale', m !== '0');
+  m = ls('cm.voceNome');    if (m) vecchio('voce.nome', m);
+  m = ls('cm.voceVel');     if (m) vecchio('voce.vel', parseFloat(m));
+  m = ls('cm.voceTono');    if (m) vecchio('voce.tono', m);
+  m = ls('cm.modello');     if (m) vecchio('modello', m);
+  try {
+    var a = JSON.parse(ls('cm.regole') || '[]');
+    if (Array.isArray(a)) a.forEach(function (x, i) {
+      if (typeof x !== 'string' || !x.trim()) return;
+      var id = 'r' + chiaveTesto(x);
+      if (!R[id]) { R[id] = { id: id, testo: x.trim().slice(0, 300), creato: i + 1, _m: 1 }; tocco = true; }
+    });
+  } catch (e) {}
+  try {
+    var u = JSON.parse(ls('cm.uso') || '{}'), d = questoDispositivo();
+    Object.keys(u || {}).forEach(function (ms) {
+      var v = u[ms] || {}, id = ms + '|' + d;
+      if (C[id]) return;
+      C[id] = { id: id, mese: ms, dev: d, 'in': +v['in'] || 0, out: +v.out || 0, costo: +v.costo || 0, volte: +v.volte || 0, _m: 1 };
+      tocco = true;
+    });
+  } catch (e) {}
+  try { localStorage.setItem('cm.travaso.imp', '1'); } catch (e) {}
+  if (tocco) salva(true);
+}
+function chiaveTesto(t) { var h = 5381, i, x = String(t || ''); for (i = 0; i < x.length; i++) h = ((h << 5) + h + x.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+
+/* conto dei consumi: token e spesa stimata, mese per mese.
+   Una riga per mese e per dispositivo: a schermo si vede la somma di tutti. */
 function usoMese() { return new Date().toISOString().slice(0, 7); }
-function usoLetto() { try { return JSON.parse(localStorage.getItem('cm.uso') || '{}') || {}; } catch (e) { return {}; } }
+function consArchivio() { if (!DB.consumi) DB.consumi = {}; return DB.consumi; }
+function usoLetto() {
+  var C = consArchivio(), mesi = {};
+  Object.keys(C).forEach(function (k) {
+    var r = C[k]; if (!r || !r.mese) return;
+    var v = mesi[r.mese] = mesi[r.mese] || { in: 0, out: 0, costo: 0, volte: 0 };
+    v.in += (+r['in'] || 0); v.out += (+r.out || 0); v.costo += (+r.costo || 0); v.volte += (+r.volte || 0);
+  });
+  return mesi;
+}
+/* quanti dispositivi hanno speso in questo mese: serve a dire a schermo che il conto e' di tutti */
+function usoDispositivi(mese) {
+  var C = consArchivio(), n = 0;
+  Object.keys(C).forEach(function (k) { var r = C[k]; if (r && r.mese === mese && (r.volte || r.costo)) n++; });
+  return n;
+}
 function usoSegna(u) {
   if (!u) return;
-  var tutti = usoLetto(), m = usoMese(), v = tutti[m] || { in: 0, out: 0, costo: 0, volte: 0 };
-  v.in += (+u.in || 0); v.out += (+u.out || 0); v.costo += (+u.costo || 0); v.volte++;
-  tutti[m] = v;
-  try { localStorage.setItem('cm.uso', JSON.stringify(tutti)); } catch (e) {}
+  var C = consArchivio(), m = usoMese(), d = questoDispositivo(), k = m + '|' + d;
+  var v = C[k] || { id: k, mese: m, dev: d, 'in': 0, out: 0, costo: 0, volte: 0 };
+  v['in'] += (+u['in'] || 0); v.out += (+u.out || 0); v.costo += (+u.costo || 0); v.volte++;
+  v._m = Date.now(); C[k] = v; salva();
 }
 
 /* ============================================================
@@ -3732,7 +3801,8 @@ function disegnaAltro() {
     h.push('<div class="riga-o"><span>Dettature passate dal ponte</span><span class="sp"></span><b>' + num(u.volte) + '</b></div>');
     h.push('<div class="riga-o"><span>Token (in entrata · in uscita)</span><span class="sp"></span>' + num(u.in) + ' · ' + num(u.out) + '</div>');
     h.push('<div class="riga-o"><span>Spesa stimata</span><span class="sp"></span><b' + (eur > tetto * 0.7 ? ' style="color:var(--rosso)"' : '') + '>' + eur.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €</b></div>');
-    h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Stima su questo dispositivo, al cambio di 1,15 $ per euro; il conto ufficiale è quello della console di Anthropic, dove il tetto mensile è di 17 $' + (eur > tetto * 0.7 ? ' — <b style="color:var(--rosso)">ti stai avvicinando al tetto</b>' : '') + '.</span></div></div>');
+    var nd = usoDispositivi(usoMese());
+    h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Stima ' + (nd > 1 ? 'di tutti i tuoi dispositivi (' + num(nd) + ')' : 'dei tuoi dispositivi') + ', al cambio di 1,15 $ per euro; il conto ufficiale è quello della console di Anthropic, dove il tetto mensile è di 17 $' + (eur > tetto * 0.7 ? ' — <b style="color:var(--rosso)">ti stai avvicinando al tetto</b>' : '') + '.</span></div></div>');
   })();
   h.push('<div class="opz" id="op-sync"><h2>Sincronizzazione con GESTIONE CONTATTI</h2>');
   h.push('<div class="riga-o"><span>Servizio</span><span class="sp"></span><select id="sy-tipo" class="chip"><option value=""' + (!m.tipo ? ' selected' : '') + '>Nessuno</option><option value="drive"' + (m.tipo === 'drive' ? ' selected' : '') + '>Google Drive</option><option value="server"' + (m.tipo === 'server' ? ' selected' : '') + '>Server personale</option></select></div>');
@@ -3782,7 +3852,7 @@ function disegnaAltro() {
     var vn = $('#pn-vocen');
     if (vn) vn.addEventListener('change', function () { voceNeuraleSegna(vn.checked); toast(vn.checked ? 'Voce naturale accesa' : 'Uso la voce del telefono'); });
     var vnm = $('#pn-vocenome');
-    if (vnm) vnm.addEventListener('change', function () { try { localStorage.setItem('cm.voceNome', vnm.value); } catch (e) {} parla(FRASE_PROVA); });
+    if (vnm) vnm.addEventListener('change', function () { voceNomeSegna(vnm.value); parla(FRASE_PROVA); });
     var vtn = $('#pn-vocetono');
     if (vtn) vtn.addEventListener('change', function () { voceTonoSegna(vtn.value); toast(vtn.value.trim() ? 'Tono aggiornato' : 'Tono normale'); parla(FRASE_PROVA); });
     var vp2 = $('#pn-vocep');
@@ -3827,7 +3897,7 @@ function disegnaAltro() {
   $('#dt-file').addEventListener('change', function () { if (this.files && this.files[0]) importaCopia(this.files[0]); this.value = ''; });
   $('#agg-chk').addEventListener('click', function () { toast('Controllo in corso…'); controllaAggiornamenti(true); });
   sezionaOpzioni();
-  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
+  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
 function tema() { return localStorage.getItem('cm.tema') || 'auto'; }
 function setTema(t) { localStorage.setItem('cm.tema', t); applicaTema(); }
@@ -3897,7 +3967,8 @@ function applicaRemoti(mod, del) {
   var n = 0;
   cacheTx = {}; cacheNum = {}; cacheAtt = null;
   var primaG = JSON.stringify(gruppiL());
-  ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'config'].forEach(function (c) {
+  ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'impostazioni', 'regole', 'consumi', 'config'].forEach(function (c) {
+    if (!DB[c]) DB[c] = {};
     (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
   });
@@ -3908,7 +3979,7 @@ function avviaSync() {
   if (!window.SyncMotore) return;
   SY = SyncMotore({
     nome: 'gc', dbNome: 'contatti_mobile_sync', clientId: GC_CLIENT_ID,
-    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
+    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'impostazioni', 'regole', 'consumi', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
     dopo: function (info) {
@@ -4017,7 +4088,7 @@ function importaCopia(file) {
     if (!d) { toast('Non è una copia di CONTATTI MOBILE', 3500); return; }
     var n = Object.keys(d.contatti || {}).length;
     if (!confirm('La copia contiene ' + num(n) + ' contatti, del ' + (j.generato ? new Date(j.generato).toLocaleString('it-IT') : 'data sconosciuta') + '.\n\nSostituisce i dati che hai adesso su questo dispositivo. Procedo?')) return;
-    DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }, d);
+    DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }, d);
     cacheTx = {}; cacheNum = {}; cacheAtt = null;
     salva(true);
     if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(800); });
@@ -4471,23 +4542,31 @@ function appRiga(x) {
    («nei report non usare la parola cantiere», «nei riassunti dimmi prima i soldi»)
    e che viaggiano con ogni richiesta al ponte. Il modello resta uguale: e' l'app che si ricorda.
    ============================================================ */
-function regoleLette() {
-  try { var a = JSON.parse(localStorage.getItem('cm.regole') || '[]'); return Array.isArray(a) ? a.filter(function (x) { return typeof x === 'string' && x.trim(); }) : []; }
-  catch (e) { return []; }
+function regArchivio() { if (!DB.regole) DB.regole = {}; return DB.regole; }
+/* le regole in ordine di inserimento: una riga per regola nell'archivio sincronizzato */
+function regoleRec() {
+  var R = regArchivio();
+  return Object.keys(R).map(function (k) { return R[k]; })
+    .filter(function (x) { return x && typeof x.testo === 'string' && x.testo.trim(); })
+    .sort(function (a, b) { return (a.creato || 0) - (b.creato || 0); })
+    .slice(0, 40);
 }
-function regoleScrivi(a) { try { localStorage.setItem('cm.regole', JSON.stringify(a.slice(0, 40))); } catch (e) {} }
+function regoleLette() { return regoleRec().map(function (x) { return x.testo; }); }
 function regoleAggiungi(testo) {
   var r = String(testo || '').trim().replace(/\s+/g, ' ').slice(0, 300);
   if (!r) return false;
-  var a = regoleLette();
-  if (a.some(function (x) { return senzaAccenti(x) === senzaAccenti(r); })) return false;
-  a.push(r); regoleScrivi(a); return true;
+  if (regoleLette().some(function (x) { return senzaAccenti(x) === senzaAccenti(r); })) return false;
+  if (regoleRec().length >= 40) return false;
+  var id = 'r' + chiaveTesto(r), R = regArchivio();
+  R[id] = { id: id, testo: r, creato: Date.now(), _m: Date.now() };
+  salva(); return true;
 }
+function regoleTogli(id) { var R = regArchivio(); if (!R[id]) return false; delete R[id]; salva(); return true; }
 function regoleHtml() {
-  var a = regoleLette();
+  var a = regoleRec();
   if (!a.length) return '<div class="riga-o"><span style="color:var(--tenue)">Nessuna regola per ora.</span></div>';
-  return a.map(function (x, i) {
-    return '<div class="riga-o"><span>' + esc(x) + '</span><span class="sp"></span><button class="btn mini peri" data-reg="' + i + '">Togli</button></div>';
+  return a.map(function (x) {
+    return '<div class="riga-o"><span>' + esc(x.testo) + '</span><span class="sp"></span><button class="btn mini peri" data-reg="' + esc(x.id) + '">Togli</button></div>';
   }).join('');
 }
 function regoleAggancia() {
@@ -4496,7 +4575,7 @@ function regoleAggancia() {
   function aggancia() {
     $$('button[data-reg]', cont).forEach(function (b) {
       b.addEventListener('click', function () {
-        var a = regoleLette(); a.splice(+b.dataset.reg, 1); regoleScrivi(a); ridisegna(); toast('Regola tolta');
+        regoleTogli(b.dataset.reg); ridisegna(); toast('Regola tolta');
       });
     });
   }
@@ -4519,8 +4598,8 @@ function regoleTesto() {
    RIASSUNTO DEL CLIENTE — i suoi dati passano al ponte, che risponde in quattro o cinque frasi.
    Si legge a schermo e, se la guida a voce è accesa, si ascolta.
    ============================================================ */
-function modelloTesti() { try { return localStorage.getItem('cm.modello') === 'claude-haiku-5-5' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5'; } catch (e) { return 'claude-sonnet-5-5'; } }
-function modelloTestiSegna(m) { try { localStorage.setItem('cm.modello', m); } catch (e) {} }
+function modelloTesti() { return imp('modello', '') === 'claude-haiku-5-5' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5'; }
+function modelloTestiSegna(m) { impSegna('modello', m); }
 function modelloNome(m) { return (m || modelloTesti()) === 'claude-haiku-5-5' ? 'Haiku' : 'Sonnet'; }
 /* la scheda del cliente in forma compatta: solo quello che serve a capire a che punto siamo */
 function datiPerRiassunto(cid) {
@@ -5237,13 +5316,14 @@ function mostraBriefing() {
    per quale cliente e quando. Quello che manca lo chiede un passo per volta, scritto a schermo
    e letto ad alta voce; si risponde parlando o toccando. La conferma finale e' sempre tua.
    ============================================================ */
-function guidaVoce() { try { return localStorage.getItem('cm.voceGuida') !== '0'; } catch (e) { return true; } }
-function guidaVoceSegna(v) { try { localStorage.setItem('cm.voceGuida', v ? '1' : '0'); } catch (e) {} }
-function voceNeurale() { try { return localStorage.getItem('cm.voceNeurale') !== '0'; } catch (e) { return true; } }
-function voceNeuraleSegna(v) { try { localStorage.setItem('cm.voceNeurale', v ? '1' : '0'); } catch (e) {} }
-function voceNome() { try { return localStorage.getItem('cm.voceNome') || 'coral'; } catch (e) { return 'coral'; } }
-function voceVel() { var v = parseFloat(localStorage.getItem('cm.voceVel') || '1.15'); return (isNaN(v) || v < 0.7 || v > 1.8) ? 1.15 : v; }
-function voceVelSegna(v) { try { localStorage.setItem('cm.voceVel', String(v)); } catch (e) {} }
+function guidaVoce() { return imp('voce.guida', true) !== false; }
+function guidaVoceSegna(v) { impSegna('voce.guida', !!v); }
+function voceNeurale() { return imp('voce.neurale', true) !== false; }
+function voceNeuraleSegna(v) { impSegna('voce.neurale', !!v); }
+function voceNome() { return imp('voce.nome', '') || 'coral'; }
+function voceNomeSegna(v) { impSegna('voce.nome', String(v || '')); }
+function voceVel() { var v = parseFloat(imp('voce.vel', 1.15)); return (isNaN(v) || v < 0.7 || v > 1.8) ? 1.15 : v; }
+function voceVelSegna(v) { impSegna('voce.vel', +v); }
 function voceVelTesto(v) { return (v || voceVel()).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '×'; }
 var VOCI = [
   ['marin', 'Marin — la più naturale, femminile (consigliata)'],
@@ -5261,8 +5341,8 @@ var VOCI = [
   ['alloy', 'Alloy — neutra']
 ];
 var FRASE_PROVA = 'Ciao Andrea. Con ACES siamo alla stretta finale: l\'offerta per tre torri, milleottocento euro al mese, è ferma da due giorni. Ti fisso il richiamo martedì 3 novembre alle 10 e mezza?';
-function voceTono() { try { return localStorage.getItem('cm.voceTono') || ''; } catch (e) { return ''; } }
-function voceTonoSegna(v) { try { localStorage.setItem('cm.voceTono', String(v || '').slice(0, 300)); } catch (e) {} }
+function voceTono() { return imp('voce.tono', '') || ''; }
+function voceTonoSegna(v) { impSegna('voce.tono', String(v || '').slice(0, 300)); }
 var AUDIO_IN_CORSO = null;
 /* ogni volta che si zittisce, il gettone cambia: la frase che stava arrivando dal ponte
    si accorge di essere vecchia e non parte piu' */
@@ -5814,12 +5894,13 @@ window.addEventListener('resize', function () { fabPosApplica($('#fab')); fabPos
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
-  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, nuoviContatti: {}, modificheContatti: {}, config: {} }, j); } catch (e) {} }
+  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }, j); } catch (e) {} }
   var v = 'cerca'; try { v = localStorage.getItem('cm.vista') || 'cerca'; } catch (e) {}
   if (v === 'vicino' || v === 'mappa') v = 'cerca';
   /* i tasti dei gruppi nascono prima della lettura dei dati: ora che il settaggio c'e', li ridisegno con nome e colore giusti */
   try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
   migraNessunaAzione();
+  travasaImpostazioni();   /* voce, regole e consumi che stavano solo qui entrano nell'archivio */
   barraOrdineApplica();
   schedeApplica();
   disegnaGruppi();
@@ -5833,7 +5914,11 @@ IDB.leggi('db').then(function (t) {
   document.addEventListener('visibilitychange', function () { if (!document.hidden) controllaAggiornamenti(); });
   if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
 });
-window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { return MP; }, apriScheda: apriScheda, mostraVista: mostraVista };
+window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { return MP; }, apriScheda: apriScheda, mostraVista: mostraVista,
+  imp: imp, impSegna: impSegna, applicaRemoti: applicaRemoti,
+  voceNome: voceNome, voceNomeSegna: voceNomeSegna, voceVel: voceVel, voceVelSegna: voceVelSegna, voceTono: voceTono, voceTonoSegna: voceTonoSegna,
+  guidaVoce: guidaVoce, guidaVoceSegna: guidaVoceSegna, voceNeurale: voceNeurale, modelloTesti: modelloTesti, modelloTestiSegna: modelloTestiSegna,
+  regoleLette: regoleLette, regoleAggiungi: regoleAggiungi, regoleTogli: regoleTogli, usoLetto: usoLetto, usoDispositivi: usoDispositivi, usoMese: usoMese };
 })();
 </script>
 </body>
