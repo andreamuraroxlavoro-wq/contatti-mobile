@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.72.0';
+var APP_VER = '1.73.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3737,10 +3737,10 @@ function disegnaAltro() {
   h.push('<div class="opz" id="op-sync"><h2>Sincronizzazione con GESTIONE CONTATTI</h2>');
   h.push('<div class="riga-o"><span>Servizio</span><span class="sp"></span><select id="sy-tipo" class="chip"><option value=""' + (!m.tipo ? ' selected' : '') + '>Nessuno</option><option value="drive"' + (m.tipo === 'drive' ? ' selected' : '') + '>Google Drive</option><option value="server"' + (m.tipo === 'server' ? ' selected' : '') + '>Server personale</option></select></div>');
   h.push('<div class="riga-o" id="sy-url-r" style="display:' + (m.tipo === 'server' ? '' : 'none') + '"><input id="sy-url" type="url" class="chip" style="flex:1" value="' + esc(m.serverUrl || '') + '" placeholder="https://server:8787"></div>');
-  h.push('<div class="riga-o"><span>Stato</span><span class="sp"></span><b>' + nomeStato(SY ? SY.stato : 'off') + '</b></div>');
+  h.push('<div class="riga-o"><span>Stato</span><span class="sp"></span><b id="sy-stato">' + nomeStato(SY ? SY.stato : 'off') + '</b></div>');
   if (SY && SY.messaggio) h.push('<div class="riga-o" style="color:var(--rosso);font-size:calc(13px * var(--scala))">' + esc(SY.messaggio) + '</div>');
-  h.push('<div class="riga-o"><span>Ultimo allineamento</span><span class="sp"></span>' + (m.ultimoSync ? new Date(m.ultimoSync).toLocaleString('it-IT') : '—') + '</div>');
-  h.push('<div class="riga-o"><span>Contatti · eventi · pratiche</span><span class="sp"></span>' + num(conta()) + ' · ' + num(Object.keys(DB.eventi).length) + ' · ' + num(Object.keys(DB.pratiche).length) + '</div>');
+  h.push('<div class="riga-o"><span>Ultimo allineamento</span><span class="sp"></span><span id="sy-ultimo">' + (m.ultimoSync ? new Date(m.ultimoSync).toLocaleString('it-IT') : '—') + '</span></div>');
+  h.push('<div class="riga-o"><span>Contatti · eventi · pratiche</span><span class="sp"></span><span id="sy-conta">' + num(conta()) + ' · ' + num(Object.keys(DB.eventi).length) + ' · ' + num(Object.keys(DB.pratiche).length) + '</span></div>');
   h.push('<div class="riga-o"><span>Nome di questo dispositivo</span><span class="sp"></span><input id="sy-eti" class="chip" style="flex:1;max-width:60%;text-align:right" value="' + esc(m.etichetta || '') + '" placeholder="es. iPhone di Andrea"></div>');
   h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>Sigla tecnica nei file di scambio</span><span class="sp"></span>' + esc(m.dispositivo || '') + '</div>');
   if (!SY || !SY.httpsOk()) h.push('<div class="nota" style="margin:6px 0">Google Drive funziona solo da un indirizzo https (l\'app pubblicata), non da un file locale.</div>');
@@ -3753,15 +3753,15 @@ function disegnaAltro() {
   h.push('<div class="opz" id="op-dati"><h2>Dati</h2><div class="riga-o"><span>I contatti si modificano su GESTIONE CONTATTI (Mac). Dal telefono registri eventi, esiti, richiami, prossimi passi e stati delle pratiche: tornano al Mac alla prima sincronizzazione.</span></div><div class="az"><button class="btn" id="dt-json">Esporta una copia (JSON)</button><button class="btn" id="dt-xls">Esporta in Excel</button><button class="btn" id="dt-imp">Importa una copia</button></div><div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>La copia JSON serve a rimettere i dati su questo o su un altro dispositivo; l\u2019Excel \u00e8 da leggere (due fogli: contatti e report, con intestazioni bloccate e filtri).</span></div><div class="az"><button class="btn peri" id="dt-azzera">Cancella i dati su questo telefono</button></div><input type="file" id="dt-file" accept=".json,application/json" style="display:none"></div>');
   h.push('<div class="opz" id="op-info"><h2>Informazioni</h2><div class="riga-o"><span>CONTATTI MOBILE</span><span class="sp"></span>v' + APP_VER + '</div><div class="riga-o"><span>Dati da GESTIONE CONTATTI</span><span class="sp"></span>v' + esc(cfg().app || '—') + '</div><div class="riga-o"><span>Aggiornamento</span><span class="sp"></span><button class="btn mini" id="agg-chk">Controlla</button></div><div class="firma">CONTATTI MOBILE &egrave; progettata e sviluppata da <b>Andrea Muraro</b><br>Tutti i diritti sono Riservati</div></div>');
   box.innerHTML = h.join('');
-  $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); disegnaAltro(); }); });
-  $('#sy-eti').addEventListener('change', function () { var v = this.value.trim() || 'Dispositivo'; if (SY) SY.imposta({ etichetta: v }).then(function () { toast('Dispositivo rinominato'); disegnaAltro(); }); });
-  $('#sy-url').addEventListener('change', function () { if (SY && this.value.trim()) SY.imposta({ serverUrl: this.value.trim(), tipo: 'server' }).then(function () { SY.avvia(); disegnaAltro(); }); });
-  $('#sy-connetti').addEventListener('click', function () { if (!SY) return; SY.connettiDrive(GC_CLIENT_ID).then(function () { toast('Google connesso'); return SY.avvia(); }).then(disegnaAltro, function (e) { toast('Google: ' + (e.message || e), 4000); disegnaAltro(); }); });
-  $('#sy-ora').addEventListener('click', function () { if (!SY) return; SY.sincronizza({ interattivo: true }).then(disegnaAltro); });
-  $('#sy-scollega').addEventListener('click', function () { if (!SY || !confirm('Scollegare la sincronizzazione? I dati sul telefono restano.')) return; SY.scollega().then(disegnaAltro); });
+  $('#sy-tipo').addEventListener('change', function () { $('#sy-url-r').style.display = this.value === 'server' ? '' : 'none'; if (SY) SY.imposta({ tipo: this.value || null, serverUrl: $('#sy-url').value.trim() }).then(function () { SY.avvia(); ridisegnaQuandoPuoi(disegnaAltro); }); });
+  $('#sy-eti').addEventListener('change', function () { var v = this.value.trim() || 'Dispositivo'; if (SY) SY.imposta({ etichetta: v }).then(function () { toast('Dispositivo rinominato'); ridisegnaQuandoPuoi(disegnaAltro); }); });
+  $('#sy-url').addEventListener('change', function () { if (SY && this.value.trim()) SY.imposta({ serverUrl: this.value.trim(), tipo: 'server' }).then(function () { SY.avvia(); ridisegnaQuandoPuoi(disegnaAltro); }); });
+  $('#sy-connetti').addEventListener('click', function () { if (!SY) return; SY.connettiDrive(GC_CLIENT_ID).then(function () { toast('Google connesso'); return SY.avvia(); }).then(function () { ridisegnaQuandoPuoi(disegnaAltro); }, function (e) { toast('Google: ' + (e.message || e), 4000); ridisegnaQuandoPuoi(disegnaAltro); }); });
+  $('#sy-ora').addEventListener('click', function () { if (!SY) return; SY.sincronizza({ interattivo: true }).then(function () { ridisegnaQuandoPuoi(disegnaAltro); }); });
+  $('#sy-scollega').addEventListener('click', function () { if (!SY || !confirm('Scollegare la sincronizzazione? I dati sul telefono restano.')) return; SY.scollega().then(function () { ridisegnaQuandoPuoi(disegnaAltro); }); });
   $('#op-nav').addEventListener('change', function () { try { if (this.value) localStorage.setItem('cm.nav', this.value); else localStorage.removeItem('cm.nav'); } catch (e) {} toast('App di navigazione: ' + (this.options[this.selectedIndex].text)); });
-  $$('.seg [data-t]', box).forEach(function (b) { b.addEventListener('click', function () { setTema(b.dataset.t); disegnaAltro(); }); });
-  $$('.seg [data-fs]', box).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('cm.fs', b.dataset.fs); applicaFs(); disegnaAltro(); }); });
+  $$('.seg [data-t]', box).forEach(function (b) { b.addEventListener('click', function () { setTema(b.dataset.t); ridisegnaQuandoPuoi(disegnaAltro); }); });
+  $$('.seg [data-fs]', box).forEach(function (b) { b.addEventListener('click', function () { localStorage.setItem('cm.fs', b.dataset.fs); applicaFs(); ridisegnaQuandoPuoi(disegnaAltro); }); });
   $('#op-ordine').addEventListener('change', function () { try { localStorage.setItem('cm.ordine', this.value); } catch (e) {} toast('Ordine: ' + this.options[this.selectedIndex].text); if (vista === 'cerca') mostraVista('cerca', true); });
   disegnaKpiOrd();
   disegnaSchedeOrd();
@@ -3841,7 +3841,56 @@ window.addEventListener('orientationchange', function () { setTimeout(adattaTest
 $('#tema').addEventListener('click', function () { setTema(document.documentElement.getAttribute('data-theme') === 'scuro' ? 'chiaro' : 'scuro'); });
 if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applicaTema);
 $('#sy-spia').addEventListener('click', function () { if (SY && SY.stato === 'auth') SY.sincronizza({ interattivo: true }); else mostraVista('altro'); });
-function spia(s, msg) { var sp = $('#sy-spia'); sp.className = 'sy-' + s; sp.title = nomeStato(s) + (msg ? ' — ' + msg : ''); if (vista === 'altro') disegnaAltro(); }
+/* La sincronizzazione lavora da sola mentre tu usi l'app: non deve mai rifare la pagina
+   sotto le dita. Se stai scrivendo, o se c'e' un foglio aperto, il ridisegno aspetta;
+   intanto si aggiornano solo i numeri che cambiano, senza toccare i campi. */
+function staScrivendo() {
+  var a = document.activeElement; if (!a) return false;
+  var n = (a.tagName || '').toLowerCase();
+  return n === 'input' || n === 'textarea' || n === 'select' || a.isContentEditable === true;
+}
+function foglioAperto() { return !!$('.foglio') || document.body.classList.contains('me-aperto') || document.body.classList.contains('sc-aperta'); }
+function momentoBuono() { return !staScrivendo() && !foglioAperto(); }
+var RIDIS_ATTESA = null, RIDIS_SOSPESO = null;
+/* il ridisegno accorcia e riallunga la pagina: la posizione va rimessa anche dopo,
+   quando il telaio ha finito di ricalcolare, altrimenti si torna in cima */
+function tieniLaPosizione(f) {
+  var y = window.scrollY || 0;
+  f();
+  window.scrollTo(0, y);
+  requestAnimationFrame(function () { if (Math.abs((window.scrollY || 0) - y) > 2) window.scrollTo(0, y); });
+  setTimeout(function () { if (Math.abs((window.scrollY || 0) - y) > 2) window.scrollTo(0, y); }, 150);
+  setTimeout(function () { if (Math.abs((window.scrollY || 0) - y) > 2) window.scrollTo(0, y); }, 500);
+}
+function ridisegnaQuandoPuoi(f) {
+  if (momentoBuono()) { tieniLaPosizione(f); return; }
+  RIDIS_SOSPESO = f;
+  clearTimeout(RIDIS_ATTESA);
+  RIDIS_ATTESA = setTimeout(function () { var g = RIDIS_SOSPESO; RIDIS_SOSPESO = null; if (g) ridisegnaQuandoPuoi(g); }, 3000);
+}
+/* appena finisci di scrivere, se c'era un ridisegno in attesa lo faccio subito */
+document.addEventListener('focusout', function () {
+  setTimeout(function () {
+    if (!RIDIS_SOSPESO || !momentoBuono()) return;
+    var g = RIDIS_SOSPESO; RIDIS_SOSPESO = null; clearTimeout(RIDIS_ATTESA);
+    tieniLaPosizione(g);
+  }, 200);
+});
+/* i soli numeri del pannello: si aggiornano in posto, senza ricostruire niente */
+function aggiornaStatoSync() {
+  var s = $('#sy-stato'); if (!s) return false;
+  s.textContent = nomeStato(SY ? SY.stato : 'off');
+  var m = (SY && SY.meta) || {};
+  var u = $('#sy-ultimo'); if (u) u.textContent = m.ultimoSync ? new Date(m.ultimoSync).toLocaleString('it-IT') : '—';
+  var c = $('#sy-conta'); if (c) c.textContent = num(conta()) + ' · ' + num(Object.keys(DB.eventi).length) + ' · ' + num(Object.keys(DB.pratiche).length);
+  return true;
+}
+function spia(s, msg) {
+  var sp = $('#sy-spia'); sp.className = 'sy-' + s; sp.title = nomeStato(s) + (msg ? ' — ' + msg : '');
+  if (vista !== 'altro') return;
+  if (aggiornaStatoSync()) return;      /* il pannello c'e' gia': aggiorno i numeri e basta */
+  ridisegnaQuandoPuoi(disegnaAltro);
+}
 
 /* ---------- sincronizzazione: applica i record ricevuti ---------- */
 function applicaRemoti(mod, del) {
@@ -3862,10 +3911,15 @@ function avviaSync() {
     collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
-    dopo: function (info) { if (info.applicati) { toast('Aggiornati ' + num(info.applicati) + ' record dal Mac'); if (schedaId) apriScheda(schedaId); else mostraVista(vista, true); } else if (vista === 'altro') disegnaAltro(); },
+    dopo: function (info) {
+      if (info.applicati) {
+        toast('Aggiornati ' + num(info.applicati) + ' record dal Mac');
+        ridisegnaQuandoPuoi(function () { if (schedaId) apriScheda(schedaId); else mostraVista(vista, true); });
+      } else if (vista === 'altro') { if (!aggiornaStatoSync()) ridisegnaQuandoPuoi(disegnaAltro); }
+    },
     stato: spia
   });
-  SY.carica().then(function () { SY.avvia(); if (vista === 'altro') disegnaAltro(); });
+  SY.carica().then(function () { SY.avvia(); if (vista === 'altro') ridisegnaQuandoPuoi(disegnaAltro); });
 }
 
 /* ---------- copia di sicurezza: esporta (JSON + Excel) e importa ---------- */
