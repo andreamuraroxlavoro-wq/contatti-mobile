@@ -939,7 +939,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.65.0';
+var APP_VER = '1.66.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -4450,6 +4450,106 @@ function mostraRiassunto(cid) {
   });
 }
 /* ============================================================
+   GLI ATTREZZI DELL'ASSISTENTE — il ponte non riceve piu' soltanto pacchetti pronti:
+   puo' chiedere all'app di cercare in archivio. La ricerca si fa qui, sul telefono,
+   e al ponte va solo il risultato: cosi' si arriva a tutti i contatti senza spedirli tutti.
+   ============================================================ */
+var REGIONI = {
+  'piemonte': 'TO,VC,NO,CN,AT,AL,BI,VB', 'valle d\'aosta': 'AO', 'liguria': 'GE,IM,SP,SV',
+  'lombardia': 'MI,BG,BS,CO,CR,MN,PV,SO,VA,LC,LO,MB', 'trentino alto adige': 'TN,BZ', 'trentino': 'TN,BZ',
+  'veneto': 'VE,VI,VR,PD,TV,BL,RO', 'friuli venezia giulia': 'UD,GO,TS,PN', 'friuli': 'UD,GO,TS,PN',
+  'emilia romagna': 'BO,FE,FC,MO,PR,PC,RA,RE,RN', 'toscana': 'FI,AR,GR,LI,LU,MS,PI,PT,PO,SI',
+  'umbria': 'PG,TR', 'marche': 'AN,AP,FM,MC,PU', 'lazio': 'RM,FR,LT,RI,VT',
+  'abruzzo': 'AQ,CH,PE,TE', 'molise': 'CB,IS', 'campania': 'NA,AV,BN,CE,SA',
+  'puglia': 'BA,BT,BR,FG,LE,TA', 'basilicata': 'MT,PZ', 'calabria': 'CZ,CS,KR,RC,VV',
+  'sicilia': 'PA,AG,CL,CT,EN,ME,RG,SR,TP', 'sardegna': 'CA,NU,OR,SS,SU'
+};
+function provinceDiRegione(nome) {
+  var k = senzaAccenti(String(nome || '')).replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  return REGIONI[k] ? REGIONI[k].split(',') : null;
+}
+/* quanti giorni fa: '' quando non lo abbiamo mai sentito */
+function giorniDaData(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return null;
+  return Math.round((calData(oggi()) - calData(iso)) / 86400000);
+}
+function filtraClienti(a) {
+  a = a || {};
+  var og = oggi();
+  var prov = a.provincia ? String(a.provincia).toUpperCase().trim() : '';
+  var reg = a.regione ? provinceDiRegione(a.regione) : null;
+  var q = a.testo ? nomeChiave(a.testo) : '';
+  return lista().filter(function (c) {
+    var k = sit(c.id);
+    if (prov && String(c.prov || '').toUpperCase() !== prov) return false;
+    if (reg && reg.indexOf(String(c.prov || '').toUpperCase()) < 0) return false;
+    if (q && nomeChiave(c.nome).indexOf(q) < 0) return false;
+    if (a.tipoCliente && senzaAccenti(tipoCli(c.id)) !== senzaAccenti(a.tipoCliente)) return false;
+    if (a.categoria && senzaAccenti(String(c.cat || '')) !== senzaAccenti(a.categoria)) return false;
+    if (a.tipoAzione && senzaAccenti(String(k.esito || '')) !== senzaAccenti(a.tipoAzione)) return false;
+    if (a.richiamiScaduti && !(k.richiamo && k.richiamo < og)) return false;
+    if (a.senzaProssimoPasso && String(k.passo || '').trim()) return false;
+    if (a.conPraticaAperta) { var pr = DB.pratiche[c.id]; if (!pr || pr.stato === 'chiusa') return false; }
+    if (a.nonSentitiDaGiorni || a.sentitiUltimiGiorni) {
+      var g = giorniDaData(k.data);
+      if (a.nonSentitiDaGiorni && !(g === null || g >= a.nonSentitiDaGiorni)) return false;
+      if (a.sentitiUltimiGiorni && !(g !== null && g <= a.sentitiUltimiGiorni)) return false;
+    }
+    return true;
+  });
+}
+function rigaCliente(c) {
+  var k = sit(c.id), pr = DB.pratiche[c.id], g = giorniDaData(k.data);
+  return {
+    nome: c.nome, provincia: c.prov || '', categoria: c.cat || '', tipoCliente: tipoCli(c.id),
+    ultimaAzione: k.esito || '', ultimoContatto: k.data || 'mai', daGiorni: g === null ? 'mai sentito' : g,
+    richiamo: k.richiamo || '', richiamoInRitardo: !!(k.richiamo && k.richiamo < oggi()),
+    prossimoPasso: k.passo || '', pratica: pr ? ((tipoP(pr) || {}).nome || '') + ' ' + (pr.stato || '') : ''
+  };
+}
+function eseguiAttrezzo(nome, a) {
+  a = a || {};
+  if (nome === 'quanti_clienti') {
+    var l0 = filtraClienti(a);
+    var perProv = {};
+    l0.forEach(function (c) { var p = c.prov || '—'; perProv[p] = (perProv[p] || 0) + 1; });
+    return { quanti: l0.length, perProvincia: perProv, suTotale: lista().length };
+  }
+  if (nome === 'cerca_clienti') {
+    var l = filtraClienti(a);
+    if (a.ordina === 'ultimoContatto') l.sort(function (x, y) { return String(sit(x.id).data || '').localeCompare(String(sit(y.id).data || '')); });
+    else if (a.ordina === 'richiamo') l.sort(function (x, y) { return String(sit(x.id).richiamo || '9999').localeCompare(String(sit(y.id).richiamo || '9999')); });
+    else l.sort(function (x, y) { return x.nome.localeCompare(y.nome, 'it'); });
+    var lim = Math.min(Math.max(+a.limite || 20, 1), 60);
+    return { quanti: l.length, mostrati: Math.min(l.length, lim), clienti: l.slice(0, lim).map(rigaCliente) };
+  }
+  if (nome === 'scheda_cliente') {
+    var cid = clienteDaNome(a.nome || '') || chatClienteDaFrase(a.nome || '');
+    if (!cid) return { trovato: false, motivo: 'In archivio non c\'e\' nessun cliente con questo nome: ' + String(a.nome || '') };
+    return { trovato: true, scheda: datiPerRiassunto(cid) };
+  }
+  if (nome === 'agenda') {
+    var og = oggi();
+    var da = /^\d{4}-\d{2}-\d{2}$/.test(a.da || '') ? a.da : og;
+    var fin = /^\d{4}-\d{2}-\d{2}$/.test(a.a || '') ? a.a : calSomma(da, 30);
+    var c0 = datiCalendario();
+    var r = { oggi: og, da: da, a: fin, inProgramma: c0.inProgramma.filter(function (x) { return x.giorno >= da && x.giorno <= fin; }) };
+    if (a.arretrati !== false) r.arretrati = c0.arretrati;
+    if (a.richiami !== false) r.richiami = c0.richiami.filter(function (x) { return x.giorno <= fin; });
+    if (a.fatti) r.fatti = c0.fattiUltimi30Giorni.filter(function (x) { return x.giorno >= da && x.giorno <= fin; });
+    r.quanti = { inProgramma: r.inProgramma.length, arretrati: (r.arretrati || []).length, richiami: (r.richiami || []).length };
+    return r;
+  }
+  return { errore: 'attrezzo sconosciuto: ' + nome };
+}
+function nomeAttrezzo(n) {
+  return n === 'cerca_clienti' ? 'Sto cercando in archivio…'
+    : n === 'quanti_clienti' ? 'Sto contando…'
+    : n === 'scheda_cliente' ? 'Sto aprendo la scheda…'
+    : n === 'agenda' ? 'Sto guardando l\'agenda…' : 'Sto guardando…';
+}
+
+/* ============================================================
    PARLA CON L'APP — la conversazione a voce. Si chiede, lui risponde e legge;
    quando esce qualcosa da salvare lo propone e aspetta la conferma. Niente si salva da solo.
    ============================================================ */
@@ -4594,7 +4694,7 @@ function chatDiciTu(testo) {
   if (trovato && trovato !== CHAT.cid) { CHAT.cid = trovato; chatChi(); }
   chatOccupato(true, 'Ci penso…');
   var pensa = chatRiga('app', 'Ci penso…', 'pensa');
-  chatAlPonte(testo).then(function (r) {
+  chatGiroPonte(testo, [], 1, function (che) { if (pensa) pensa.textContent = che; chatOccupato(true, che); }).then(function (r) {
     if (!CHAT) return;
     if (pensa) pensa.remove();
     chatOccupato(false);
@@ -4616,18 +4716,38 @@ function chatDiciTu(testo) {
     chatRiga('app', 'Non sono riuscito a rispondere: ' + String(e.message || e).slice(0, 140), 'err');
   });
 }
-function chatAlPonte(frase) {
+function chatAlPonte(frase, giri) {
   var P = ponteDati();
   if (!P.url) return Promise.reject(new Error('ponte non configurato'));
   var h = { 'Content-Type': 'application/json' };
   if (P.tok) h['X-Token'] = P.tok;
-  var corpo = { conversa: true, frase: frase, storia: CHAT.storia.slice(-12, -1), oggi: oggi(), modello: modelloTesti(), regole: regoleTesto() };
+  var corpo = { conversa: true, attrezzi: true, frase: frase, storia: CHAT.storia.slice(-12, -1), oggi: oggi(), modello: modelloTesti(), regole: regoleTesto() };
   if (CHAT.cid) corpo.dati = datiPerRiassunto(CHAT.cid);
-  /* la domanda riguarda l'agenda: gli passo il calendario vero, non solo la scheda */
+  /* la domanda riguarda l'agenda: gli passo subito il calendario, cosi' non deve chiederlo */
   if (parlaDiCalendario(frase) || CHAT.calendario) { corpo.calendario = datiCalendario(); CHAT.calendario = true; }
+  if (giri && giri.length) corpo.giri = giri;
   return fetch(P.url, { method: 'POST', headers: h, body: JSON.stringify(corpo) })
     .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.errore) throw new Error(d.errore || ('ponte: ' + r.status)); return d; }); })
     .then(function (d) { usoSegna(d.uso); return d; });
+}
+/* il giro degli attrezzi: lui chiede, l'app cerca sul telefono, lui riprende.
+   Al massimo quattro passaggi, per non restare in ballo all'infinito. */
+function chatGiroPonte(frase, giri, passo, avviso) {
+  giri = giri || []; passo = passo || 1;
+  return chatAlPonte(frase, giri).then(function (r) {
+    if (!r.attendi || !r.strumenti || !r.strumenti.length || passo >= 4) {
+      if (r.attendi) return { testo: 'Ho girato troppo intorno alla domanda senza arrivarci: provala a dire in un altro modo.', azione: null, cliente: '', regola: '' };
+      return r;
+    }
+    if (avviso) avviso(nomeAttrezzo(r.strumenti[0].nome));
+    var risultati = r.strumenti.map(function (s) {
+      var dati;
+      try { dati = eseguiAttrezzo(s.nome, s.argomenti); }
+      catch (e) { dati = { errore: String(e.message || e).slice(0, 200) }; }
+      return { id: s.id, dati: dati };
+    });
+    return chatGiroPonte(frase, giri.concat([{ contenuto: r.contenuto, risultati: risultati }]), passo + 1, avviso);
+  });
 }
 /* la proposta: scritta per intero, modificabile, e salvata solo se tocchi «Salva» */
 function chatProposta(az) {
