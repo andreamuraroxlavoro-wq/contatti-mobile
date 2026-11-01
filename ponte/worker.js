@@ -602,8 +602,15 @@ function schedaProdotto(argomento) {
 const VOCE_MODELLO = 'gpt-4o-mini-tts';
 const VOCE_RISERVA = 'tts-1';
 const VOCE_PREZZO = 15 / 1000000;   /* dollari per carattere: stima buona per il conto dei consumi */
-const VOCE_TONO = 'Parla in italiano, con tono cordiale e naturale, come un collega che guida un amico mentre guida l\'auto. Ritmo tranquillo, pause vere alla punteggiatura, mai robotico. Le domande suonano come domande.';
-async function vocePonte(env, testo, nome) {
+const VOCE_TONO = [
+  'Lingua: italiano d\'Italia, pronuncia naturale, nessun accento straniero.',
+  'Sei un collega che parla con un amico mentre lui guida: confidenziale, sveglio, mai impettito e mai da annunciatore.',
+  'Ritmo: parla come si parla, non come si legge. Rallenta sui numeri, sulle date e sui nomi delle aziende. Fai una pausa vera al punto, una piu\' corta alla virgola, e un respiro fra un argomento e l\'altro.',
+  'Intonazione: le domande salgono alla fine, gli elenchi scendono sull\'ultimo elemento. Dai un po\' di rilievo alla parola che conta nella frase invece di appiattire tutto.',
+  'Quando dai una notizia buona si sente, quando e\' una rogna niente allegria finta: tono asciutto e diretto.',
+  'Non sillabare, non scandire, non enfatizzare la punteggiatura: deve sembrare una persona che racconta, non un lettore.'
+].join(' ');
+async function vocePonte(env, testo, nome, tono) {
   if (!env.OPENAI_API_KEY) throw new Error('manca la chiave della voce (OPENAI_API_KEY)');
   /* il limite dell'API e' 4096 caratteri: non tagliamo piu' a 600 (si perdeva meta' risposta).
      Se proprio si sfora, si taglia all'ultimo punto invece che a meta' parola. */
@@ -614,10 +621,13 @@ async function vocePonte(env, testo, nome) {
     t = ultimo > 2000 ? taglio.slice(0, ultimo + 1) : taglio;
   }
   if (!t) throw new Error('niente da leggere');
-  const voce = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse'].indexOf(nome) >= 0 ? nome : 'coral';
+  const VOCI_NUOVE = ['marin', 'cedar', 'ballad', 'verse'];   /* solo su gpt-4o-mini-tts */
+  const VOCI_TUTTE = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse', 'marin', 'cedar'];
+  const voce = VOCI_TUTTE.indexOf(nome) >= 0 ? nome : 'coral';
+  const voceRiserva = VOCI_NUOVE.indexOf(voce) >= 0 ? 'coral' : voce;
   async function giro(modello, conTono) {
-    const corpo = { model: modello, voice: voce, input: t, response_format: 'mp3' };
-    if (conTono) corpo.instructions = VOCE_TONO;
+    const corpo = { model: modello, voice: conTono ? voce : voceRiserva, input: t, response_format: 'mp3' };
+    if (conTono) corpo.instructions = (String(tono || '').trim() ? String(tono).trim().slice(0, 900) + ' ' : '') + VOCE_TONO;
     const r = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.OPENAI_API_KEY },
@@ -650,7 +660,7 @@ export default {
 
       /* a) la voce: leggi questa frase (non passa dalla trascrizione) */
       if (d.voce) {
-        const v = await vocePonte(env, typeof d.voce === 'string' ? d.voce : frase, d.vocenome);
+        const v = await vocePonte(env, typeof d.voce === 'string' ? d.voce : frase, d.vocenome, d.vocetono);
         return risposta({ audio: v.audio, uso: { in: 0, out: 0, costo: v.costo, modello: 'voce', caratteri: v.caratteri } });
       }
 
