@@ -265,6 +265,8 @@ async function conversa(env, d, frase) {
     dati ? 'ATTENZIONE: la scheda qui sotto e\' di ' + nomeScheda(dati) + ' e di nessun altro. Se lui nomina un\'azienda diversa da questa, non hai i suoi dati: dillo subito in una frase, non raccontare quello che leggi qui attribuendolo a un\'altra azienda, e chiedigli di aprire la scheda giusta.' : '',
     d.attrezzi ? 'HAI DEGLI ATTREZZI per guardare nell\'archivio: cerca_clienti, quanti_clienti, scheda_cliente e agenda. Quando la domanda riguarda dati che non hai gia\' davanti, usali invece di dire che non sai: una ricerca costa poco. Non inventare mai nomi, numeri o date che non siano usciti da un attrezzo o dai dati qui sotto. Un attrezzo per volta, e quando hai quello che ti serve rispondi.' : '',
     d.attrezzi ? 'Quando elenchi dei clienti: al massimo cinque alla volta, con il motivo in mezza riga (da quanto non lo senti, che cosa resta da fare), poi di\' quanti sono in tutto e chiedi se vuole il resto.' : '',
+    d.attrezzi ? 'Gli attrezzi che cominciano con sposta, segna, annulla, fissa o cambia NON eseguono niente: preparano una proposta che compare sullo schermo con i tasti Salva e Lascia stare. Dopo averli chiamati, di\' in una frase che cosa hai proposto e che aspetti la sua conferma; non dire mai che hai gia\' fatto o salvato qualcosa.' : '',
+    d.attrezzi ? 'Per spostare, segnare fatto o annullare ti serve l\'id dell\'appuntamento: chiamalo prima con agenda e prendi l\'id da li\'. Non inventare mai un id.' : '',
     'Se lui ti chiede di ricordare una sua preferenza stabile («ricordati che…», «d\'ora in poi…»), aggiungi in fondo una riga REGOLA: seguita dalla regola scritta in una frase, e nella risposta digli che gliela proponi da salvare.',
     regolePersona(d),
     cal ? [
@@ -369,6 +371,37 @@ const ATTREZZI = [
         fatti: { type: 'boolean', description: 'includi i report gia\' scritti nel periodo' }
       }
     }
+  }
+,
+  {
+    name: 'apri_scheda',
+    description: 'Apre sullo schermo la scheda di un cliente, cosi\' lui la vede mentre parlate. Non cambia niente.',
+    input_schema: { type: 'object', properties: { nome: { type: 'string' } }, required: ['nome'] }
+  },
+  {
+    name: 'sposta_appuntamento',
+    description: 'PROPONE di spostare un appuntamento a un altro giorno o a un\'altra ora. NON lo sposta: prepara la proposta, che la persona deve confermare toccando un tasto. Serve l\'id dell\'appuntamento, che trovi con agenda.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' }, giorno: { type: 'string', description: 'AAAA-MM-GG' }, ora: { type: 'string', description: 'HH:MM, oppure vuoto per orario libero' } }, required: ['id'] }
+  },
+  {
+    name: 'segna_fatto',
+    description: 'PROPONE di segnare come fatto un appuntamento del calendario. NON lo segna: la persona deve confermare. Serve l\'id, che trovi con agenda.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] }
+  },
+  {
+    name: 'annulla_appuntamento',
+    description: 'PROPONE di togliere dal calendario un appuntamento. NON lo toglie: la persona deve confermare. Serve l\'id, che trovi con agenda.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] }
+  },
+  {
+    name: 'fissa_richiamo',
+    description: 'PROPONE di mettere la data del prossimo richiamo di un cliente, e se serve il prossimo passo. NON la scrive: la persona deve confermare.',
+    input_schema: { type: 'object', properties: { cliente: { type: 'string' }, giorno: { type: 'string', description: 'AAAA-MM-GG' }, prossimoPasso: { type: 'string' } }, required: ['cliente', 'giorno'] }
+  },
+  {
+    name: 'cambia_tipo_cliente',
+    description: 'PROPONE di cambiare il tipo di un cliente (ATTIVO, NUOVO, INTERESSATO, CONCESSIONARIO, PARTNER STRATEGICO, NON ATTIVO, IN PERDITA, PERSO, TRASCURABILE, NON TOCCARE, PRIMO CONTATTO). NON lo cambia: la persona deve confermare.',
+    input_schema: { type: 'object', properties: { cliente: { type: 'string' }, tipo: { type: 'string' } }, required: ['cliente', 'tipo'] }
   }
 ];
 
