@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.77.0';
+var APP_VER = '1.78.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -959,7 +959,7 @@ function normNome(t) { return String(t || '').toLowerCase().normalize('NFD').rep
 var toastT = null; function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, ms || 2200); }
 
 /* ---------- archivio locale (IndexedDB, un unico documento) ---------- */
-var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} };
+var DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, agenda: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} };
 var IDB = (function () {
   function db() { return new Promise(function (ris, rej) { var r = indexedDB.open('contatti_mobile', 1); r.onupgradeneeded = function (e) { e.target.result.createObjectStore('kv'); }; r.onsuccess = function (e) { ris(e.target.result); }; r.onerror = function () { rej(r.error); }; }); }
   return {
@@ -3731,6 +3731,296 @@ var REP_CORSO = false;
 /* La cartella dei report dettati si legge in coda a ogni giro di sincronizzazione (v1.77.0).
    Niente timer suo, niente interruttore: se l'app sincronizza su Google Drive, i report
    entrano al primo giro utile, come qualsiasi altra modifica. */
+
+/* ======================= AGENDA DETTATA (v1.78.0) =======================
+   Stesse regole di GESTIONE CONTATTI 4.48.0: le istruzioni lasciate in chiamata nella
+   cartella «GESTIONE CONTATTI – Agenda da applicare» si leggono in coda al giro di
+   sincronizzazione. Modificare aggiunge e non sostituisce, spostare tocca solo giorno
+   e ora, eliminare chiede sempre conferma. Prima di applicare si salva com'era
+   l'appuntamento nel registro, che sta nell'archivio sincronizzato: cosi' l'annullamento
+   funziona anche dall'altro dispositivo. L'identificativo si calcola dal file, uguale
+   sulle due app, e i valori sono assoluti: applicare due volte non fa danno.          */
+var AG_CART = 'GESTIONE CONTATTI – Agenda da applicare';
+var AG_AZIONI = { inserisci: 'Inserisci', sposta: 'Sposta', modifica: 'Modifica', cancella: 'Elimina' };
+var AG = (function () {
+  var d = {}; try { d = JSON.parse(localStorage.getItem('cm.agenda') || '{}') || {}; } catch (e) { d = {}; }
+  d.fatti = d.fatti || []; d.fattiIst = d.fattiIst || []; d.sospesi = d.sospesi || [];
+  return d;
+})();
+function agSalva() { try { localStorage.setItem('cm.agenda', JSON.stringify(AG)); } catch (e) {} }
+function agRegistro() { if (!DB.agenda) DB.agenda = {}; return DB.agenda; }
+function agTutte() { var A = agRegistro(); return Object.keys(A).map(function (k) { return A[k]; }).filter(Boolean); }
+function agIdIst(ch) { var h = 5381, i; for (i = 0; i < ch.length; i++) h = ((h << 5) + h + ch.charCodeAt(i)) | 0; return 'ag_' + (h >>> 0).toString(36); }
+function agIdApp(idIst) { return 'a_g' + idIst.slice(3); }
+function agChiave(fid, i) { return fid + '#' + i; }
+function agParse(testo) {
+  return String(testo || '').split(/^\s*-{3,}\s*$/m).map(function (blocco) {
+    var v = {}, testi = [], inTesto = false;
+    blocco.split(/\r?\n/).forEach(function (r) {
+      var m = inTesto ? null : r.match(/^\s*([A-Za-zàèéìòù' ]{3,22})\s*:\s*(.*)$/);
+      var ch = m ? repNorm(m[1]) : '';
+      if (m && (ch === 'testo' || ch === 'nota')) { inTesto = true; if (m[2].trim()) testi.push(m[2].trim()); return; }
+      if (m && ['azione', 'cliente', 'contatto', 'data', 'ora', 'tipo', 'appuntamento', 'dettata', 'frase'].indexOf(ch) >= 0) {
+        v[ch === 'contatto' ? 'cliente' : ch] = m[2].trim(); return;
+      }
+      if (inTesto) testi.push(r); else if (r.trim()) testi.push(r.trim());
+    });
+    v.testo = testi.join('\n').trim();
+    v.azione = repNorm(v.azione || '');
+    if (v.azione === 'elimina' || v.azione === 'cancellare') v.azione = 'cancella';
+    if (v.azione === 'inserire' || v.azione === 'nuovo' || v.azione === 'fissa') v.azione = 'inserisci';
+    return v;
+  }).filter(function (v) { return v.cliente && AG_AZIONI[v.azione]; });
+}
+function agData(x) { return repData(x); }
+function agOra(x) { var m = String(x || '').match(/(\d{1,2})[:.](\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : ''; }
+function agRif(x) { var t = String(x || ''); return { d: agData(t), o: agOra(t) }; }
+function agQuando(v) { return dataIt(v.d) + (v.o ? ' alle ' + v.o : ''); }
+function agTipo(x) {
+  var q = repNorm(x || '');
+  for (var i = 0; i < ATT_PIANIFICA.length; i++) if (repNorm(ATT_PIANIFICA[i].nome) === q || ATT_PIANIFICA[i].id === q) return ATT_PIANIFICA[i].id;
+  return 'visita';
+}
+function agDispositivo() { return (SY && SY.meta && SY.meta.etichetta) || 'questo telefono'; }
+function agSovrapposti(d, o, escludi) {
+  if (!d || !o) return [];
+  return attTutte().filter(function (a) { return a.id !== escludi && !a.fatto && a.d === d && (a.o || '') === o; });
+}
+function agValuta(v, idIst) {
+  var r = repClassifica(v.cliente);
+  if (r.stato !== 'esatto') return { esito: 'cliente', stato: r.stato, candidati: r.candidati || [] };
+  var c = r.contatto, d = agData(v.data), o = agOra(v.ora);
+  if (v.azione === 'inserisci') {
+    if (!d) return { esito: 'dati', contatto: c, perche: 'manca il giorno' };
+    var sc = agSovrapposti(d, o, agIdApp(idIst));
+    if (sc.length) return { esito: 'sovrapposizione', contatto: c, altri: sc, d: d, o: o };
+    return { esito: 'ok', contatto: c, d: d, o: o };
+  }
+  var rif = agRif(v.appuntamento), l = attDi(c.id).filter(function (a) { return !a.fatto; });
+  var cand = l.filter(function (a) { return (!rif.d || a.d === rif.d) && (!rif.o || (a.o || '') === rif.o); });
+  if (!cand.length) return { esito: 'nessuno', contatto: c, tutti: l };
+  if (cand.length > 1) return { esito: 'molti', contatto: c, candidati: cand };
+  var app = cand[0], ts = Date.parse(v.dettata || '');
+  if (ts && (app._m || 0) > ts) return { esito: 'cambiato', contatto: c, app: app };
+  if (v.azione === 'sposta') {
+    if (!d) return { esito: 'dati', contatto: c, app: app, perche: 'manca il giorno nuovo' };
+    var sc2 = agSovrapposti(d, o, app.id);
+    if (sc2.length) return { esito: 'sovrapposizione', contatto: c, app: app, altri: sc2, d: d, o: o };
+  }
+  if (v.azione === 'cancella') return { esito: 'conferma', contatto: c, app: app };
+  return { esito: 'ok', contatto: c, app: app, d: d, o: o };
+}
+function agEsegui(v, idIst, c, app, ch) {
+  var prima = app ? JSON.parse(JSON.stringify(app)) : null, dopo = null, descr = '';
+  var d = agData(v.data), o = agOra(v.ora);
+  if (v.azione === 'inserisci') {
+    var nuovo = { id: agIdApp(idIst), cid: c.id, tipo: agTipo(v.tipo), d: d };
+    if (o) nuovo.o = o; else { nuovo.oraLibera = 1; if (v.ora) nuovo.oraNota = v.ora; }
+    if (v.testo) nuovo.nota = v.testo;
+    attSalva(nuovo); dopo = nuovo;
+    descr = 'Inserito ' + attTipo(nuovo.tipo).nome.toLowerCase() + ' del ' + agQuando(nuovo);
+  } else if (v.azione === 'sposta') {
+    var a1 = attArchivio()[app.id];
+    a1.d = d; if (o) { a1.o = o; delete a1.oraLibera; delete a1.oraNota; }
+    attSalva(a1); dopo = JSON.parse(JSON.stringify(a1));
+    descr = 'Spostato dal ' + agQuando(prima) + ' al ' + agQuando(a1);
+  } else if (v.azione === 'modifica') {
+    var a2 = attArchivio()[app.id];
+    if (v.testo) a2.nota = (a2.nota ? a2.nota + '\n' : '') + v.testo;
+    if (v.tipo && agTipo(v.tipo) !== a2.tipo) a2.tipo = agTipo(v.tipo);
+    if (d && d !== a2.d) a2.d = d;
+    if (o && o !== (a2.o || '')) { a2.o = o; delete a2.oraLibera; delete a2.oraNota; }
+    attSalva(a2); dopo = JSON.parse(JSON.stringify(a2));
+    descr = 'Modificato l’appuntamento del ' + agQuando(a2) + (v.testo ? ': aggiunto testo' : '');
+  } else if (v.azione === 'cancella') {
+    attElimina(app.id);
+    descr = 'Eliminato ' + attTipo(prima.tipo).nome.toLowerCase() + ' del ' + agQuando(prima);
+  }
+  agRegistro()[idIst] = {
+    id: idIst, cid: c.id, az: v.azione, st: 'fatta', q: Date.now(), dev: agDispositivo(),
+    frase: v.frase || '', ch: ch || '', descr: descr,
+    prima: prima ? JSON.stringify(prima) : '', dopo: dopo ? JSON.stringify(dopo) : '', appId: (app && app.id) || (dopo && dopo.id) || '', _m: Date.now()
+  };
+  var vid = 'v_' + idIst;
+  DB.eventi[vid] = { id: vid, cid: c.id, d: oggi(), o: ora(), c: '', t: 'Agenda: ' + descr, n: (v.frase ? 'Detto a voce: «' + v.frase + '»' : ''), a: 1, _m: Date.now() };
+  salva();
+  return agRegistro()[idIst];
+}
+function agAnnulla(idIst) {
+  var reg = agRegistro()[idIst]; if (!reg || reg.st !== 'fatta') return false;
+  if (reg.prima) { var a = JSON.parse(reg.prima); a._m = Date.now(); attArchivio()[a.id] = a; attAllinea(a.cid); }
+  else if (reg.dopo) { var b = JSON.parse(reg.dopo); attElimina(b.id); }
+  reg.st = 'annullata'; reg._m = Date.now();
+  salva(); return true;
+}
+function agCartella(inter) {
+  var id = AG.cart;
+  var vivo = id ? repJson('https://www.googleapis.com/drive/v3/files/' + id + '?fields=id,trashed', null, inter).then(function (j) { return (j && j.id && !j.trashed) ? j.id : null; }).catch(function () { return null; }) : Promise.resolve(null);
+  return vivo.then(function (ok) {
+    if (ok) return ok;
+    var q = "name='" + AG_CART.replace(/'/g, "\\'") + "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    return repJson('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=5', null, inter)
+      .then(function (j) { return ((j.files || [])[0] || {}).id || null; });
+  }).then(function (idOk) { if (idOk && AG.cart !== idOk) { AG.cart = idOk; agSalva(); } return idOk; });
+}
+function agRaccogli(inter) {
+  return agCartella(inter).then(function (id) {
+    if (!id) return { n: 0, righe: [], sospesi: (AG.sospesi || []).length, nuoviSospesi: 0 };
+    var q = "'" + id + "' in parents and trashed=false";
+    return repJson('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,mimeType)&pageSize=100&orderBy=createdTime', null, inter).then(function (j) {
+      var files = (j.files || []).filter(function (f) { return (AG.fatti || []).indexOf(f.id) < 0 && String(f.mimeType || '').indexOf('folder') < 0 && !/^leggimi/i.test(f.name); });
+      if (!files.length) return { n: 0, righe: [], sospesi: (AG.sospesi || []).length, nuoviSospesi: 0 };
+      var righe = [], n = 0, nuovi = 0;
+      return files.reduce(function (cat, f) {
+        return cat.then(function () {
+          return repLeggiTesto(f, inter).then(function (tx) {
+            var voci = agParse(tx), tuttiOk = true;
+            voci.forEach(function (v, i) {
+              var ch = agChiave(f.id, i), idIst = agIdIst(ch), reg = agRegistro()[idIst];
+              if (reg && reg.st !== 'sospesa') return;
+              if ((AG.fattiIst || []).indexOf(ch) >= 0) return;
+              if ((AG.sospesi || []).some(function (x) { return x.ch === ch; })) { tuttiOk = false; return; }
+              var e = agValuta(v, idIst);
+              if (e.esito === 'ok') {
+                var r2 = agEsegui(v, idIst, e.contatto, e.app, ch);
+                AG.fattiIst = (AG.fattiIst || []).concat([ch]).slice(-2000); agSalva();
+                n++; righe.push('✓ ' + e.contatto.nome + ' · ' + r2.descr);
+                return;
+              }
+              tuttiOk = false; nuovi++;
+              AG.sospesi = (AG.sospesi || []).concat([{ ch: ch, id: idIst, file: f.name, v: v, esito: e.esito, cliente: v.cliente || '(senza nome)', cid: (e.contatto || {}).id || '', appId: (e.app || {}).id || '', cand: (e.candidati || []).map(function (x) { return x.id; }), perche: e.perche || '' }]);
+              agSalva();
+              righe.push('• «' + (v.cliente || '?') + '» da confermare');
+            });
+            if (tuttiOk) { AG.fatti = (AG.fatti || []).concat([f.id]).slice(-500); agSalva(); }
+          }).catch(function () {});
+        });
+      }, Promise.resolve()).then(function () { return { n: n, righe: righe, sospesi: (AG.sospesi || []).length, nuoviSospesi: nuovi }; });
+    });
+  }).catch(function () { return { n: 0, righe: [], sospesi: (AG.sospesi || []).length, nuoviSospesi: 0 }; });
+}
+var AG_F = null, AG_CORSO = false, AG_SCELTA = null;
+function agDopoSync() {
+  if (AG_CORSO || AG_F || REP_F) return;
+  if (!SY || !SY.meta || SY.meta.tipo !== 'drive') return;
+  AG_CORSO = true;
+  return agRaccogli(false).then(function (r) {
+    AG_CORSO = false;
+    if (r.n) toast('Agenda: applicate ' + num(r.n) + ' istruzioni', 3500);
+    if (r.nuoviSospesi && !document.hidden) agCoda();
+    if ((r.n || r.nuoviSospesi) && vista === 'altro') ridisegnaQuandoPuoi(disegnaAltro);
+    return r;
+  }, function () { AG_CORSO = false; });
+}
+/* foglio di scelta: niente si applica senza che sia chiaro su cosa */
+function agCoda() {
+  if (AG_F || REP_F) return;
+  var sp = (AG.sospesi || [])[0]; if (!sp) return;
+  var v = sp.v, az = AG_AZIONI[v.azione] || v.azione;
+  var f = el('div', 'foglio att-f me-f'); AG_F = { f: f, sp: sp };
+  AG_SCELTA = { cid: sp.cid || '', appId: sp.appId || '' };
+  function chiudi() { f.remove(); document.body.classList.remove('me-aperto'); AG_F = null; }
+  var motivo = {
+    cliente: 'Questo nome non è in rubrica: dimmi a chi legarlo.',
+    nessuno: 'Non trovo l’appuntamento di partenza: scegli tu.',
+    molti: 'Più appuntamenti corrispondono: scegli quello giusto.',
+    conferma: 'Un’eliminazione non la faccio mai da sola: confermi?',
+    sovrapposizione: 'A quell’ora c’è già un altro appuntamento.',
+    cambiato: 'L’appuntamento è cambiato dopo la dettatura.',
+    dati: 'Manca un dato' + (sp.perche ? ' (' + sp.perche + ')' : '') + '.'
+  }[sp.esito] || 'Controlla prima di applicare.';
+  var h = ['<div class="fg"><h4>Agenda dettata · ' + esc(az) + '</h4>'];
+  h.push('<div class="riga-o" style="display:block"><b>«' + esc(sp.cliente) + '»</b>' + (v.data ? ' · ' + esc(v.data) : '') + (v.ora ? ' alle ' + esc(v.ora) : '') + '</div>');
+  if (v.frase) h.push('<div class="riga-o" style="display:block;color:var(--tenue);font-size:calc(12.5px * var(--scala))">Detto a voce: «' + esc(v.frase) + '»</div>');
+  h.push('<div class="nota" style="margin:8px 0">' + esc(motivo) + '</div>');
+  h.push('<div id="ag-lista"></div>');
+  if (sp.esito === 'cliente') h.push('<label>Cerca <input type="search" id="ag-cerca" placeholder="nome del cliente"></label>');
+  h.push('<div class="az"><button class="btn peri" id="ag-ign">Ignora</button><button class="btn" id="ag-dopo">Più tardi</button><button class="btn pri" id="ag-ok">Applica</button></div></div>');
+  f.innerHTML = h.join('');
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  agLista('');
+  $('#ag-dopo', f).addEventListener('click', function () { AG.sospesi = (AG.sospesi || []).filter(function (x) { return x.ch !== sp.ch; }).concat([sp]); agSalva(); chiudi(); });
+  $('#ag-ign', f).addEventListener('click', function () {
+    if (!confirm('Ignoro questa istruzione? Non verrà applicata.')) return;
+    agRegistro()[sp.id] = { id: sp.id, cid: sp.cid || '', az: v.azione, st: 'ignorata', q: Date.now(), dev: agDispositivo(), frase: v.frase || '', descr: 'Istruzione ignorata', _m: Date.now() };
+    AG.fattiIst = (AG.fattiIst || []).concat([sp.ch]).slice(-2000);
+    AG.sospesi = (AG.sospesi || []).filter(function (x) { return x.ch !== sp.ch; });
+    agSalva(); salva(); chiudi(); agCoda();
+  });
+  $('#ag-ok', f).addEventListener('click', function () {
+    var c = listaTutti().filter(function (x) { return x.id === (AG_SCELTA.cid || sp.cid); })[0];
+    if (!c) { toast('Scegli prima il cliente'); return; }
+    var app = null;
+    if (v.azione !== 'inserisci') {
+      app = attArchivio()[AG_SCELTA.appId || sp.appId];
+      if (!app) { toast('Scegli l’appuntamento'); return; }
+      if (v.azione === 'cancella' && !confirm('Elimino l’appuntamento del ' + agQuando(app) + ' di «' + c.nome + '»?\n\nSi può annullare dal registro dell’agenda.')) return;
+    }
+    var r = agEsegui(v, sp.id, c, app, sp.ch);
+    AG.fattiIst = (AG.fattiIst || []).concat([sp.ch]).slice(-2000);
+    AG.sospesi = (AG.sospesi || []).filter(function (x) { return x.ch !== sp.ch; });
+    agSalva(); chiudi(); toast(r.descr, 4000); apriScheda(c.id); agCoda();
+  });
+  var ce = $('#ag-cerca', f);
+  if (ce) { var tc = null; ce.addEventListener('input', function () { clearTimeout(tc); tc = setTimeout(function () { agLista(ce.value); }, 150); }); }
+}
+function agLista(filtro) {
+  var box = $('#ag-lista', AG_F && AG_F.f); if (!box || !AG_F) return;
+  var sp = AG_F.sp, h = [];
+  if (sp.esito === 'cliente') {
+    var L = listaTutti(), el2;
+    if (String(filtro || '').trim()) { var q = repNorm(filtro); el2 = L.filter(function (c) { return repNorm(c.nome).indexOf(q) >= 0; }).slice(0, 10); }
+    else el2 = (sp.cand || []).map(function (id) { return L.filter(function (c) { return c.id === id; })[0]; }).filter(Boolean);
+    if (!el2.length) h.push('<div class="nota">Nessun contatto: cerca un’altra parola.</div>');
+    el2.forEach(function (c) { h.push('<div class="az"><button class="btn' + (AG_SCELTA.cid === c.id ? ' pri' : '') + '" data-cid="' + esc(c.id) + '" style="width:100%;text-align:left">' + esc(c.nome) + '</button></div>'); });
+  } else if (sp.esito === 'nessuno' || sp.esito === 'molti') {
+    var l = attDi(sp.cid).filter(function (a) { return !a.fatto; });
+    if (!l.length) h.push('<div class="nota">Nessun appuntamento in programma per questo cliente.</div>');
+    l.forEach(function (a) { h.push('<div class="az"><button class="btn' + (AG_SCELTA.appId === a.id ? ' pri' : '') + '" data-app="' + esc(a.id) + '" style="width:100%;text-align:left">' + esc(agQuando(a) + ' · ' + attTipo(a.tipo).nome + (a.nota ? ' · ' + a.nota.replace(/\s+/g, ' ').slice(0, 60) : '')) + '</button></div>'); });
+  } else if (sp.esito === 'cambiato') {
+    var a0 = attArchivio()[sp.appId];
+    h.push('<div class="nota">Com’è adesso: ' + (a0 ? esc(agQuando(a0) + ' · ' + attTipo(a0.tipo).nome) : '—') + '<br>Come la vorrebbe l’istruzione: ' + esc((sp.v.data || '') + (sp.v.ora ? ' ' + sp.v.ora : '')) + '</div>');
+  } else if (sp.esito === 'sovrapposizione') {
+    agSovrapposti(agData(sp.v.data), agOra(sp.v.ora), sp.appId).forEach(function (a) {
+      var c2 = listaTutti().filter(function (x) { return x.id === a.cid; })[0];
+      h.push('<div class="nota">Già in programma: <b>' + esc((c2 && c2.nome) || '?') + '</b> · ' + esc(agQuando(a)) + '</div>');
+    });
+  } else if (sp.esito === 'conferma') {
+    var a3 = attArchivio()[sp.appId];
+    h.push('<div class="nota">' + (a3 ? esc(agQuando(a3) + ' · ' + attTipo(a3.tipo).nome + (a3.nota ? ' · ' + a3.nota.replace(/\s+/g, ' ').slice(0, 90) : '')) : 'appuntamento non trovato') + '</div>');
+  }
+  box.innerHTML = h.join('');
+  Array.prototype.slice.call(box.querySelectorAll('button[data-cid]')).forEach(function (b) { b.addEventListener('click', function () { AG_SCELTA.cid = b.dataset.cid; agLista($('#ag-cerca', AG_F.f) ? $('#ag-cerca', AG_F.f).value : ''); }); });
+  Array.prototype.slice.call(box.querySelectorAll('button[data-app]')).forEach(function (b) { b.addEventListener('click', function () { AG_SCELTA.appId = b.dataset.app; agLista(''); }); });
+}
+/* registro consultabile, con l'annullamento */
+function agRegistroApri() {
+  var l = agTutte().sort(function (a, b) { return (b.q || 0) - (a.q || 0); });
+  var f = el('div', 'foglio att-f me-f');
+  function chiudi() { f.remove(); document.body.classList.remove('me-aperto'); }
+  var h = ['<div class="fg"><h4>Registro dell’agenda</h4>'];
+  if (!l.length) h.push('<div class="nota">Nessuna istruzione, per ora.</div>');
+  l.forEach(function (r) {
+    var c = listaTutti().filter(function (x) { return x.id === r.cid; })[0];
+    h.push('<div class="opz" style="margin-bottom:8px"><div class="riga-o" style="display:block"><b>' + esc((c && c.nome) || '—') + '</b> · ' + esc(AG_AZIONI[r.az] || r.az || '') + '</div>'
+      + '<div class="riga-o" style="display:block;font-size:calc(12.5px * var(--scala))">' + esc(r.descr || '') + '</div>'
+      + '<div class="riga-o" style="display:block;color:var(--tenue);font-size:calc(11.5px * var(--scala))">' + esc(new Date(r.q || 0).toLocaleString('it-IT')) + ' · ' + esc(r.dev || '') + ' · ' + esc({ fatta: 'applicata', sospesa: 'in attesa', ignorata: 'ignorata', annullata: 'annullata' }[r.st] || r.st) + '</div>'
+      + (r.frase ? '<div class="riga-o" style="display:block;color:var(--tenue);font-size:calc(11.5px * var(--scala))">«' + esc(r.frase) + '»</div>' : '')
+      + (r.st === 'fatta' ? '<div class="az"><button class="btn" data-ann="' + esc(r.id) + '">Annulla</button></div>' : '') + '</div>');
+  });
+  h.push('<div class="az"><button class="btn" id="ag-reg-x">Chiudi</button></div></div>');
+  f.innerHTML = h.join('');
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  $('#ag-reg-x', f).addEventListener('click', chiudi);
+  Array.prototype.slice.call(f.querySelectorAll('button[data-ann]')).forEach(function (b) {
+    b.addEventListener('click', function () {
+      var r = agRegistro()[b.dataset.ann]; if (!r) return;
+      if (!confirm('Annullo questa istruzione?\n\n' + (r.descr || '') + '\n\nL’appuntamento torna com’era.')) return;
+      if (agAnnulla(b.dataset.ann)) { toast('Istruzione annullata'); chiudi(); agRegistroApri(); }
+    });
+  });
+}
+
 function repDopoSync() {
   if (REP_CORSO || REP_F) return;                      /* niente letture sovrapposte o mentre chiedo */
   if (!SY || !SY.meta || SY.meta.tipo !== 'drive') return;
@@ -3740,13 +4030,14 @@ function repDopoSync() {
     if (r.n) toast('Registrati ' + num(r.n) + ' report dettati', 3500);
     if (r.nuoviSospesi && !document.hidden) repCoda();
     if (r.n || r.nuoviSospesi) { repBadge(); if (vista === 'altro') ridisegnaQuandoPuoi(disegnaAltro); }
+    agDopoSync();
     return r;
-  }, function () { REP_CORSO = false; });
+  }, function () { REP_CORSO = false; agDopoSync(); });
 }
 function repAggancia() {
   var i = $('#rep-att');
   if (i) i.remove();   /* l'interruttore dei 10 secondi non c'e' piu': la cartella si legge col ciclo di sincronizzazione */
-  (function () { var d = $('#rep-dopp'); if (d) d.addEventListener('click', repDoppioniApri); })();
+  (function () { var d = $('#rep-dopp'); if (d) d.addEventListener('click', repDoppioniApri); var g = $('#ag-reg'); if (g) g.addEventListener('click', agRegistroApri); })();
   var b = $('#rep-ora');
   if (b) b.addEventListener('click', function () {
     var e = $('#rep-esito'); if (e) { e.style.display = ''; e.textContent = 'Cerco i report dettati\u2026'; }
@@ -4128,7 +4419,8 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Controllo della cartella</span><span class="sp"></span><span style="color:var(--tenue)">' + (SY && SY.meta && SY.meta.tipo === 'drive' ? 'a ogni sincronizzazione' : 'serve la sincronizzazione su Drive') + '</span></div>');
   h.push('<div class="riga-o"><span>Report in attesa</span><span class="sp"></span><span id="rep-sosp"></span></div>');
   h.push('<div class="riga-o"><span>Gi\u00e0 archiviati</span><span class="sp"></span>' + num((REPD.fattiRep || []).length) + '</div>');
-  h.push('<div class="az"><button class="btn" id="rep-ora">Cerca adesso</button><button class="btn" id="rep-dopp">Report doppi</button></div>');
+  h.push('<div class="riga-o"><span>Istruzioni dell\u2019agenda in attesa</span><span class="sp"></span><span>' + num((AG.sospesi || []).length) + '</span></div>');
+  h.push('<div class="az"><button class="btn" id="rep-ora">Cerca adesso</button><button class="btn" id="rep-dopp">Report doppi</button><button class="btn" id="ag-reg">Registro agenda</button></div>');
   h.push('<div class="riga-o" id="rep-esito" style="display:none;color:var(--tenue);font-size:calc(12px * var(--scala))"></div>');
   h.push('</div>');
   (function () {
@@ -4235,7 +4527,7 @@ function disegnaAltro() {
   $('#dt-file').addEventListener('change', function () { if (this.files && this.files[0]) importaCopia(this.files[0]); this.value = ''; });
   $('#agg-chk').addEventListener('click', function () { toast('Controllo in corso…'); controllaAggiornamenti(true); });
   sezionaOpzioni();
-  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
+  $('#dt-azzera').addEventListener('click', function () { if (!confirm('Cancellare tutti i dati su questo telefono? Alla prossima sincronizzazione vengono riscaricati dal cloud.')) return; DB = { contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, agenda: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }; IDB.scrivi('db', JSON.stringify(DB)); if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(500); }); disegnaAltro(); toast('Dati cancellati'); });
 }
 function tema() { return localStorage.getItem('cm.tema') || 'auto'; }
 function setTema(t) { localStorage.setItem('cm.tema', t); applicaTema(); }
@@ -4305,7 +4597,7 @@ function applicaRemoti(mod, del) {
   var n = 0;
   cacheTx = {}; cacheNum = {}; cacheAtt = null;
   var primaG = JSON.stringify(gruppiL());
-  ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'impostazioni', 'regole', 'consumi', 'config'].forEach(function (c) {
+  ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'agenda', 'appunti', 'impostazioni', 'regole', 'consumi', 'config'].forEach(function (c) {
     if (!DB[c]) DB[c] = {};
     (mod[c] || []).forEach(function (r) { var cp = {}; for (var k in r) if (k !== '_m') cp[k] = r[k]; DB[c][r.id] = cp; n++; if (c === 'contatti') { if (DB.nuoviContatti[r.id]) delete DB.nuoviContatti[r.id]; var md = DB.modificheContatti[r.id]; if (md && (r._m || 0) >= (md._m || 0)) delete DB.modificheContatti[r.id]; } });
     (del[c] || []).forEach(function (t) { if (DB[c][t.id]) { delete DB[c][t.id]; n++; } });
@@ -4318,7 +4610,7 @@ function avviaSync() {
   SY = SyncMotore({
     nome: 'gc', dbNome: 'contatti_mobile_sync', clientId: GC_CLIENT_ID,
     driveFile: true,   /* serve per leggere la cartella normale dei report dettati, non solo lo spazio dell'app */
-    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'impostazioni', 'regole', 'consumi', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
+    collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'agenda', 'appunti', 'impostazioni', 'regole', 'consumi', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
     dopo: function (info) {
@@ -4428,7 +4720,7 @@ function importaCopia(file) {
     if (!d) { toast('Non è una copia di CONTATTI MOBILE', 3500); return; }
     var n = Object.keys(d.contatti || {}).length;
     if (!confirm('La copia contiene ' + num(n) + ' contatti, del ' + (j.generato ? new Date(j.generato).toLocaleString('it-IT') : 'data sconosciuta') + '.\n\nSostituisce i dati che hai adesso su questo dispositivo. Procedo?')) return;
-    DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }, d);
+    DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, agenda: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }, d);
     cacheTx = {}; cacheNum = {}; cacheAtt = null;
     salva(true);
     if (SY) SY.azzeraMemoria().then(function () { SY.pianifica(800); });
@@ -6234,7 +6526,7 @@ window.addEventListener('resize', function () { fabPosApplica($('#fab')); fabPos
 /* ---------- avvio ---------- */
 applicaTema(); applicaFs(); misuraTestata(); $('#versione').textContent = 'v' + APP_VER;
 IDB.leggi('db').then(function (t) {
-  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }, j); } catch (e) {} }
+  if (t) { try { var j = JSON.parse(t); if (j && j.contatti) DB = Object.assign({ contatti: {}, situazioni: {}, eventi: {}, pratiche: {}, appuntamenti: {}, agenda: {}, nuoviContatti: {}, modificheContatti: {}, config: {}, appunti: {}, impostazioni: {}, regole: {}, consumi: {} }, j); } catch (e) {} }
   var v = 'cerca'; try { v = localStorage.getItem('cm.vista') || 'cerca'; } catch (e) {}
   if (v === 'vicino' || v === 'mappa') v = 'cerca';
   /* i tasti dei gruppi nascono prima della lettura dei dati: ora che il settaggio c'e', li ridisegno con nome e colore giusti */
@@ -6263,7 +6555,10 @@ window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { retur
   voceNome: voceNome, voceNomeSegna: voceNomeSegna, voceVel: voceVel, voceVelSegna: voceVelSegna, voceTono: voceTono, voceTonoSegna: voceTonoSegna,
   guidaVoce: guidaVoce, guidaVoceSegna: guidaVoceSegna, voceNeurale: voceNeurale, modelloTesti: modelloTesti, modelloTestiSegna: modelloTestiSegna,
   regoleLette: regoleLette, regoleAggiungi: regoleAggiungi, regoleTogli: regoleTogli, usoLetto: usoLetto, usoDispositivi: usoDispositivi, usoMese: usoMese,
-  get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repDoppioni: repDoppioni, repDoppioniApri: repDoppioniApri, repEsistente: repEsistente, repRegistra: repRegistra, modificaEvento: modificaEvento, salva: salva, repRaccogli: repRaccogli, repCoda: repCoda, repDopoSync: repDopoSync, repSalva: repSalva, contatti: listaTutti };
+  get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repDoppioni: repDoppioni, repDoppioniApri: repDoppioniApri, repEsistente: repEsistente, repRegistra: repRegistra, modificaEvento: modificaEvento, salva: salva, repRaccogli: repRaccogli, repCoda: repCoda, repDopoSync: repDopoSync, repSalva: repSalva,
+  get AG() { return AG; }, agRaccogli: agRaccogli, agDopoSync: agDopoSync, agRegistro: agRegistro, agCoda: agCoda,
+  agAnnulla: agAnnulla, agSalva: agSalva, agValuta: agValuta, agParse: agParse, agRegistroApri: agRegistroApri,
+  attArchivio: attArchivio, attSalva: attSalva, contatti: listaTutti };
 })();
 </script>
 </body>
