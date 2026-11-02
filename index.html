@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.74.0';
+var APP_VER = '1.75.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3430,6 +3430,258 @@ function audioAlPonte(blob, idScheda) {
     };
   });
 }
+
+/* ============================================================
+   REPORT DETTATI DALLA CARTELLA SU GOOGLE DRIVE
+   Gemello della funzione di GESTIONE CONTATTI (4.43.0). I report dettati si lasciano nella
+   cartella «GESTIONE CONTATTI – Report da archiviare» del Drive; l'app la guarda ogni 10
+   secondi, lega da sola i report il cui nome corrisponde esattamente a una ragione sociale
+   e chiede a chi legare gli altri.
+   L'identificativo del report si calcola dal file e dalla posizione dentro il file: se lo
+   registrano sia il Mac sia il telefono, la sincronizzazione vede un solo record e non si
+   sdoppia. La normalizzazione dei nomi e' la stessa delle due app (via i soli caratteri
+   alfanumerici), cosi' il risultato non cambia da un dispositivo all'altro.
+   ============================================================ */
+var REPD_CART = 'GESTIONE CONTATTI – Report da archiviare';
+var REPD = { att: false, cart: '', fatti: [], fattiRep: [], sospesi: [] };
+try { var rp0 = JSON.parse(localStorage.getItem('cm.repdett') || 'null'); if (rp0) for (var rk in rp0) REPD[rk] = rp0[rk]; } catch (e) {}
+function repSalva() { try { localStorage.setItem('cm.repdett', JSON.stringify(REPD)); } catch (e) {} }
+/* stessa normalizzazione di GESTIONE CONTATTI: solo lettere e cifre */
+function repNorm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, ''); }
+
+function repApi(url, opz, inter) {
+  if (!SY || !SY.driveApi) return Promise.reject(new Error('Sincronizzazione non pronta: collega Google Drive dalle impostazioni'));
+  return SY.driveApi(url, opz, inter);
+}
+function repJson(url, opz, inter) { return repApi(url, opz, inter).then(function (r) { return r.json(); }); }
+function repCartella(inter) {
+  var id = REPD.cart;
+  var vivo = id ? repJson('https://www.googleapis.com/drive/v3/files/' + id + '?fields=id,trashed', null, inter).then(function (j) { return (j && j.id && !j.trashed) ? j.id : null; }).catch(function () { return null; }) : Promise.resolve(null);
+  return vivo.then(function (ok) {
+    if (ok) return ok;
+    var q = "name='" + REPD_CART.replace(/'/g, "\\'") + "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    return repJson('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=5', null, inter)
+      .then(function (j) { return ((j.files || [])[0] || {}).id || null; });
+  }).then(function (idOk) { if (idOk && REPD.cart !== idOk) { REPD.cart = idOk; repSalva(); } return idOk; });
+}
+function repLeggiTesto(f, inter) {
+  if (f.mimeType === 'application/vnd.google-apps.document')
+    return repApi('https://www.googleapis.com/drive/v3/files/' + f.id + '/export?mimeType=text/plain', null, inter).then(function (r) { return r.text(); });
+  return repApi('https://www.googleapis.com/drive/v3/files/' + f.id + '?alt=media', null, inter).then(function (r) { return r.text(); });
+}
+/* un file puo' contenere piu' report separati da una riga di soli trattini */
+function repParse(testo) {
+  return String(testo || '').split(/^\s*-{3,}\s*$/m).map(function (blocco) {
+    var v = {}, note = [], inNota = false;
+    blocco.split(/\r?\n/).forEach(function (r) {
+      var m = inNota ? null : r.match(/^\s*([A-Za-z\u00e0\u00e8\u00e9\u00ec\u00f2\u00f9' ]{3,22})\s*:\s*(.*)$/);
+      var ch = m ? repNorm(m[1]) : '';
+      if (m && ch === 'nota') { inNota = true; if (m[2].trim()) note.push(m[2].trim()); return; }
+      if (m && ['cliente', 'contatto', 'data', 'ora', 'canale', 'esito', 'titolo', 'referente', 'richiamo', 'prossimopasso', 'passo', 'direzione'].indexOf(ch) >= 0) { v[ch === 'contatto' ? 'cliente' : (ch === 'prossimopasso' ? 'passo' : ch)] = m[2].trim(); return; }
+      if (inNota) note.push(r);
+      else if (r.trim()) note.push(r.trim());
+    });
+    v.nota = note.join('\n').trim();
+    return v;
+  }).filter(function (v) { return v.cliente && (v.titolo || v.nota || v.esito); });
+}
+function repData(x) {
+  x = String(x || '').trim(); if (!x) return '';
+  var m = x.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  m = x.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? x : '';
+}
+/* quattro esiti, come sul Mac: esatto · parziale · ambiguo · nessuno */
+function repClassifica(nome) {
+  var q = repNorm(nome);
+  if (!q) return { stato: 'nessuno', contatto: null, candidati: [] };
+  var L = listaTutti();
+  var esatti = L.filter(function (c) { return repNorm(c.nome) === q; });
+  if (esatti.length === 1) return { stato: 'esatto', contatto: esatti[0], candidati: esatti };
+  if (esatti.length > 1) return { stato: 'ambiguo', contatto: null, candidati: esatti.slice(0, 8) };
+  var dentro = L.filter(function (c) { return repNorm(c.nome).indexOf(q) >= 0; });
+  if (dentro.length === 1) return { stato: 'parziale', contatto: dentro[0], candidati: dentro };
+  if (dentro.length > 1) return { stato: 'ambiguo', contatto: null, candidati: dentro.slice(0, 8) };
+  return { stato: 'nessuno', contatto: null, candidati: repSomiglianti(q, L) };
+}
+function repSomiglianti(q, L) {
+  var par = String(q).match(/.{1,}/g) ? [q] : [];
+  var pt = L.map(function (c) {
+    var nc = repNorm(c.nome), p = 0;
+    if (nc.indexOf(q) === 0 || q.indexOf(nc) === 0) p += 60;
+    if (q.length > 3 && nc.indexOf(q.slice(0, Math.max(4, Math.floor(q.length * 0.6)))) >= 0) p += 25;
+    return { c: c, p: p };
+  }).filter(function (x) { return x.p > 0; });
+  pt.sort(function (a, b) { return b.p - a.p || String(a.c.nome).localeCompare(String(b.c.nome)); });
+  return pt.slice(0, 8).map(function (x) { return x.c; });
+}
+/* identificativo calcolato dal file: uguale su ogni dispositivo */
+function repChiave(fid, i) { return fid + '#' + i; }
+function repIdEvento(ch) { var h = 5381, i; for (i = 0; i < ch.length; i++) h = ((h << 5) + h + ch.charCodeAt(i)) | 0; return 'v_r' + (h >>> 0).toString(36); }
+function repGiaFatto(ch) { return (REPD.fattiRep || []).indexOf(ch) >= 0; }
+function repGiaSospeso(ch) { return (REPD.sospesi || []).some(function (x) { return x.ch === ch; }); }
+function repSegnaFatto(ch) {
+  REPD.fattiRep = (REPD.fattiRep || []).concat([ch]).slice(-2000);
+  REPD.sospesi = (REPD.sospesi || []).filter(function (x) { return x.ch !== ch; });
+  repSalva();
+}
+function repRegistra(c, v, ch) {
+  var id = repIdEvento(ch);
+  var d = repData(v.data) || oggi();
+  var ev = { id: id, cid: c.id, d: d, o: (v.ora || '').slice(0, 5) || (d === oggi() ? ora() : ''), c: v.canale || 'Telefono', e: v.esito || '', t: v.titolo || 'Report dettato', n: v.nota || '', dett: 1, _m: Date.now() };
+  if (v.referente) ev.ref = v.referente;
+  if (v.passo) ev.p = v.passo;
+  var ric = repData(v.richiamo);
+  if (ric) ev.r = ric;
+  if (v.direzione) ev.dir = repNorm(v.direzione).indexOf('ricev') >= 0 ? 'in' : 'out';
+  DB.eventi[id] = ev;
+  var k = Object.assign({ id: c.id }, DB.situazioni[c.id] || {});
+  k.data = d; if (ev.c) k.canale = ev.c; if (ev.e) k.esito = ev.e;
+  if (ev.ref) k.referente = ev.ref;
+  if (ev.p) k.passo = ev.p;
+  if (ric) k.richiamo = ric;
+  k._m = Date.now(); DB.situazioni[c.id] = k;
+  return ev;
+}
+function repRaccogli(inter) {
+  return repCartella(inter).then(function (id) {
+    if (!id) return { n: 0, righe: ['Cartella dei report non trovata su Drive.'], sospesi: (REPD.sospesi || []).length };
+    var q = "'" + id + "' in parents and trashed=false";
+    return repJson('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,mimeType,modifiedTime)&pageSize=100&orderBy=createdTime', null, inter).then(function (j) {
+      var files = (j.files || []).filter(function (f) { return (REPD.fatti || []).indexOf(f.id) < 0 && String(f.mimeType || '').indexOf('folder') < 0 && !/^leggimi/i.test(f.name); });
+      if (!files.length) return { n: 0, righe: [], sospesi: (REPD.sospesi || []).length, nuoviSospesi: 0 };
+      var righe = [], fatti = 0, nuovi = 0;
+      return files.reduce(function (cat, f) {
+        return cat.then(function () {
+          return repLeggiTesto(f, inter).then(function (tx) {
+            var voci = repParse(tx), tuttiOk = true, visti = 0;
+            voci.forEach(function (v, i) {
+              var ch = repChiave(f.id, i);
+              if (repGiaFatto(ch)) { visti++; return; }
+              if (repGiaSospeso(ch)) { tuttiOk = false; visti++; return; }
+              visti++;
+              var r = repClassifica(v.cliente);
+              if (r.stato === 'esatto') {
+                var ev = repRegistra(r.contatto, v, ch);
+                repSegnaFatto(ch); fatti++;
+                righe.push('\u2713 ' + r.contatto.nome + ' \u00b7 ' + dataIt(ev.d) + (ev.o ? ' ' + ev.o : ''));
+                return;
+              }
+              tuttiOk = false; nuovi++;
+              REPD.sospesi.push({ ch: ch, file: f.name, cliente: v.cliente || '(senza nome)', data: repData(v.data) || oggi(), titolo: v.titolo || 'Report dettato', stato: r.stato, cand: (r.candidati || []).map(function (c) { return c.id; }), v: v });
+              righe.push('\u2022 \u00ab' + (v.cliente || '?') + '\u00bb da assegnare');
+            });
+            if (tuttiOk && visti) REPD.fatti = (REPD.fatti || []).concat([f.id]).slice(-300);
+            repSalva();
+          }).catch(function (e) { righe.push('\u26a0 Non riesco a leggere ' + f.name + ': ' + (e.message || e)); });
+        });
+      }, Promise.resolve()).then(function () {
+        if (fatti) { cacheTx = {}; cacheNum = {}; cacheAtt = null; salva(true); }
+        return { n: fatti, righe: righe, sospesi: (REPD.sospesi || []).length, nuoviSospesi: nuovi };
+      });
+    });
+  }).catch(function (e) { return { n: 0, righe: ['Errore: ' + (e.message || e)], sospesi: (REPD.sospesi || []).length, nuoviSospesi: 0 }; });
+}
+
+/* ---- foglio di assegnazione ---- */
+var REP_F = null;
+function repCoda() {
+  if (REP_F) return;
+  var sp = (REPD.sospesi || [])[0];
+  if (!sp) return;
+  var f = el('div', 'foglio att-f me-f'); REP_F = { f: f, sp: sp };
+  function chiudi() { f.remove(); document.body.classList.remove('me-aperto'); REP_F = null; }
+  var motivo = sp.stato === 'parziale' ? 'Il nome somiglia a un solo contatto: confermi?'
+            : sp.stato === 'ambiguo' ? 'Il nome corrisponde a pi\u00f9 contatti: scegli quello giusto.'
+            : 'Questo nome non \u00e8 in rubrica: dimmi a chi legare il report.';
+  f.innerHTML = '<div class="fg"><h4>Report da assegnare</h4>' +
+    '<div class="riga-o"><b style="font-size:calc(17px * var(--scala))">\u00ab' + esc(sp.cliente) + '\u00bb</b></div>' +
+    '<div class="riga-o" style="color:var(--tenue);font-size:calc(12.5px * var(--scala))"><span>' + esc(motivo) + '<br>' + esc(sp.titolo) + ' \u00b7 ' + dataIt(sp.data) + ' \u00b7 dal file ' + esc(sp.file) +
+      ((REPD.sospesi || []).length > 1 ? ' \u00b7 altri ' + num(REPD.sospesi.length - 1) + ' in attesa' : '') + '</span></div>' +
+    '<div id="rep-lista"></div>' +
+    '<div class="riga-o"><input id="rep-cerca" type="search" class="chip" style="flex:1" placeholder="cerca un altro contatto\u2026"></div>' +
+    '<div class="az"><button class="btn" id="rep-nuovo">Contatto nuovo</button><button class="btn" id="rep-dopo">Pi\u00f9 tardi</button><button class="btn peri" id="rep-ign">Ignora</button></div></div>';
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  function lista(filtro) {
+    var cont = $('#rep-lista', f), L = listaTutti(), el2;
+    if (String(filtro || '').trim()) {
+      var q = repNorm(filtro);
+      el2 = L.filter(function (c) { return repNorm(c.nome).indexOf(q) >= 0; }).slice(0, 10);
+    } else {
+      el2 = (sp.cand || []).map(function (id) { return DB.contatti[id]; }).filter(Boolean);
+    }
+    if (!el2.length) { cont.innerHTML = '<div class="riga-o"><span style="color:var(--tenue)">Nessun contatto: cerca un\u2019altra parola, oppure crea il contatto nuovo.</span></div>'; return; }
+    cont.innerHTML = el2.map(function (c) {
+      return '<div class="riga-o"><button class="btn" data-cid="' + esc(c.id) + '" style="flex:1;text-align:left">' + esc(c.nome) + (c.prov ? ' \u00b7 ' + esc(c.prov) : '') + '</button></div>';
+    }).join('');
+    $$('#rep-lista button[data-cid]', f).forEach(function (b) {
+      b.addEventListener('click', function () { assegna(DB.contatti[b.dataset.cid]); });
+    });
+  }
+  function assegna(c) {
+    if (!c) return;
+    var ev = repRegistra(c, sp.v, sp.ch);
+    repSegnaFatto(sp.ch);
+    cacheTx = {}; cacheNum = {}; cacheAtt = null; salva(true);
+    toast('Report su ' + c.nome + ' \u00b7 ' + dataIt(ev.d), 3000);
+    chiudi(); repBadge(); setTimeout(repCoda, 300);
+  }
+  lista('');
+  $('#rep-cerca', f).addEventListener('input', function () { var v = this.value; clearTimeout(f._t); f._t = setTimeout(function () { lista(v); }, 150); });
+  $('#rep-dopo', f).addEventListener('click', function () {
+    REPD.sospesi = (REPD.sospesi || []).filter(function (x) { return x.ch !== sp.ch; }).concat([sp]); repSalva();
+    chiudi(); repBadge();
+  });
+  $('#rep-ign', f).addEventListener('click', function () {
+    if (!confirm('Ignoro questo report? Non verr\u00e0 registrato.')) return;
+    repSegnaFatto(sp.ch); chiudi(); repBadge(); setTimeout(repCoda, 300);
+  });
+  $('#rep-nuovo', f).addEventListener('click', function () {
+    var nome = String(sp.cliente || '').trim();
+    if (!nome || !confirm('Creo il contatto \u00ab' + nome + '\u00bb e ci lego il report?')) return;
+    var id = uid('n_');
+    var c = { id: id, nome: nome, cat: 'Cliente finale', prov: '', sede: '', tel: '', email: '', creato: oggi(), _m: Date.now() };
+    DB.contatti[id] = c; DB.nuoviContatti[id] = { id: id, _m: Date.now() };
+    assegna(c);
+  });
+}
+function repBadge() {
+  var e = $('#rep-sosp'); if (!e) return;
+  var k = (REPD.sospesi || []).length;
+  e.innerHTML = k ? '<button class="btn pri" id="rep-coda">' + num(k) + ' da assegnare</button>' : '<span style="color:var(--tenue)">nessuno in attesa</span>';
+  var b = $('#rep-coda'); if (b) b.addEventListener('click', repCoda);
+}
+/* ---- controllo ogni 10 secondi ---- */
+var REP_T = null, REP_CORSO = false;
+function repSentinella(acceso) {
+  clearInterval(REP_T); REP_T = null;
+  if (!acceso) return;
+  REP_T = setInterval(function () {
+    if (!REPD.att || REP_CORSO || REP_F || !SY || !SY.meta || SY.meta.tipo !== 'drive') return;
+    REP_CORSO = true;
+    repRaccogli(false).then(function (r) {
+      REP_CORSO = false;
+      if (r.n) toast('Registrati ' + num(r.n) + ' report dettati', 3500);
+      if (r.nuoviSospesi && !document.hidden) repCoda();
+      if (r.n || r.nuoviSospesi) { repBadge(); if (vista === 'altro') ridisegnaQuandoPuoi(disegnaAltro); }
+    }, function () { REP_CORSO = false; });
+  }, 10000);
+}
+function repAggancia() {
+  var i = $('#rep-att');
+  if (i) i.addEventListener('change', function () { REPD.att = this.checked; repSalva(); repSentinella(REPD.att); if (REPD.att) repRaccogli(true).then(function (r) { repBadge(); if ((REPD.sospesi || []).length) repCoda(); }); ridisegnaQuandoPuoi(disegnaAltro); });
+  var b = $('#rep-ora');
+  if (b) b.addEventListener('click', function () {
+    var e = $('#rep-esito'); if (e) { e.style.display = ''; e.textContent = 'Cerco i report dettati\u2026'; }
+    repRaccogli(true).then(function (r) {
+      if (e) e.innerHTML = (r.n ? '<b>' + num(r.n) + ' registrati.</b> ' : '<b>Nessuno registrato da solo.</b> ') + r.righe.map(esc).join('<br>');
+      repBadge();
+      if ((REPD.sospesi || []).length) repCoda();
+    });
+  });
+  repBadge();
+}
+
 /* ============================================================
    IMPOSTAZIONI PERSONALI NELL'ARCHIVIO — voce, regole, quaderno e consumi non stanno piu'
    nella memoria del singolo telefono: viaggiano con la sincronizzazione, cosi' ogni
@@ -3794,6 +4046,14 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><input id="pn-app-t" type="text" class="chip" style="flex:1" placeholder="titolo" maxlength="120"></div>');
   h.push('<div class="riga-o"><textarea id="pn-app-x" rows="3" style="flex:1;font:inherit;font-size:calc(14.5px * var(--scala));padding:8px;border-radius:10px;border:1px solid var(--bordo);background:var(--campo);color:var(--testo)" placeholder="che cosa devo ricordare" maxlength="1200"></textarea></div>');
   h.push('<div class="az"><button class="btn pri" id="pn-app-a">Aggiungi appunto</button></div></div>');
+  h.push('<div class="opz" id="op-repd"><h2>Report dettati da Drive</h2>');
+  h.push('<div class="riga-o"><span style="color:var(--tenue);font-size:calc(12.5px * var(--scala))">I report che lasci nella cartella \u00abGESTIONE CONTATTI \u2013 Report da archiviare\u00bb del tuo Drive entrano da soli nella scheda del cliente. Se il nome corrisponde esattamente a una ragione sociale, il report si lega da solo; altrimenti l\u2019app ti chiede a chi legarlo.</span></div>');
+  h.push('<div class="riga-o"><span>Controlla la cartella ogni 10 secondi</span><span class="sp"></span><input type="checkbox" id="rep-att" style="width:26px;height:26px"' + (REPD.att ? ' checked' : '') + '></div>');
+  h.push('<div class="riga-o"><span>Report in attesa</span><span class="sp"></span><span id="rep-sosp"></span></div>');
+  h.push('<div class="riga-o"><span>Gi\u00e0 archiviati</span><span class="sp"></span>' + num((REPD.fattiRep || []).length) + '</div>');
+  h.push('<div class="az"><button class="btn" id="rep-ora">Cerca adesso</button></div>');
+  h.push('<div class="riga-o" id="rep-esito" style="display:none;color:var(--tenue);font-size:calc(12px * var(--scala))"></div>');
+  h.push('</div>');
   (function () {
     var u = usoLetto()[usoMese()] || { in: 0, out: 0, costo: 0, volte: 0 };
     var eur = u.costo * 0.87, tetto = 17 * 0.87;
@@ -3845,6 +4105,7 @@ function disegnaAltro() {
     t.addEventListener('change', salvaPonte);
     regoleAggancia();
     appuntiAggancia();
+    repAggancia();
     var md = $('#pn-mod');
     if (md) md.addEventListener('change', function () { modelloTestiSegna(md.value); toast('Da ora uso ' + modelloNome(md.value)); });
     var gv = $('#pn-guida');
@@ -3979,6 +4240,7 @@ function avviaSync() {
   if (!window.SyncMotore) return;
   SY = SyncMotore({
     nome: 'gc', dbNome: 'contatti_mobile_sync', clientId: GC_CLIENT_ID,
+    driveFile: true,   /* serve per leggere la cartella normale dei report dettati, non solo lo spazio dell'app */
     collezioni: ['contatti', 'situazioni', 'eventi', 'pratiche', 'appuntamenti', 'appunti', 'impostazioni', 'regole', 'consumi', 'nuoviContatti', 'modificheContatti'], singoli: ['config'], soloLettura: ['contatti', 'config'],
     locali: function () { return DB; }, applica: applicaRemoti,
     salvaLocale: function () { salva(true); },
@@ -5900,7 +6162,11 @@ IDB.leggi('db').then(function (t) {
   /* i tasti dei gruppi nascono prima della lettura dei dati: ora che il settaggio c'e', li ridisegno con nome e colore giusti */
   try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
   migraNessunaAzione();
-  travasaImpostazioni();   /* voce, regole e consumi che stavano solo qui entrano nell'archivio */
+  travasaImpostazioni();
+  if (REPD.att) setTimeout(function () {   /* i report dettati: recupero quelli in attesa e poi controllo ogni 10 s */
+    repRaccogli(false).then(function (r) { if (r.n) toast('Registrati ' + num(r.n) + ' report dettati', 3500); repBadge(); if ((REPD.sospesi || []).length) repCoda(); });
+    repSentinella(true);
+  }, 5000);   /* voce, regole e consumi che stavano solo qui entrano nell'archivio */
   barraOrdineApplica();
   schedeApplica();
   disegnaGruppi();
@@ -5918,7 +6184,8 @@ window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { retur
   imp: imp, impSegna: impSegna, applicaRemoti: applicaRemoti,
   voceNome: voceNome, voceNomeSegna: voceNomeSegna, voceVel: voceVel, voceVelSegna: voceVelSegna, voceTono: voceTono, voceTonoSegna: voceTonoSegna,
   guidaVoce: guidaVoce, guidaVoceSegna: guidaVoceSegna, voceNeurale: voceNeurale, modelloTesti: modelloTesti, modelloTestiSegna: modelloTestiSegna,
-  regoleLette: regoleLette, regoleAggiungi: regoleAggiungi, regoleTogli: regoleTogli, usoLetto: usoLetto, usoDispositivi: usoDispositivi, usoMese: usoMese };
+  regoleLette: regoleLette, regoleAggiungi: regoleAggiungi, regoleTogli: regoleTogli, usoLetto: usoLetto, usoDispositivi: usoDispositivi, usoMese: usoMese,
+  get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repRaccogli: repRaccogli, repCoda: repCoda, repSentinella: repSentinella, repSalva: repSalva, contatti: listaTutti };
 })();
 </script>
 </body>
