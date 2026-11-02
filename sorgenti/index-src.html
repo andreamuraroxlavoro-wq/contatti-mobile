@@ -632,7 +632,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.76.0';
+var APP_VER = '1.77.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3416,24 +3416,25 @@ function repBadge() {
   var b = $('#rep-coda'); if (b) b.addEventListener('click', repCoda);
 }
 /* ---- controllo ogni 10 secondi ---- */
-var REP_T = null, REP_CORSO = false;
-function repSentinella(acceso) {
-  clearInterval(REP_T); REP_T = null;
-  if (!acceso) return;
-  REP_T = setInterval(function () {
-    if (!REPD.att || REP_CORSO || REP_F || !SY || !SY.meta || SY.meta.tipo !== 'drive') return;
-    REP_CORSO = true;
-    repRaccogli(false).then(function (r) {
-      REP_CORSO = false;
-      if (r.n) toast('Registrati ' + num(r.n) + ' report dettati', 3500);
-      if (r.nuoviSospesi && !document.hidden) repCoda();
-      if (r.n || r.nuoviSospesi) { repBadge(); if (vista === 'altro') ridisegnaQuandoPuoi(disegnaAltro); }
-    }, function () { REP_CORSO = false; });
-  }, 10000);
+var REP_CORSO = false;
+/* La cartella dei report dettati si legge in coda a ogni giro di sincronizzazione (v1.77.0).
+   Niente timer suo, niente interruttore: se l'app sincronizza su Google Drive, i report
+   entrano al primo giro utile, come qualsiasi altra modifica. */
+function repDopoSync() {
+  if (REP_CORSO || REP_F) return;                      /* niente letture sovrapposte o mentre chiedo */
+  if (!SY || !SY.meta || SY.meta.tipo !== 'drive') return;
+  REP_CORSO = true;
+  return repRaccogli(false).then(function (r) {
+    REP_CORSO = false;
+    if (r.n) toast('Registrati ' + num(r.n) + ' report dettati', 3500);
+    if (r.nuoviSospesi && !document.hidden) repCoda();
+    if (r.n || r.nuoviSospesi) { repBadge(); if (vista === 'altro') ridisegnaQuandoPuoi(disegnaAltro); }
+    return r;
+  }, function () { REP_CORSO = false; });
 }
 function repAggancia() {
   var i = $('#rep-att');
-  if (i) i.addEventListener('change', function () { REPD.att = this.checked; repSalva(); repSentinella(REPD.att); if (REPD.att) repRaccogli(true).then(function (r) { repBadge(); if ((REPD.sospesi || []).length) repCoda(); }); ridisegnaQuandoPuoi(disegnaAltro); });
+  if (i) i.remove();   /* l'interruttore dei 10 secondi non c'e' piu': la cartella si legge col ciclo di sincronizzazione */
   (function () { var d = $('#rep-dopp'); if (d) d.addEventListener('click', repDoppioniApri); })();
   var b = $('#rep-ora');
   if (b) b.addEventListener('click', function () {
@@ -3813,7 +3814,7 @@ function disegnaAltro() {
   h.push('<div class="az"><button class="btn pri" id="pn-app-a">Aggiungi appunto</button></div></div>');
   h.push('<div class="opz" id="op-repd"><h2>Report dettati da Drive</h2>');
   h.push('<div class="riga-o"><span style="color:var(--tenue);font-size:calc(12.5px * var(--scala))">I report che lasci nella cartella \u00abGESTIONE CONTATTI \u2013 Report da archiviare\u00bb del tuo Drive entrano da soli nella scheda del cliente. Se il nome corrisponde esattamente a una ragione sociale, il report si lega da solo; altrimenti l\u2019app ti chiede a chi legarlo.</span></div>');
-  h.push('<div class="riga-o"><span>Controlla la cartella ogni 10 secondi</span><span class="sp"></span><input type="checkbox" id="rep-att" style="width:26px;height:26px"' + (REPD.att ? ' checked' : '') + '></div>');
+  h.push('<div class="riga-o"><span>Controllo della cartella</span><span class="sp"></span><span style="color:var(--tenue)">' + (SY && SY.meta && SY.meta.tipo === 'drive' ? 'a ogni sincronizzazione' : 'serve la sincronizzazione su Drive') + '</span></div>');
   h.push('<div class="riga-o"><span>Report in attesa</span><span class="sp"></span><span id="rep-sosp"></span></div>');
   h.push('<div class="riga-o"><span>Gi\u00e0 archiviati</span><span class="sp"></span>' + num((REPD.fattiRep || []).length) + '</div>');
   h.push('<div class="az"><button class="btn" id="rep-ora">Cerca adesso</button><button class="btn" id="rep-dopp">Report doppi</button></div>');
@@ -4014,6 +4015,7 @@ function avviaSync() {
         toast('Aggiornati ' + num(info.applicati) + ' record dal Mac');
         ridisegnaQuandoPuoi(function () { if (schedaId) apriScheda(schedaId); else mostraVista(vista, true); });
       } else if (vista === 'altro') { if (!aggiornaStatoSync()) ridisegnaQuandoPuoi(disegnaAltro); }
+      try { repDopoSync(); } catch (e) {}
     },
     stato: spia
   });
@@ -5928,10 +5930,10 @@ IDB.leggi('db').then(function (t) {
   try { normalizzaGR(JSON.parse(localStorage.getItem('cm.gruppi') || 'null')); } catch (e) { normalizzaGR(null); }
   migraNessunaAzione();
   travasaImpostazioni();
-  if (REPD.att) setTimeout(function () {   /* i report dettati: recupero quelli in attesa e poi controllo ogni 10 s */
-    repRaccogli(false).then(function (r) { if (r.n) toast('Registrati ' + num(r.n) + ' report dettati', 3500); repBadge(); if ((REPD.sospesi || []).length) repCoda(); });
-    repSentinella(true);
-  }, 5000);   /* voce, regole e consumi che stavano solo qui entrano nell'archivio */
+  setTimeout(function () {   /* la cartella la legge il ciclo di sincronizzazione: qui richiedo solo i report rimasti in attesa */
+    repBadge();
+    if ((REPD.sospesi || []).length) repCoda();
+  }, 5000);
   barraOrdineApplica();
   schedeApplica();
   disegnaGruppi();
@@ -5950,7 +5952,7 @@ window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { retur
   voceNome: voceNome, voceNomeSegna: voceNomeSegna, voceVel: voceVel, voceVelSegna: voceVelSegna, voceTono: voceTono, voceTonoSegna: voceTonoSegna,
   guidaVoce: guidaVoce, guidaVoceSegna: guidaVoceSegna, voceNeurale: voceNeurale, modelloTesti: modelloTesti, modelloTestiSegna: modelloTestiSegna,
   regoleLette: regoleLette, regoleAggiungi: regoleAggiungi, regoleTogli: regoleTogli, usoLetto: usoLetto, usoDispositivi: usoDispositivi, usoMese: usoMese,
-  get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repDoppioni: repDoppioni, repDoppioniApri: repDoppioniApri, repEsistente: repEsistente, repRegistra: repRegistra, modificaEvento: modificaEvento, salva: salva, repRaccogli: repRaccogli, repCoda: repCoda, repSentinella: repSentinella, repSalva: repSalva, contatti: listaTutti };
+  get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repDoppioni: repDoppioni, repDoppioniApri: repDoppioniApri, repEsistente: repEsistente, repRegistra: repRegistra, modificaEvento: modificaEvento, salva: salva, repRaccogli: repRaccogli, repCoda: repCoda, repDopoSync: repDopoSync, repSalva: repSalva, contatti: listaTutti };
 })();
 </script>
 </body>
