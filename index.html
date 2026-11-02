@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.78.0';
+var APP_VER = '1.79.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -2179,9 +2179,10 @@ function calApri(k, id, cid) {
   attForm({ id: id });                               /* ancora da fare: è un programma, si corregge */
 }
 /* l'attività diventa svolta e si apre il modulo del report, già compilato con quello che so */
+var ATT_DA_SEGNARE = '';   /* attivita' da segnare fatta SE il report viene salvato davvero (v1.79.0) */
 function calRegistra(a) {
   var canale = { visita: 'Visita', telefonata: 'Telefono', mail: 'Email' }[a.tipo] || '';
-  if (!a.fatto) { attSegnaFatta(a.id, true); if (vista === 'cal') disegnaCal(); }
+  ATT_DA_SEGNARE = a.fatto ? '' : a.id;
   apriReportCliente(a.cid, { d: a.d, o: a.o || '', c: canale, t: a.nota || '' });
 }
 function apriReportCliente(cid, pre) {
@@ -2343,15 +2344,16 @@ function attForm(o) {
 function bloccoProgramma(id) {
   var og = oggi(), l = attDi(id);
   var v = l.filter(function (a) { return !a.fatto && a.d < og; }).concat(l.filter(function (a) { return !a.fatto && a.d >= og; })).slice(0, 6);
-  var h = '<div class="sz sz-prog" style="--c:#6B4FA0"><h3>In programma<span class="pill">' + num(l.filter(function (a) { return !a.fatto; }).length) + '</span></h3><div class="c"><div class="cl-el">';
-  if (!v.length) h += '<div class="vuoto">Nessuna attività in calendario per questo cliente.</div>';
+  var h = '<div class="sz sz-prog" style="--c:#6B4FA0"><h3>Prossimi appuntamenti<span class="pill">' + num(l.filter(function (a) { return !a.fatto; }).length) + '</span></h3><div class="c"><div class="cl-el">';
+  if (!v.length) h += '<div class="vuoto">Nessun appuntamento in calendario per questo cliente.</div>';
   v.forEach(function (a) {
     h += '<div class="cl-r"><button class="cl-e t-' + a.tipo + (a.d < og ? ' tardi' : ' dafare') + '" data-att="' + esc(a.id) + '">' + attIco(a.tipo) +
       '<span class="eo">' + esc(dataIt(a.d)) + (a.o ? ' ' + esc(a.o) : a.oraLibera ? ' libero' : '') + '</span><span class="en">' + esc(a.nota || attTipo(a.tipo).nome) + '</span></button>' +
       '<span class="cl-n">' + esc([attTipo(a.tipo).nome, a.oraNota].filter(Boolean).join(' · ')) + '</span></div>';
   });
 
-  return h + '</div></div></div>';
+  h += '</div><div class="vuoto" style="margin-top:6px">Sono <b>programmazioni</b> messe a calendario, non report: quello che è successo si scrive dopo, con <b>Registra evento</b>. Gli appuntamenti dettati in chiamata arrivano qui, non in cronologia.</div>';
+  return h + '</div></div>';
 }
 function agganciaProgramma(id) {
   var p = $('#sc-piu'); if (p) p.addEventListener('click', function () { attForm({ cid: id }); });
@@ -2931,7 +2933,11 @@ function apriScheda(id) {
     if (ri) ri.addEventListener('input', function () { evRicTocco = true; segna(); });
     if (rx) rx.addEventListener('click', function () { if (ri) ri.value = ''; evRicTocco = true; segna(); });
   })();
-  $('#ev-salva').addEventListener('click', function () { registraEvento(id); });
+  $('#ev-salva').addEventListener('click', function () {
+    var da = ATT_DA_SEGNARE; ATT_DA_SEGNARE = '';
+    registraEvento(id);
+    if (da && attArchivio()[da]) attSegnaFatta(da, true);   /* l'attivita' si chiude solo adesso */
+  });
   dettaturaAggancia(id);
   evIA = '';
   sistemaAggancia('#dett-sist', function () { return $('#ev-n').value; }, function (t) { var e = $('#ev-n'); e.value = t; e.classList.remove('capito'); void e.offsetWidth; e.classList.add('capito'); evIA = new Date().toISOString(); var m = $('#ev-ia'); if (m) { m.innerHTML = SEGNO_IA + ' <span>testo sistemato con l\'assistente ' + esc(quandoIA(evIA)) + '</span>'; m.style.display = ''; } });
@@ -3841,8 +3847,8 @@ function agEsegui(v, idIst, c, app, ch) {
     frase: v.frase || '', ch: ch || '', descr: descr,
     prima: prima ? JSON.stringify(prima) : '', dopo: dopo ? JSON.stringify(dopo) : '', appId: (app && app.id) || (dopo && dopo.id) || '', _m: Date.now()
   };
-  var vid = 'v_' + idIst;
-  DB.eventi[vid] = { id: vid, cid: c.id, d: oggi(), o: ora(), c: '', t: 'Agenda: ' + descr, n: (v.frase ? 'Detto a voce: «' + v.frase + '»' : ''), a: 1, _m: Date.now() };
+  /* NIENTE voce in cronologia: un appuntamento e' una programmazione, non un report.
+     La traccia sta nel Registro dell'agenda (v1.79.0). */
   salva();
   return agRegistro()[idIst];
 }
@@ -6558,7 +6564,7 @@ window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { retur
   get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repDoppioni: repDoppioni, repDoppioniApri: repDoppioniApri, repEsistente: repEsistente, repRegistra: repRegistra, modificaEvento: modificaEvento, salva: salva, repRaccogli: repRaccogli, repCoda: repCoda, repDopoSync: repDopoSync, repSalva: repSalva,
   get AG() { return AG; }, agRaccogli: agRaccogli, agDopoSync: agDopoSync, agRegistro: agRegistro, agCoda: agCoda,
   agAnnulla: agAnnulla, agSalva: agSalva, agValuta: agValuta, agParse: agParse, agRegistroApri: agRegistroApri,
-  attArchivio: attArchivio, attSalva: attSalva, contatti: listaTutti };
+  attArchivio: attArchivio, attSalva: attSalva, bloccoProgramma: bloccoProgramma, apriScheda: apriScheda, contatti: listaTutti };
 })();
 </script>
 </body>
