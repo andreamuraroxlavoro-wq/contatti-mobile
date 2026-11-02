@@ -943,7 +943,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.75.0';
+var APP_VER = '1.76.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -3525,6 +3525,75 @@ function repSegnaFatto(ch) {
   REPD.sospesi = (REPD.sospesi || []).filter(function (x) { return x.ch !== ch; });
   repSalva();
 }
+/* Lo stesso report che torna non si sdoppia (v1.76.0).
+   Si riconosce dall'identificativo calcolato dal file oppure dalla terna
+   cliente + data + ora. L'ora vuota NON fa coppia: due telefonate dello stesso
+   giorno senza ora registrata sono due eventi diversi e restano due. */
+function repEsistente(cid, id, d, o) {
+  if (id && DB.eventi[id]) return DB.eventi[id];
+  o = (o || '').slice(0, 5); if (!o) return null;
+  var ks = Object.keys(DB.eventi), trovato = null;
+  for (var i = 0; i < ks.length; i++) {
+    var v = DB.eventi[ks[i]];
+    if (v && v.cid === cid && v.d === d && (v.o || '').slice(0, 5) === o) trovato = v;
+  }
+  return trovato;
+}
+var REP_TIENI = ['dir', 'mid', 'ia', 'h', 'a', 'all'];
+var REP_AGG = 0;   /* l'ultimo report e' stato aggiornato invece di aggiunto */
+/* Tutti i report doppi: stesso cliente, stessa data, stessa ora. Legge e non tocca niente. */
+function repDoppioni() {
+  var per = {}, out = [];
+  Object.keys(DB.eventi).forEach(function (k) {
+    var v = DB.eventi[k], o = (v && v.o || '').slice(0, 5);
+    if (!v || !v.cid || !o) return;
+    var ch = v.cid + '|' + v.d + '|' + o;
+    (per[ch] = per[ch] || []).push(v);
+  });
+  Object.keys(per).forEach(function (ch) {
+    if (per[ch].length < 2) return;
+    var p = ch.split('|'), c = listaTutti().filter(function (x) { return x.id === p[0]; })[0];
+    out.push({ cid: p[0], nome: (c && c.nome) || p[0], d: p[1], o: p[2], voci: per[ch] });
+  });
+  out.sort(function (a, b) { return String(b.d).localeCompare(String(a.d)); });
+  return out;
+}
+function repDoppioniApri() {
+  var gr = repDoppioni();
+  var f = el('div', 'foglio att-f me-f');
+  function chiudi() { f.remove(); document.body.classList.remove('me-aperto'); }
+  var h = ['<div class="fg"><h4>Report doppi</h4>'];
+  h.push('<div class="nota" style="margin-bottom:10px">' + (gr.length
+    ? num(gr.length) + (gr.length === 1 ? ' gruppo trovato' : ' gruppi trovati') + ': stesso Cliente, stessa data, stessa ora. Niente viene eliminato senza la tua conferma.'
+    : 'Nessun report doppio in cronologia.') + ' Due report dello stesso giorno <b>senza ora registrata</b> non sono considerati doppi: possono essere due telefonate diverse.</div>');
+  gr.forEach(function (g, i) {
+    h.push('<div class="opz" style="margin-bottom:10px"><h2>' + esc(g.nome) + '</h2>');
+    h.push('<div class="riga-o" style="color:var(--tenue);font-size:calc(12px * var(--scala))"><span>' + dataIt(g.d) + ' ' + esc(g.o) + ' · ' + num(g.voci.length) + ' report</span></div>');
+    g.voci.forEach(function (v, j) {
+      var n = String(v.n || '').replace(/\s+/g, ' ').trim();
+      h.push('<div class="riga-o" style="display:block;border-top:1px solid var(--bordo);padding-top:8px">'
+        + '<b>' + esc(v.t || v.e || 'Report') + '</b>'
+        + '<div style="color:var(--tenue);font-size:calc(11.5px * var(--scala))">' + esc(v.id) + (v.c ? ' · ' + esc(v.c) : '') + (v.p ? ' · con il prossimo passo' : '') + (v.dett ? ' · dettato' : '') + ' · ' + num(n.length) + ' caratteri</div>'
+        + '<div style="font-size:calc(12.5px * var(--scala));margin:4px 0 6px">' + esc(n.slice(0, 220)) + (n.length > 220 ? '…' : '') + '</div>'
+        + '<div class="az"><button class="btn" data-tieni="' + i + ':' + j + '">Tengo questo</button></div></div>');
+    });
+    h.push('</div>');
+  });
+  h.push('<div class="az"><button class="btn" id="dp-ann">Chiudi</button></div></div>');
+  f.innerHTML = h.join('');
+  document.body.appendChild(f); document.body.classList.add('me-aperto');
+  $('#dp-ann', f).addEventListener('click', chiudi);
+  Array.prototype.slice.call(f.querySelectorAll('button[data-tieni]')).forEach(function (b) {
+    b.addEventListener('click', function () {
+      var p = b.dataset.tieni.split(':'), g = gr[+p[0]], tieni = g.voci[+p[1]];
+      var via = g.voci.filter(function (x) { return x !== tieni; });
+      if (!confirm('Su «' + g.nome + '» del ' + dataIt(g.d) + ' ' + g.o + ' tengo «' + (tieni.t || 'Report')
+        + '» ed elimino ' + via.length + ' report.\n\nL’operazione non si può annullare: la voce sparisce anche da GESTIONE CONTATTI sul Mac alla prossima sincronizzazione. Confermi?')) return;
+      via.forEach(function (x) { delete DB.eventi[x.id]; });
+      salva(); chiudi(); toast('Eliminati ' + via.length + ' report doppi'); repDoppioniApri();
+    });
+  });
+}
 function repRegistra(c, v, ch) {
   var id = repIdEvento(ch);
   var d = repData(v.data) || oggi();
@@ -3534,7 +3603,13 @@ function repRegistra(c, v, ch) {
   var ric = repData(v.richiamo);
   if (ric) ev.r = ric;
   if (v.direzione) ev.dir = repNorm(v.direzione).indexOf('ricev') >= 0 ? 'in' : 'out';
-  DB.eventi[id] = ev;
+  var vecchio = repEsistente(c.id, id, ev.d, (v.ora || '').slice(0, 5));
+  REP_AGG = 0;
+  if (vecchio) {
+    REP_TIENI.forEach(function (x) { if (ev[x] == null && vecchio[x] != null) ev[x] = vecchio[x]; });
+    ev.id = vecchio.id; REP_AGG = 1;
+  }
+  DB.eventi[ev.id] = ev;
   var k = Object.assign({ id: c.id }, DB.situazioni[c.id] || {});
   k.data = d; if (ev.c) k.canale = ev.c; if (ev.e) k.esito = ev.e;
   if (ev.ref) k.referente = ev.ref;
@@ -3564,7 +3639,7 @@ function repRaccogli(inter) {
               if (r.stato === 'esatto') {
                 var ev = repRegistra(r.contatto, v, ch);
                 repSegnaFatto(ch); fatti++;
-                righe.push('\u2713 ' + r.contatto.nome + ' \u00b7 ' + dataIt(ev.d) + (ev.o ? ' ' + ev.o : ''));
+                righe.push((REP_AGG ? '\u21ba ' : '\u2713 ') + r.contatto.nome + ' \u00b7 ' + dataIt(ev.d) + (ev.o ? ' ' + ev.o : '') + (REP_AGG ? ' (aggiornato, non aggiunto)' : ''));
                 return;
               }
               tuttiOk = false; nuovi++;
@@ -3670,6 +3745,7 @@ function repSentinella(acceso) {
 function repAggancia() {
   var i = $('#rep-att');
   if (i) i.addEventListener('change', function () { REPD.att = this.checked; repSalva(); repSentinella(REPD.att); if (REPD.att) repRaccogli(true).then(function (r) { repBadge(); if ((REPD.sospesi || []).length) repCoda(); }); ridisegnaQuandoPuoi(disegnaAltro); });
+  (function () { var d = $('#rep-dopp'); if (d) d.addEventListener('click', repDoppioniApri); })();
   var b = $('#rep-ora');
   if (b) b.addEventListener('click', function () {
     var e = $('#rep-esito'); if (e) { e.style.display = ''; e.textContent = 'Cerco i report dettati\u2026'; }
@@ -4051,7 +4127,7 @@ function disegnaAltro() {
   h.push('<div class="riga-o"><span>Controlla la cartella ogni 10 secondi</span><span class="sp"></span><input type="checkbox" id="rep-att" style="width:26px;height:26px"' + (REPD.att ? ' checked' : '') + '></div>');
   h.push('<div class="riga-o"><span>Report in attesa</span><span class="sp"></span><span id="rep-sosp"></span></div>');
   h.push('<div class="riga-o"><span>Gi\u00e0 archiviati</span><span class="sp"></span>' + num((REPD.fattiRep || []).length) + '</div>');
-  h.push('<div class="az"><button class="btn" id="rep-ora">Cerca adesso</button></div>');
+  h.push('<div class="az"><button class="btn" id="rep-ora">Cerca adesso</button><button class="btn" id="rep-dopp">Report doppi</button></div>');
   h.push('<div class="riga-o" id="rep-esito" style="display:none;color:var(--tenue);font-size:calc(12px * var(--scala))"></div>');
   h.push('</div>');
   (function () {
@@ -6185,7 +6261,7 @@ window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { retur
   voceNome: voceNome, voceNomeSegna: voceNomeSegna, voceVel: voceVel, voceVelSegna: voceVelSegna, voceTono: voceTono, voceTonoSegna: voceTonoSegna,
   guidaVoce: guidaVoce, guidaVoceSegna: guidaVoceSegna, voceNeurale: voceNeurale, modelloTesti: modelloTesti, modelloTestiSegna: modelloTestiSegna,
   regoleLette: regoleLette, regoleAggiungi: regoleAggiungi, regoleTogli: regoleTogli, usoLetto: usoLetto, usoDispositivi: usoDispositivi, usoMese: usoMese,
-  get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repRaccogli: repRaccogli, repCoda: repCoda, repSentinella: repSentinella, repSalva: repSalva, contatti: listaTutti };
+  get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repDoppioni: repDoppioni, repDoppioniApri: repDoppioniApri, repEsistente: repEsistente, repRegistra: repRegistra, modificaEvento: modificaEvento, salva: salva, repRaccogli: repRaccogli, repCoda: repCoda, repSentinella: repSentinella, repSalva: repSalva, contatti: listaTutti };
 })();
 </script>
 </body>
