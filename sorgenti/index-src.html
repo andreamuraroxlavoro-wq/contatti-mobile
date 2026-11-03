@@ -632,7 +632,7 @@ body.me-aperto{overflow:hidden}
 <script>
 (function () {
 'use strict';
-var APP_VER = '1.79.0';
+var APP_VER = '1.80.0';
 var GC_CLIENT_ID = '56679645500-a1g1hd09voiigafi280jakjnnd31taea.apps.googleusercontent.com';
 function $(s, r) { return (r || document).querySelector(s); }
 function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -1591,7 +1591,7 @@ function attSalva(a) {
   if (!a.id) a.id = uid('a_');
   a._m = Date.now(); attArchivio()[a.id] = a; attAllinea(a.cid); salva();
 }
-function attElimina(id) { var a = attArchivio()[id]; if (!a) return; delete attArchivio()[id]; attAllinea(a.cid); salva(); }
+function attElimina(id) { var a = attArchivio()[id]; if (!a) return; delete attArchivio()[id]; try { agChiudiIstruzione(id); } catch (e) {} attAllinea(a.cid); salva(); }
 function attSegnaFatta(id, v) { var a = attArchivio()[id]; if (!a) return; if (v) a.fatto = 1; else delete a.fatto; a._m = Date.now(); attAllinea(a.cid); salva(); }
 
 /* ---------- date ---------- */
@@ -1864,8 +1864,7 @@ function disegnaCal() {
 function calApri(k, id, cid) {
   if (k === 'cron') { apriScheda(cid); return; }    /* già documentata: apro la scheda del cliente */
   var a = attArchivio()[id]; if (!a) return;
-  if (a.fatto) { calRegistra(a); return; }           /* svolta: vado a scrivere il report */
-  attForm({ id: id });                               /* ancora da fare: è un programma, si corregge */
+  attForm({ id: id });   /* sempre la maschera: la spunta «svolta» si mette e si toglie, e il report ha il suo tasto (v1.80.0) */
 }
 /* l'attività diventa svolta e si apre il modulo del report, già compilato con quello che so */
 var ATT_DA_SEGNARE = '';   /* attivita' da segnare fatta SE il report viene salvato davvero (v1.79.0) */
@@ -1985,7 +1984,8 @@ function attForm(o) {
     h.push('<label class="ric"><input type="checkbox" id="att-lib"' + (a.oraLibera ? ' checked' : '') + '> Orario libero</label>');
     h.push('<label>Nota sull\'orario <input type="text" id="att-on" value="' + esc(a.oraNota || '') + '" placeholder="per esempio: in mattinata dopo le 11:00"></label>');
     h.push('<label>Nota <textarea id="att-n" rows="2" placeholder="Che cosa devo fare o portare…">' + esc(a.nota || '') + '</textarea></label>');
-    if (!nuovo) h.push('<label class="ric"><input type="checkbox" id="att-f"' + (a.fatto ? ' checked' : '') + '> Attività già svolta</label>' +
+    if (!nuovo) h.push('<div class="vuoto" style="margin:0 0 6px">La spunta si mette e si toglie quando vuoi, anche senza scrivere un report.</div>' +
+      '<label class="ric"><input type="checkbox" id="att-f"' + (a.fatto ? ' checked' : '') + '> Attività già svolta</label>' +
       '<button class="btn pri" id="att-rep" style="width:100%;margin-bottom:10px">' + (a.fatto ? 'Registra il report' : 'Fatta: registra il report') + '</button>');
     h.push('<div class="az">' + (nuovo ? '' : '<button class="btn peri" id="att-del">Elimina</button>') +
       (nuovo && !o.tipo && !o.id ? '<button class="btn" id="att-indietro">Indietro</button>' : '<button class="btn" id="att-ann">Annulla</button>') +
@@ -3311,8 +3311,25 @@ function repRegistra(c, v, ch) {
   if (ev.p) k.passo = ev.p;
   if (ric) k.richiamo = ric;
   k._m = Date.now(); DB.situazioni[c.id] = k;
+  try { var ia = repChiudeApp(c.id, ev, v); if (ia) { ev.att = ia; } } catch (e) {}
   return ev;
 }
+
+/* Il report dettato chiude l'appuntamento (v1.80.0): se l'istruzione lo indica si usa quello,
+   altrimenti vale solo quando il cliente ha UN SOLO appuntamento da fare in quel giorno.
+   Con due o con nessuno non si indovina: la spunta resta ad Andrea. */
+function repChiudeApp(cid, ev, v) {
+  var l = attDi(cid).filter(function (a) { return !a.fatto; });
+  if (!l.length) return '';
+  var rif = (v && v.appuntamento) ? agRif(v.appuntamento) : null;
+  var cand;
+  if (rif && rif.d) cand = l.filter(function (a) { return a.d === rif.d && (!rif.o || (a.o || '') === rif.o); });
+  else cand = l.filter(function (a) { return a.d === ev.d; });
+  if (cand.length !== 1) return '';
+  attSegnaFatta(cand[0].id, true);
+  return cand[0].id;
+}
+
 function repRaccogli(inter) {
   return repCartella(inter).then(function (id) {
     if (!id) return { n: 0, righe: ['Cartella dei report non trovata su Drive.'], sospesi: (REPD.sospesi || []).length };
@@ -3714,6 +3731,29 @@ function agRegistroApri() {
       if (agAnnulla(b.dataset.ann)) { toast('Istruzione annullata'); chiudi(); agRegistroApri(); }
     });
   });
+}
+
+
+/* Pulizia una tantum (v1.80.0): le versioni 1.78.0 e 4.48.0 scrivevano in cronologia una voce
+   «Agenda: …» a ogni istruzione applicata, con l'ora della DETTATURA e non quella
+   dell'appuntamento. Non sono report: si tolgono. La traccia resta nel Registro dell'agenda.
+   Ripetibile senza danno. */
+function agPulisci() {
+  var tolte = 0;
+  Object.keys(DB.eventi || {}).forEach(function (k) {
+    var v = DB.eventi[k];
+    if (v && (v.ag || /^Agenda: /.test(String(v.t || '')))) { delete DB.eventi[k]; tolte++; }
+  });
+  if (tolte) salva();
+  return tolte;
+}
+/* segna annullata l'istruzione che aveva creato questo appuntamento: senza, l'altro
+   dispositivo la riapplica e l'appuntamento eliminato torna indietro */
+function agChiudiIstruzione(idApp) {
+  if (String(idApp || '').indexOf('a_g') !== 0) return;
+  var idIst = 'ag_' + String(idApp).slice(3), R = agRegistro();
+  var r = R[idIst] || { id: idIst, az: 'inserisci', q: Date.now(), dev: agDispositivo(), descr: 'Appuntamento eliminato a mano' };
+  r.st = 'annullata'; r._m = Date.now(); R[idIst] = r;
 }
 
 function repDopoSync() {
@@ -6229,6 +6269,7 @@ IDB.leggi('db').then(function (t) {
   migraNessunaAzione();
   travasaImpostazioni();
   setTimeout(function () {   /* la cartella la legge il ciclo di sincronizzazione: qui richiedo solo i report rimasti in attesa */
+    try { var np = agPulisci(); if (np) toast('Tolte ' + num(np) + ' voci «Agenda» dalla cronologia', 4000); } catch (e) {}
     repBadge();
     if ((REPD.sospesi || []).length) repCoda();
   }, 5000);
@@ -6253,7 +6294,8 @@ window.CM = { get DB() { return DB; }, get SY() { return SY; }, get MP() { retur
   get REPD() { return REPD; }, get SYNC() { return SY; }, repClassifica: repClassifica, repDoppioni: repDoppioni, repDoppioniApri: repDoppioniApri, repEsistente: repEsistente, repRegistra: repRegistra, modificaEvento: modificaEvento, salva: salva, repRaccogli: repRaccogli, repCoda: repCoda, repDopoSync: repDopoSync, repSalva: repSalva,
   get AG() { return AG; }, agRaccogli: agRaccogli, agDopoSync: agDopoSync, agRegistro: agRegistro, agCoda: agCoda,
   agAnnulla: agAnnulla, agSalva: agSalva, agValuta: agValuta, agParse: agParse, agRegistroApri: agRegistroApri,
-  attArchivio: attArchivio, attSalva: attSalva, bloccoProgramma: bloccoProgramma, apriScheda: apriScheda, contatti: listaTutti };
+  attArchivio: attArchivio, attSalva: attSalva, bloccoProgramma: bloccoProgramma, apriScheda: apriScheda,
+  agPulisci: agPulisci, attElimina: attElimina, attSegnaFatta: attSegnaFatta, calApri: calApri, oggi: oggi, mostraVista: mostraVista, contatti: listaTutti };
 })();
 </script>
 </body>
